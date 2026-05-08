@@ -96,7 +96,7 @@ const EditUserPage = () => {
     return (
         <MainPage>
             <Head>
-                <title>Beness App | Editar Usuario</title>
+                <title>Beness Analytics | Editar Usuario</title>
             </Head>
             <FormComponent
                 actionName='Editar'

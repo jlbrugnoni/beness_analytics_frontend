@@ -16,7 +16,7 @@ const FormComponent = ({
     fetchData,
     onSubmit,
     onCancel,
-    showMediaUpload = true // ✅ By default, media upload is enabled
+    showMediaUpload = false
 }) => {
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;

@@ -81,7 +81,7 @@ const UserCreatePage = () => {
     return (
         <MainPage>
             <Head>
-                <title>Beness App | Añadir Usuario</title>
+                <title>Beness Analytics | Añadir Usuario</title>
             </Head>
             <FormComponent
                 actionName='Añadir'
