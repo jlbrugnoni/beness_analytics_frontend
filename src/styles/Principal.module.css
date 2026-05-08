@@ -1,0 +1,156 @@
+
+/* Main container */
+.container {
+    display: flex;
+    flex-direction: row;
+    height: calc(100vh - 75px);
+    overflow: hidden;
+}
+
+/* Sidebar Navigation */
+.nav {
+    width: 280px;
+    background-color: var(--beness-fondo-oscuro);
+    color: var(--beness-gris-oscuro); /* Text is now darker */
+    padding: 1rem;
+    border-right: 1px solid #ddd;
+    height: calc(100vh - 75px);
+    overflow-y: auto;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Header Bar */
+.header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 2rem;
+    background-color: var(--beness-fondo-oscuro);
+    border-bottom: 1px solid #ddd;
+    color: var(--beness-gris-oscuro);
+}
+
+/* Logo Styling */
+.logo {
+    height: 50px;
+    width: auto;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+}
+
+.logo:hover {
+    transform: scale(1.05);
+}
+
+/* Navigation Menu Icon */
+.menuIcon {
+    height: 30px;
+    width: auto;
+    display: none;
+    cursor: pointer;
+}
+
+/* Main Content Area */
+.main {
+    flex-grow: 1;
+    padding: 1rem;
+    height: calc(100vh - 75px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--beness-gris-oscuro); /* Fix text color */
+}
+
+/* Navigation Icons */
+.icon {
+    width: 22px;
+    height: auto;
+}
+
+/* Sidebar Visibility Control */
+.navVisible .nav {
+    display: block;
+}
+
+/* Fix Navigation Text Color */
+.nav a,
+.nav li {
+    color: var(--beness-gris-oscuro) !important; /* Force dark text */
+}
+
+/* Fix Hover Effect */
+.nav a:hover {
+    color: var(--beness-gris-claro) !important;
+}
+
+/* Logout Button */
+.logoutButton {
+    padding: 6px 10px;
+    background-color: var(--beness-gris-claro);
+    color: var(--beness-fondo-oscuro); /* Dark text for better contrast */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s, transform 0.2s, color 0.2s;
+    margin-right: 16px;
+}
+
+.logoutButton:hover {
+    background-color: var(--beness-gris-oscuro);
+    transform: scale(1.05);
+    color: white; /* White text only on hover */
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    .header {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .main {
+        padding: 0;
+    }
+
+    .logo {
+        height: 40px;
+    }
+
+    .menuIcon {
+        display: block;
+        cursor: pointer;
+    }
+
+    /* Mobile Sidebar */
+    .nav {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        width: 100vw;
+        height: calc(100vh - 60px);
+        background-color: var(--beness-fondo-oscuro);
+        color: var(--beness-gris-oscuro); /* Dark text */
+        padding: 1rem;
+        border-right: none;
+        overflow-y: auto;
+        display: none;
+        z-index: 1000;
+        transition: transform 0.3s ease-in-out;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Show menu when active */
+    .container.navVisible .nav {
+        display: block;
+        transform: translateX(0);
+    }
+}

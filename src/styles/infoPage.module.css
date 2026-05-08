@@ -1,0 +1,57 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    background-color: var(--beness-fondo-claro);
+}
+
+.title {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--beness-gris-oscuro);
+    margin-bottom: 1.5rem;
+}
+
+.card {
+    width: 100%;
+    max-width: 500px;
+    padding: 1rem;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+.infoLabel {
+    font-weight: bold;
+    margin-top: 1rem;
+    color: var(--beness-gris-claro);
+}
+
+.buttonContainer {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.editButton {
+    background-color: var(--beness-azul);
+    color: white;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.editButton:hover {
+    background-color: #5f99c1;
+}
+
+.backButton {
+    color: var(--beness-gris-oscuro);
+    border-color: var(--beness-gris-oscuro);
+}
+
+.backButton:hover {
+    background-color: var(--beness-gris-claro);
+    color: white;
+}

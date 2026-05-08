@@ -1,0 +1,39 @@
+{
+  "name": "beness_frontend",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.18.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^6.4.2",
+    "@mui/material": "^6.4.11",
+    "autoprefixer": "^10.4.20",
+    "axios": "^1.7.9",
+    "cloudinary": "^2.5.1",
+    "next": "14.2.35",
+    "postcss": "^8.5.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-sortablejs": "^6.1.4",
+    "sortablejs": "^1.15.6",
+    "tailwindcss": "^4.0.0"
+  },
+  "devDependencies": {
+   "eslint": "8.57.1",
+    "eslint-config-next": "14.2.35",
+    "typescript": "5.9.3",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@types/node": "22.13.5",
+    "@types/sortablejs": "1.15.9"
+  }
+}

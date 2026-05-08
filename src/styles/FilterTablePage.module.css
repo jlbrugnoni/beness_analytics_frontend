@@ -1,0 +1,208 @@
+/* 🔥 Main Container */
+.container {
+    padding-top: 15px;
+    height: 100%;
+    min-height: 800px;
+    width: 100%;
+}
+
+/* 🎛 Filter & Header Wrapper (For Alignment) */
+.headerFiltersContainer {
+    display: flex;
+    flex-direction: column;
+    width: 90%;
+    /* gap: 12px; */
+}
+
+/* 🎛 Header Section (Title & Button Aligned) */
+.titleContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 90%;
+    margin-bottom: 15px;
+}
+
+/* 🎛 Title */
+.title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* 🎛 Add Button */
+.addButton {
+    background-color: #007bff;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.addButton:hover {
+    background-color: #0056b3;
+}
+
+/* 🎚 Filter Container */
+.filterContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    width: 90%;
+    padding: 10px 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 🎚 Filter Item - Ensuring Consistent Alignment */
+.filterItem {
+    flex: 1 1 200px;
+    min-width: 180px;
+    max-width: 200px;
+    max-height: 50px;
+    font-size: 12px;
+}
+
+/* 🎚 Form Control Styling (Fixing Label & Dropdown Alignment) */
+.formControl {
+    font-size: 12px !important;
+    max-height: 40px !important;
+    display: flex;
+    /* align-items: center; */
+}
+
+/* 🎚 Fix InputLabel Alignment */
+.inputLabel {
+    font-size: 12px !important;
+    transition: all 0.2s ease-in-out;
+    /* transform: translate(-1, 50%) scale(2); */
+    /* bottom: 80% */
+}
+
+.Mui-focused .inputLabel,
+.MuiInputLabel-shrink {
+    transform: translate(0, -6px) scale(0.95) !important;
+    font-size: 11px !important;
+    color: #333; /* You can change the color to match your design */
+}
+
+
+/* 🎚 Fix Select Dropdown Size */
+.selectInput {
+    font-size: 12px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 4px 8px !important;
+    display: flex;
+    align-items: center;
+}
+
+/* ✅ Específico para TextField - eliminar padding extra */
+.MuiTextField-root {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.selectInput.MuiTextField-root .MuiOutlinedInput-root {
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+}
+
+.selectInput.MuiTextField-root .MuiOutlinedInput-input {
+    padding: 8px 14px !important;
+    height: 20px !important;
+    font-size: 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* ✅ Eliminar padding del notch del outline */
+.selectInput.MuiTextField-root .MuiOutlinedInput-notchedOutline {
+    padding: 0 !important;
+}
+
+/* ✅ Ajustar el fieldset interno */
+.selectInput.MuiTextField-root .MuiOutlinedInput-root fieldset {
+    padding: 0 !important;
+}
+
+/* 🎚 Adjust Dropdown Menu Item Font */
+.MuiMenuItem-root {
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+}
+
+/* 🎚 Limit Dropdown Menu Size */
+.MuiPaper-root {
+    max-height: 250px !important; /* Reduce the menu height */
+    overflow-y: auto !important;
+}
+
+/* ❌ Clear Button */
+.clearButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    color: #d9534f;
+    background-color: rgba(217, 83, 79, 0.1);
+    border-radius: 50%;
+    padding: 5px;
+    width: 24px;
+    height: 24px;
+}
+
+/* 🔥 Hover Effect */
+.clearButton:hover {
+    opacity: 0.9;
+    transform: scale(1.1);
+    background-color: rgba(217, 83, 79, 0.2);
+}
+
+/* 🔹 Responsive Design */
+@media (max-width: 801px) {
+    .headerFiltersContainer {
+        gap: 10px;
+    }
+/* 
+    .titleContainer {
+        flex-direction: column;
+        align-items: flex-start;
+    } */
+
+    .filterContainer {
+        flex-direction: column;
+        width: 100%;
+        padding: 8px;
+        gap:0px;
+    }
+
+    .filterItem {
+        /* flex: 1 1 100%; */
+        min-width: 100%;
+    }
+
+    .filterItem .MuiInputBase-root {
+        font-size: 11px !important;
+        min-height: 30px !important;
+        padding: 5px 8px !important;
+    }
+
+    .clearButton {
+        width: 22px;
+        height: 22px;
+        padding: 4px;
+    }  
+    
+    .selectInput {            
+        padding: 0px !important;            
+    }
+}

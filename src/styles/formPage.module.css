@@ -1,0 +1,137 @@
+.container {
+    padding: 2rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: var(--beness-fondo-claro);
+}
+
+.title {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--beness-gris-oscuro);
+    margin-bottom: 1rem;
+}
+
+.boxContainer {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;
+}
+
+.formContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.formField {
+    background-color: white;
+}
+
+.checkboxLabel {
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 20px; /* Increase font size */
+    display: flex;
+    cursor: pointer;
+    margin-top: 1.0rem;
+}
+
+/* Increase the size of the checkbox */
+.checkboxLabel input[type="checkbox"] {
+    width: 20px; /* Set checkbox width */
+    height: 20px; /* Set checkbox height */
+    accent-color: #007bff; /* Optional: Change checkbox color */
+    cursor: pointer;
+}
+.buttonsContainer {
+    display: flex;
+    /* justify-content: space-between; */
+    gap: 1rem;
+    margin-top: 1.0rem;
+    margin-bottom: 1.0rem;
+}
+
+.createButton {
+    background-color: var(--beness-azul);
+    color: white;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.createButton:hover {
+    background-color: #5f99c1;
+}
+
+.cancelButton {
+    border-color: var(--beness-gris-claro);
+    color: var(--beness-gris-claro);
+    font-weight: bold;
+}
+
+.cancelButton:hover {
+    background-color: var(--beness-gris-claro);
+    color: white;
+}
+
+/* Error & Success Messages */
+.error {
+    color: red;
+    font-weight: bold;
+    text-align: center;
+}
+
+.success {
+    color: green;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* 🔹 Upload Container */
+.uploadContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+/* 🔹 Upload Button */
+.uploadButton {
+    background-color: var(--beness-azul);
+    color: white;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.uploadButton:hover {
+    background-color: #5f99c1;
+}
+
+/* 🔹 Image & Video Preview */
+.imagePreviewContainer,
+.videoPreviewContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.previewImage {
+    max-width: 250px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.previewVideo {
+    max-width: 300px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}

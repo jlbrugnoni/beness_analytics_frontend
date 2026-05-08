@@ -1,0 +1,150 @@
+/* 🔥 Main Container */
+.container {
+  padding-top: 20px;
+  padding-left: 30px;
+  height: 100%;
+  min-height: 800px;
+  width: 100%;
+}
+
+/* 🔥 Table Container */
+.tableContainer {
+  margin-top: 20px;
+  width: 90%;
+  min-height: 70vh;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 🔥 Table Header */
+.tableRowHeader {
+  font-size: 1rem;
+  font-weight: bold;
+  background-color: #f3f5f7;
+  color: var(--beness-gris-oscuro);
+  padding: 12px;
+  text-align: left;
+}
+
+/* 🔥 Table Rows */
+.tableRowItem {
+  font-size: 0.9rem;
+  padding: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* 🔥 Clickable Row */
+.clickRow {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.clickRow:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* 🔥 Title Section */
+.titleContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 90%;
+  margin-bottom: 15px;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: bold;
+  color: #333;
+  padding-top: 10px;
+}
+
+/* 🔥 Add Button */
+.addButton {
+  padding: 8px 12px;
+  background-color: #007bff;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.addButton:hover {
+  background-color: #0056b3;
+}
+
+/* 🔥 Table Pagination */
+.paginatorContainer {
+  max-width: 100%;
+  font-size: 1rem;
+  background-color: #f3f5f7;
+  padding: 10px;
+  text-align: center;
+}
+
+/* 🔥 Action Buttons (Icons) */
+.buttonIcon {
+  width: 1.2rem;
+  height: auto;
+  margin-right: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.buttonIcon:hover {
+  transform: scale(1.2);
+}
+
+/* 🔥 Image & Video Previews */
+.previewImage, .previewVideo {
+  max-width: 90%; /* Ensures media does not exceed the dialog width */
+  max-height: 500px; /* Limits height */
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain; /* Prevents distortion */
+  display: block;
+  margin: 0 auto;
+}
+
+/* 🔥 Responsive Design */
+@media (max-width: 801px) {
+  .container {
+    padding-left: 10px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .addButton {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .tableContainer {
+    width: 100%;
+  }
+
+  .tableRowHeader, .tableRowItem {
+    font-size: 0.8rem;
+    padding: 8px;
+  }
+
+  .buttonIcon {
+    width: 1rem;
+    margin-right: 6px;
+  }
+
+  /* ✅ Mobile Optimized Image & Video */
+  .previewImage, .previewVideo {
+    max-width: 95%;
+    max-height: 300px;
+  }
+}

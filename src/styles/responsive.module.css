@@ -1,0 +1,36 @@
+.tableWrapper {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.hideOnMobile {
+    display: table-cell;
+}
+
+.showOnlyOnMobile {
+    display: none;
+}
+
+/* Aplica en pantallas menores a 768px */
+@media (max-width: 768px) {
+    .hideOnMobile {
+        display: none;
+    }
+
+    .showOnlyOnMobile {
+        display: table-cell;
+    }
+
+    .actionsCell {
+        display: flex;
+        justify-content: center;
+    }
+    .fullWidthOnMobile{
+        padding-left: 0px !important;
+        padding-right: 0px !important;
+    }
+    .fullWidthOnMobile div{        
+        width: 100% !important;
+        display: block !important;        
+    }
+}
