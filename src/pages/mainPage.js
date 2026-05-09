@@ -8,14 +8,10 @@ import { useRouter } from "next/router";
 import menuIcon from "../images/menu-icon.png";
 import benessLogo from "../images/beness-logo.png";
 
-import AnalyticsIcon from "@mui/icons-material/Analytics";
-import AssessmentIcon from "@mui/icons-material/Assessment";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import HomeIcon from "@mui/icons-material/Home";
 import PeopleIcon from "@mui/icons-material/People";
 import SettingsIcon from "@mui/icons-material/Settings";
-import StorageIcon from "@mui/icons-material/Storage";
 
 import Button from "@mui/material/Button";
 import List from "@mui/material/List";
@@ -29,11 +25,7 @@ import routePermissions from "@/constants/routePermissions";
 
 const navItems = [
     { href: "/home", label: "Home", key: "home", icon: HomeIcon },
-    { href: "/dashboard", label: "Dashboard", key: "dashboard", icon: DashboardIcon },
     { href: "/uploads", label: "Uploads", key: "uploads", icon: CloudUploadIcon },
-    { href: "/reports", label: "Reports", key: "reports", icon: AssessmentIcon },
-    { href: "/analytics", label: "Analytics", key: "analytics", icon: AnalyticsIcon },
-    { href: "/core-data", label: "Core Data", key: "core-data", icon: StorageIcon },
     { href: "/datos/usuarios", label: "Users", key: "usuarios", icon: PeopleIcon, permission: "core_data.view_customuser" },
     { href: "/settings", label: "Settings", key: "settings", icon: SettingsIcon },
 ];
