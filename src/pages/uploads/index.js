@@ -23,8 +23,8 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 const reportTypes = [
     { value: "attendance_with_revenue", label: "Attendance with Revenue" },
-    { value: "sales", label: "Sales", disabled: true },
-    { value: "sales_by_service", label: "Sales by Service", disabled: true },
+    { value: "sales", label: "Sales" },
+    { value: "sales_by_service", label: "Sales by Service" },
 ];
 
 
@@ -34,6 +34,29 @@ const SummaryBox = ({ label, value }) => (
         <div style={{ fontSize: "24px", fontWeight: 700 }}>{value}</div>
     </Paper>
 );
+
+
+const formatValue = (value) => {
+    if (value === null || value === undefined || value === "") return "N/A";
+    if (typeof value === "number") return value.toLocaleString();
+    return value;
+};
+
+
+const importMetricLabels = {
+    raw_rows_created: "Raw Rows Saved",
+    attendance_created: "Attendance Created",
+    attendance_changed: "Attendance Changed",
+    attendance_identical: "Attendance Identical",
+    sale_lines_created: "Sale Lines Created",
+    sale_lines_changed: "Sale Lines Changed",
+    sale_lines_identical: "Sale Lines Identical",
+    service_purchases_created: "Service Purchases Created",
+    service_purchases_changed: "Service Purchases Changed",
+    service_purchases_identical: "Service Purchases Identical",
+    natural_key_collisions: "Natural Key Collisions",
+    versions_created: "Versions Created",
+};
 
 
 export default function Uploads() {
@@ -105,7 +128,7 @@ export default function Uploads() {
             return;
         }
 
-        if (!window.confirm("Import this report and update attendance records?")) return;
+        if (!window.confirm("Import this report and update analytics records?")) return;
 
         setImporting(true);
         setError("");
@@ -214,8 +237,7 @@ export default function Uploads() {
                         <>
                             {importResult && (
                                 <Alert severity="success">
-                                    Import completed. Created {importResult.attendance_created}, changed {importResult.attendance_changed},
-                                    identical {importResult.attendance_identical}. Import ID: {importResult.report_import_id}
+                                    Import completed. Import ID: {importResult.report_import_id}
                                 </Alert>
                             )}
 
@@ -230,20 +252,50 @@ export default function Uploads() {
                                 <SummaryBox label="Valid Rows" value={preview.row_counts.valid_rows} />
                                 <SummaryBox label="Invalid Rows" value={preview.row_counts.invalid_rows} />
                                 <SummaryBox label="Duplicates" value={preview.row_counts.duplicate_extra_rows} />
-                                <SummaryBox label="Revenue" value={preview.revenue.total.toLocaleString()} />
-                                <SummaryBox label="Date From" value={preview.date_range.from || "N/A"} />
-                                <SummaryBox label="Date To" value={preview.date_range.to || "N/A"} />
+                                <SummaryBox label="Revenue" value={formatValue(preview.revenue?.total)} />
+                                <SummaryBox label="Date From" value={formatValue(preview.date_range?.from)} />
+                                <SummaryBox label="Date To" value={formatValue(preview.date_range?.to)} />
                             </div>
 
-                            <Paper style={{ padding: "18px" }}>
+                            {preview.attendance && (
+                                <Paper style={{ padding: "18px" }}>
                                 <h2 style={{ marginTop: 0 }}>Attendance</h2>
                                 <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
                                     <SummaryBox label="Attended" value={preview.attendance.attended_inferred} />
                                     <SummaryBox label="Late Cancels" value={preview.attendance.late_cancel} />
                                     <SummaryBox label="No Shows" value={preview.attendance.no_show} />
-                                    <SummaryBox label="Zero Revenue Rows" value={preview.revenue.zero_revenue_rows} />
+                                    <SummaryBox label="Zero Revenue Rows" value={preview.revenue?.zero_revenue_rows} />
                                 </div>
-                            </Paper>
+                                </Paper>
+                            )}
+
+                            {preview.sales && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Sales</h2>
+                                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                                        <SummaryBox label="Sales" value={preview.sales.sale_count} />
+                                        <SummaryBox label="Paid Total" value={formatValue(preview.sales.paid_total)} />
+                                        <SummaryBox label="Gross Item Total" value={formatValue(preview.sales.gross_item_total)} />
+                                        <SummaryBox label="Discount Total" value={formatValue(preview.sales.discount_total)} />
+                                        <SummaryBox label="Tax Total" value={formatValue(preview.sales.tax_total)} />
+                                    </div>
+                                </Paper>
+                            )}
+
+                            {preview.services && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Services</h2>
+                                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                                        <SummaryBox label="Purchases" value={preview.services.purchase_count} />
+                                        <SummaryBox label="Total Amount" value={formatValue(preview.services.total_amount)} />
+                                        <SummaryBox label="Cash Equivalent" value={formatValue(preview.services.cash_equivalent)} />
+                                        <SummaryBox label="Non Cash" value={formatValue(preview.services.non_cash_equivalent)} />
+                                        <SummaryBox label="Quantity" value={formatValue(preview.services.quantity)} />
+                                        <SummaryBox label="Expiration From" value={formatValue(preview.service_expiration_range?.from)} />
+                                        <SummaryBox label="Expiration To" value={formatValue(preview.service_expiration_range?.to)} />
+                                    </div>
+                                </Paper>
+                            )}
 
                             <Paper style={{ padding: "18px" }}>
                                 <h2 style={{ marginTop: 0 }}>Lookup Records</h2>
@@ -299,12 +351,11 @@ export default function Uploads() {
                                 <Paper style={{ padding: "18px" }}>
                                     <h2 style={{ marginTop: 0 }}>Import Result</h2>
                                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
-                                        <SummaryBox label="Raw Rows Saved" value={importResult.raw_rows_created} />
-                                        <SummaryBox label="Attendance Created" value={importResult.attendance_created} />
-                                        <SummaryBox label="Attendance Changed" value={importResult.attendance_changed} />
-                                        <SummaryBox label="Attendance Identical" value={importResult.attendance_identical} />
-                                        <SummaryBox label="Natural Key Collisions" value={importResult.natural_key_collisions} />
-                                        <SummaryBox label="Versions Created" value={importResult.versions_created} />
+                                        {Object.entries(importMetricLabels)
+                                            .filter(([key]) => importResult[key] !== undefined)
+                                            .map(([key, label]) => (
+                                                <SummaryBox key={key} label={label} value={importResult[key]} />
+                                            ))}
                                     </div>
                                     <TableContainer style={{ marginTop: "16px" }}>
                                         <Table size="small">
