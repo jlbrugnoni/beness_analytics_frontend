@@ -9,6 +9,7 @@ import menuIcon from "../images/menu-icon.png";
 import benessLogo from "../images/beness-logo.png";
 
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 import HomeIcon from "@mui/icons-material/Home";
 import PeopleIcon from "@mui/icons-material/People";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -27,6 +28,7 @@ import routePermissions from "@/constants/routePermissions";
 const navItems = [
     { href: "/home", label: "Home", key: "home", icon: HomeIcon },
     { href: "/uploads", label: "Uploads", key: "uploads", icon: CloudUploadIcon },
+    { href: "/imported", label: "Imported", key: "imported", icon: AssessmentIcon },
     { href: "/data", label: "Data", key: "data", icon: StorageIcon },
     { href: "/datos/usuarios", label: "Users", key: "usuarios", icon: PeopleIcon, permission: "core_data.view_customuser" },
     { href: "/settings", label: "Settings", key: "settings", icon: SettingsIcon },

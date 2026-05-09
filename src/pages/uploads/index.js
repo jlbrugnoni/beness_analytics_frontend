@@ -251,7 +251,7 @@ export default function Uploads() {
                                 <SummaryBox label="Data Rows" value={preview.row_counts.data_rows} />
                                 <SummaryBox label="Valid Rows" value={preview.row_counts.valid_rows} />
                                 <SummaryBox label="Invalid Rows" value={preview.row_counts.invalid_rows} />
-                                <SummaryBox label="Duplicates" value={preview.row_counts.duplicate_extra_rows} />
+                                <SummaryBox label="Repeated Rows" value={preview.row_counts.duplicate_extra_rows} />
                                 <SummaryBox label="Revenue" value={formatValue(preview.revenue?.total)} />
                                 <SummaryBox label="Date From" value={formatValue(preview.date_range?.from)} />
                                 <SummaryBox label="Date To" value={formatValue(preview.date_range?.to)} />
