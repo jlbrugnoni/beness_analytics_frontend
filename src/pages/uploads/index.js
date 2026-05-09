@@ -45,8 +45,10 @@ export default function Uploads() {
     const [reportType, setReportType] = useState("attendance_with_revenue");
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState(null);
+    const [importResult, setImportResult] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [importing, setImporting] = useState(false);
 
     const authHeaders = useMemo(() => ({
         headers: { Authorization: `Token ${token}` },
@@ -75,6 +77,7 @@ export default function Uploads() {
         setLoading(true);
         setError("");
         setPreview(null);
+        setImportResult(null);
 
         const formData = new FormData();
         formData.append("site", site);
@@ -93,6 +96,39 @@ export default function Uploads() {
             setError(err.response?.data?.error || "Error previewing report.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleImport = async () => {
+        if (!site || !reportType || !file || !preview) {
+            setError("Preview the file before importing.");
+            return;
+        }
+
+        if (!window.confirm("Import this report and update attendance records?")) return;
+
+        setImporting(true);
+        setError("");
+        setImportResult(null);
+
+        const formData = new FormData();
+        formData.append("site", site);
+        formData.append("report_type", reportType);
+        formData.append("file", file);
+
+        try {
+            const response = await axios.post(`${backendUrl}/api/data/report-imports/import-file/`, formData, {
+                headers: {
+                    Authorization: `Token ${token}`,
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+            setImportResult(response.data.import);
+            setPreview(response.data.preview);
+        } catch (err) {
+            setError(err.response?.data?.error || "Error importing report.");
+        } finally {
+            setImporting(false);
         }
     };
 
@@ -160,6 +196,14 @@ export default function Uploads() {
                             <Button variant="contained" onClick={handlePreview} disabled={loading || !file}>
                                 {loading ? "Previewing..." : "Preview Import"}
                             </Button>
+                            <Button
+                                variant="contained"
+                                color="success"
+                                onClick={handleImport}
+                                disabled={importing || !preview || !preview.is_valid_schema || preview.row_counts.invalid_rows > 0}
+                            >
+                                {importing ? "Importing..." : "Confirm Import"}
+                            </Button>
                             <Link href="/data">
                                 <Button variant="text">Manage Data Tables</Button>
                             </Link>
@@ -168,6 +212,13 @@ export default function Uploads() {
 
                     {preview && (
                         <>
+                            {importResult && (
+                                <Alert severity="success">
+                                    Import completed. Created {importResult.attendance_created}, changed {importResult.attendance_changed},
+                                    identical {importResult.attendance_identical}. Import ID: {importResult.report_import_id}
+                                </Alert>
+                            )}
+
                             {!preview.is_valid_schema && (
                                 <Alert severity="warning">
                                     Missing required headers: {preview.missing_headers.join(", ")}
@@ -236,6 +287,38 @@ export default function Uploads() {
                                                     <TableRow key={row.row_number}>
                                                         <TableCell>{row.row_number}</TableCell>
                                                         <TableCell>{row.errors.join(", ")}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
+                            )}
+
+                            {importResult && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Import Result</h2>
+                                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+                                        <SummaryBox label="Raw Rows Saved" value={importResult.raw_rows_created} />
+                                        <SummaryBox label="Attendance Created" value={importResult.attendance_created} />
+                                        <SummaryBox label="Attendance Changed" value={importResult.attendance_changed} />
+                                        <SummaryBox label="Attendance Identical" value={importResult.attendance_identical} />
+                                        <SummaryBox label="Natural Key Collisions" value={importResult.natural_key_collisions} />
+                                        <SummaryBox label="Versions Created" value={importResult.versions_created} />
+                                    </div>
+                                    <TableContainer style={{ marginTop: "16px" }}>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>Lookup Table</TableCell>
+                                                    <TableCell>Created</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {Object.entries(importResult.new_lookups).map(([key, value]) => (
+                                                    <TableRow key={key}>
+                                                        <TableCell style={{ textTransform: "capitalize" }}>{key.replaceAll("_", " ")}</TableCell>
+                                                        <TableCell>{value}</TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
