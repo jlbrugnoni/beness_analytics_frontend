@@ -36,6 +36,55 @@ const SummaryBox = ({ label, value }) => (
 );
 
 
+const ImpactGrid = ({ impact }) => {
+    if (!impact) return null;
+    return (
+        <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+            <SummaryBox label="Raw Rows To Save" value={impact.raw_rows_to_save} />
+            <SummaryBox label="New Records" value={impact.current_records_to_create} />
+            <SummaryBox label="Modified Records" value={impact.current_records_to_update} />
+            <SummaryBox label="Already Added" value={impact.current_records_unchanged} />
+            <SummaryBox label="Current Records In File" value={impact.current_records_in_file} />
+            <SummaryBox label="Attendance Collisions" value={impact.natural_key_collisions} />
+        </div>
+    );
+};
+
+
+const SampleTable = ({ title, samples }) => {
+    if (!samples?.length) return null;
+    return (
+        <Paper style={{ padding: "18px" }}>
+            <h2 style={{ marginTop: 0 }}>{title}</h2>
+            <TableContainer>
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Count</TableCell>
+                            <TableCell>Rows</TableCell>
+                            <TableCell>Sample Data</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {samples.map((sample, index) => (
+                            <TableRow key={`${title}-${index}`}>
+                                <TableCell>{sample.count}</TableCell>
+                                <TableCell>{sample.row_numbers.join(", ")}</TableCell>
+                                <TableCell>
+                                    {Object.entries(sample.payload)
+                                        .map(([key, value]) => `${key}: ${value}`)
+                                        .join(" | ")}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        </Paper>
+    );
+};
+
+
 const formatValue = (value) => {
     if (value === null || value === undefined || value === "") return "N/A";
     if (typeof value === "number") return value.toLocaleString();
@@ -72,6 +121,7 @@ export default function Uploads() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [resetting, setResetting] = useState(false);
 
     const authHeaders = useMemo(() => ({
         headers: { Authorization: `Token ${token}` },
@@ -155,6 +205,32 @@ export default function Uploads() {
         }
     };
 
+    const handleResetAnalyticsData = async () => {
+        const confirmation = window.prompt(
+            "This will delete imported analytics data, clients, studios, staff, pricing options, payment methods, and imports. Users and sites are preserved. Type RESET ANALYTICS DATA to continue."
+        );
+        if (confirmation !== "RESET ANALYTICS DATA") return;
+
+        setResetting(true);
+        setError("");
+        setImportResult(null);
+
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/data/report-imports/reset-analytics-data/`,
+                { confirmation },
+                authHeaders,
+            );
+            setPreview(null);
+            setFile(null);
+            alert(response.data.message || "Analytics data reset completed.");
+        } catch (err) {
+            setError(err.response?.data?.error || "Error resetting analytics data.");
+        } finally {
+            setResetting(false);
+        }
+    };
+
     const lookupRows = preview
         ? Object.entries(preview.lookup_preview).map(([key, value]) => ({
             key,
@@ -230,6 +306,14 @@ export default function Uploads() {
                             <Link href="/data">
                                 <Button variant="text">Manage Data Tables</Button>
                             </Link>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                onClick={handleResetAnalyticsData}
+                                disabled={resetting}
+                            >
+                                {resetting ? "Resetting..." : "Reset Analytics Data"}
+                            </Button>
                         </div>
                     </Paper>
 
@@ -247,6 +331,12 @@ export default function Uploads() {
                                 </Alert>
                             )}
 
+                            {preview.data_quality?.requires_review && (
+                                <Alert severity="warning">
+                                    This report has attendance collisions. Review the samples before trusting the import for KPIs.
+                                </Alert>
+                            )}
+
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
                                 <SummaryBox label="Data Rows" value={preview.row_counts.data_rows} />
                                 <SummaryBox label="Valid Rows" value={preview.row_counts.valid_rows} />
@@ -256,6 +346,11 @@ export default function Uploads() {
                                 <SummaryBox label="Date From" value={formatValue(preview.date_range?.from)} />
                                 <SummaryBox label="Date To" value={formatValue(preview.date_range?.to)} />
                             </div>
+
+                            <Paper style={{ padding: "18px" }}>
+                                <h2 style={{ marginTop: 0 }}>Import Impact</h2>
+                                <ImpactGrid impact={preview.data_quality?.import_impact} />
+                            </Paper>
 
                             {preview.attendance && (
                                 <Paper style={{ padding: "18px" }}>
@@ -322,6 +417,16 @@ export default function Uploads() {
                                     </Table>
                                 </TableContainer>
                             </Paper>
+
+                            <SampleTable
+                                title="Repeated Row Samples"
+                                samples={preview.data_quality?.repeated_row_samples}
+                            />
+
+                            <SampleTable
+                                title="Attendance Collision Samples"
+                                samples={preview.data_quality?.natural_key_collision_samples}
+                            />
 
                             {preview.invalid_row_samples.length > 0 && (
                                 <Paper style={{ padding: "18px" }}>

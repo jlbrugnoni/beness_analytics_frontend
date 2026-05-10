@@ -58,6 +58,8 @@ export const dataResources = {
         endpoint: "clients",
         columns: [
             { label: "Name", field: "name" },
+            { label: "First Name", field: "first_name" },
+            { label: "Last Name", field: "last_name" },
             { label: "Site", field: "site_name" },
             { label: "MindBody ID", field: "mindbody_id" },
             { label: "Email", field: "email" },
@@ -66,6 +68,8 @@ export const dataResources = {
         ],
         fields: [
             ...siteScopedFields,
+            { name: "first_name", label: "First Name" },
+            { name: "last_name", label: "Last Name" },
             { name: "email", label: "Email", type: "email" },
             { name: "phone", label: "Phone" },
         ],
@@ -76,11 +80,17 @@ export const dataResources = {
         endpoint: "staff-members",
         columns: [
             { label: "Name", field: "name" },
+            { label: "First Name", field: "first_name" },
+            { label: "Last Name", field: "last_name" },
             { label: "Site", field: "site_name" },
             { label: "MindBody Name", field: "mindbody_name" },
             { label: "Active", field: "active" },
         ],
-        fields: siteScopedFields,
+        fields: [
+            ...siteScopedFields,
+            { name: "first_name", label: "First Name" },
+            { name: "last_name", label: "Last Name" },
+        ],
     },
     "service-categories": {
         label: "Service Categories",
