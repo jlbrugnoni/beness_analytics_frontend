@@ -10,6 +10,12 @@ import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 
 
@@ -17,6 +23,40 @@ const KpiCard = ({ label, value }) => (
     <Paper style={{ padding: "16px", minHeight: "86px" }}>
         <div style={{ color: "#666", fontSize: "13px" }}>{label}</div>
         <div style={{ fontSize: "28px", fontWeight: 700 }}>{value}</div>
+    </Paper>
+);
+
+
+const BreakdownTable = ({ title, rows, nameKey = "name", valueKey = "total", money = false }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>{title}</h2>
+        <TableContainer>
+            <Table size="small">
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Concept</TableCell>
+                        <TableCell align="right">Value</TableCell>
+                        {rows?.some((row) => row.count !== undefined) && <TableCell align="right">Count</TableCell>}
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {(rows || []).slice(0, 10).map((row, index) => (
+                        <TableRow key={`${title}-${index}`}>
+                            <TableCell>{row[nameKey] ?? "N/A"}</TableCell>
+                            <TableCell align="right">{money ? formatMoney(row[valueKey]) : formatNumber(row[valueKey])}</TableCell>
+                            {rows?.some((item) => item.count !== undefined) && (
+                                <TableCell align="right">{row.count !== undefined ? formatNumber(row.count) : ""}</TableCell>
+                            )}
+                        </TableRow>
+                    ))}
+                    {!rows?.length && (
+                        <TableRow>
+                            <TableCell colSpan={3}>No data</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
     </Paper>
 );
 
@@ -34,6 +74,8 @@ export default function Dashboard() {
     const [sites, setSites] = useState([]);
     const [filters, setFilters] = useState({ site: "", date_from: monthAgo, date_to: today });
     const [summary, setSummary] = useState(null);
+    const [revenue, setRevenue] = useState(null);
+    const [attendance, setAttendance] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -47,7 +89,7 @@ export default function Dashboard() {
         setSites(response.data.results || response.data);
     };
 
-    const fetchSummary = async () => {
+    const fetchDashboard = async () => {
         if (!token) return;
         setLoading(true);
         setError("");
@@ -56,8 +98,15 @@ export default function Dashboard() {
             Object.entries(filters).forEach(([key, value]) => {
                 if (value) params.set(key, value);
             });
-            const response = await axios.get(`${backendUrl}/api/data/analytics/summary/?${params.toString()}`, authHeaders);
-            setSummary(response.data);
+            const queryString = params.toString();
+            const [summaryResponse, revenueResponse, attendanceResponse] = await Promise.all([
+                axios.get(`${backendUrl}/api/data/analytics/summary/?${queryString}`, authHeaders),
+                axios.get(`${backendUrl}/api/data/analytics/revenue/?${queryString}`, authHeaders),
+                axios.get(`${backendUrl}/api/data/analytics/attendance/?${queryString}`, authHeaders),
+            ]);
+            setSummary(summaryResponse.data);
+            setRevenue(revenueResponse.data);
+            setAttendance(attendanceResponse.data);
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading dashboard.");
         } finally {
@@ -70,7 +119,7 @@ export default function Dashboard() {
     }, [token]);
 
     useEffect(() => {
-        fetchSummary();
+        fetchDashboard();
     }, [token]);
 
     const totals = summary?.totals || {};
@@ -117,7 +166,7 @@ export default function Dashboard() {
                             />
                         </div>
                         <div>
-                            <Button variant="contained" onClick={fetchSummary} disabled={loading}>
+                            <Button variant="contained" onClick={fetchDashboard} disabled={loading}>
                                 {loading ? "Loading..." : "Apply Filters"}
                             </Button>
                         </div>
@@ -132,6 +181,16 @@ export default function Dashboard() {
                         <KpiCard label="Late Cancel Rate" value={`${formatNumber(totals.late_cancel_rate)}%`} />
                         <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
                         <KpiCard label="Service Purchases" value={formatNumber(totals.service_purchases)} />
+                    </div>
+
+                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+                        <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
+                        <BreakdownTable title="Revenue by Payment Method" rows={revenue?.by_payment_method} money />
+                        <BreakdownTable title="Revenue by Service" rows={revenue?.by_service} money />
+                        <BreakdownTable title="Attendance by Studio" rows={attendance?.by_studio} />
+                        <BreakdownTable title="Attendance by Instructor" rows={attendance?.by_instructor} />
+                        <BreakdownTable title="Attendance by Service" rows={attendance?.by_service} />
+                        <BreakdownTable title="Attendance by Hour" rows={attendance?.by_hour} nameKey="hour" />
                     </div>
 
                     <Alert severity="info">
