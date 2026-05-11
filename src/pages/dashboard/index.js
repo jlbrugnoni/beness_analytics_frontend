@@ -64,7 +64,7 @@ const BreakdownTable = ({ title, rows, nameKey = "name", valueKey = "total", mon
 );
 
 
-const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = false, limit = 14 }) => {
+const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = false, limit = 31 }) => {
     const chartRows = (rows || []).slice(-limit);
     const maxValue = Math.max(...chartRows.map((row) => Number(row[valueKey] || 0)), 0);
 
@@ -210,7 +210,13 @@ const InstructorQualityTable = ({ rows }) => (
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const currentMonthValue = () => new Date().toISOString().slice(0, 7);
+const lastCompletedMonthValue = () => {
+    const now = new Date();
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const year = previousMonth.getFullYear();
+    const month = String(previousMonth.getMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+};
 
 
 const monthRange = (monthValue) => {
@@ -226,8 +232,7 @@ const monthRange = (monthValue) => {
 export default function Dashboard() {
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const today = new Date().toISOString().slice(0, 10);
-    const currentMonth = currentMonthValue();
+    const defaultMonth = lastCompletedMonthValue();
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
@@ -235,9 +240,9 @@ export default function Dashboard() {
     const [filters, setFilters] = useState({
         site: "",
         studio: "",
-        month: currentMonth,
-        date_from: monthRange(currentMonth).date_from,
-        date_to: today,
+        month: defaultMonth,
+        date_from: monthRange(defaultMonth).date_from,
+        date_to: monthRange(defaultMonth).date_to,
     });
     const [summary, setSummary] = useState(null);
     const [revenue, setRevenue] = useState(null);
