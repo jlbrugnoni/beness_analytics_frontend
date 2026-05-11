@@ -113,11 +113,13 @@ export const dataResources = {
             { label: "Site", field: "site_name" },
             { label: "Service Category", field: "service_category_name" },
             { label: "MindBody Name", field: "mindbody_name" },
+            { label: "Track Retention", field: "track_retention" },
             { label: "Active", field: "active" },
         ],
         fields: [
             ...siteScopedFields,
             { name: "service_category", label: "Service Category", type: "serviceCategory" },
+            { name: "track_retention", label: "Track Retention", type: "boolean", default: false },
         ],
     },
     "payment-methods": {

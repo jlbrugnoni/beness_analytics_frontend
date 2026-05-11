@@ -104,9 +104,15 @@ export default function Manual() {
                     </Section>
 
                     <Section title="8. KPIs de retencion y reactivacion">
-                        <p><strong>Servicios expirados:</strong> servicios con fecha de expiracion dentro del periodo.</p>
-                        <p><strong>Reactivacion:</strong> cliente que compra un nuevo servicio despues de expirar uno anterior.</p>
-                        <p><strong>No reactivados:</strong> clientes con servicio expirado sin compra posterior detectada.</p>
+                        <p>
+                            La retencion no se calcula sobre todos los productos. Solo se incluyen las opciones de precio
+                            marcadas como <strong>Track Retention</strong> en la pantalla de Pricing Options. Normalmente
+                            ahi deben marcarse membresias o productos recurrentes; no clases gratis, clases sueltas,
+                            paquetes no recurrentes ni privadas si no se quieren medir como renovacion.
+                        </p>
+                        <p><strong>Servicios expirados:</strong> servicios trackeados con fecha de expiracion dentro del periodo.</p>
+                        <p><strong>Reactivacion:</strong> cliente que compra otro servicio trackeado despues de la venta original y con expiracion igual o posterior.</p>
+                        <p><strong>No reactivados:</strong> clientes con servicio trackeado expirado sin compra posterior detectada.</p>
                         <p><strong>Dias a reactivar:</strong> diferencia entre fecha de expiracion y siguiente fecha de venta del mismo cliente.</p>
                     </Section>
 

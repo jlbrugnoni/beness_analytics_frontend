@@ -245,7 +245,14 @@ export default function Dashboard() {
                         <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
                         <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
                         <KpiCard label="Expiring Next 30 Days" value={formatNumber(retention?.upcoming_expirations_30_days)} />
+                        <KpiCard label="Tracked Products" value={formatNumber(retention?.tracked_pricing_options)} />
                     </div>
+
+                    {retention?.tracked_pricing_options === 0 && (
+                        <Alert severity="warning">
+                            No hay productos marcados para analizar retencion. Marca las membresias en Data &gt; Pricing Options.
+                        </Alert>
+                    )}
 
                     <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
                         <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />

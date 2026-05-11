@@ -23,6 +23,7 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
+import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import EditIcon from "@mui/icons-material/Edit";
@@ -30,6 +31,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 
 const emptyValueForField = (field) => {
+    if (field.default !== undefined) return field.default;
     if (field.type === "boolean") return true;
     return "";
 };
@@ -49,6 +51,10 @@ export default function ResourcePage() {
     const [editingRow, setEditingRow] = useState(null);
     const [formData, setFormData] = useState({});
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(0);
+    const [count, setCount] = useState(0);
+    const rowsPerPage = 15;
 
     const initialFormData = useMemo(() => {
         if (!config) return {};
@@ -62,10 +68,21 @@ export default function ResourcePage() {
         headers: { Authorization: `Token ${token}` },
     }), [token]);
 
-    const fetchRows = async () => {
+    const fetchRows = async (nextPage = page) => {
         if (!token || !config) return;
-        const response = await axios.get(`${backendUrl}/api/data/${config.endpoint}/`, authHeaders);
-        setRows(response.data.results || response.data);
+        setLoading(true);
+        try {
+            const response = await axios.get(
+                `${backendUrl}/api/data/${config.endpoint}/?page=${nextPage + 1}`,
+                authHeaders,
+            );
+            const responseRows = response.data.results || response.data;
+            setRows(responseRows);
+            setCount(response.data.count ?? responseRows.length);
+            setPage(nextPage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const fetchLookups = async () => {
@@ -79,7 +96,7 @@ export default function ResourcePage() {
     };
 
     useEffect(() => {
-        fetchRows().catch((err) => setError(err.response?.data?.detail || "Error loading data."));
+        fetchRows(0).catch((err) => setError(err.response?.data?.detail || "Error loading data."));
     }, [token, config?.endpoint]);
 
     useEffect(() => {
@@ -126,7 +143,7 @@ export default function ResourcePage() {
                 await axios.post(`${backendUrl}/api/data/${config.endpoint}/`, payload, authHeaders);
             }
             setDialogOpen(false);
-            await fetchRows();
+            await fetchRows(page);
         } catch (err) {
             setError(JSON.stringify(err.response?.data || "Error saving record."));
         }
@@ -135,7 +152,7 @@ export default function ResourcePage() {
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this record?")) return;
         await axios.delete(`${backendUrl}/api/data/${config.endpoint}/${id}/`, authHeaders);
-        await fetchRows();
+        await fetchRows(page);
     };
 
     const renderField = (field) => {
@@ -235,9 +252,26 @@ export default function ResourcePage() {
                                     </TableCell>
                                 </TableRow>
                             ))}
+                            {!rows.length && (
+                                <TableRow>
+                                    <TableCell colSpan={config.columns.length + 1}>
+                                        {loading ? "Loading..." : "No records found."}
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </TableContainer>
+                <div style={{ width: "90%", display: "flex", justifyContent: "flex-end" }}>
+                    <TablePagination
+                        component="div"
+                        count={count}
+                        page={page}
+                        rowsPerPage={rowsPerPage}
+                        rowsPerPageOptions={[rowsPerPage]}
+                        onPageChange={(_, nextPage) => fetchRows(nextPage)}
+                    />
+                </div>
             </div>
 
             <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
