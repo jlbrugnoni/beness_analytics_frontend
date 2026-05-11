@@ -224,14 +224,35 @@ const formatSignedNumber = (value) => {
 };
 
 
+const currentMonthValue = () => new Date().toISOString().slice(0, 7);
+
+
+const monthRange = (monthValue) => {
+    const [year, month] = monthValue.split("-").map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    return {
+        date_from: `${monthValue}-01`,
+        date_to: `${monthValue}-${String(lastDay).padStart(2, "0")}`,
+    };
+};
+
+
 export default function Dashboard() {
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const today = new Date().toISOString().slice(0, 10);
-    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const currentMonth = currentMonthValue();
 
     const [sites, setSites] = useState([]);
-    const [filters, setFilters] = useState({ site: "", date_from: monthAgo, date_to: today });
+    const [studios, setStudios] = useState([]);
+    const [periodMode, setPeriodMode] = useState("month");
+    const [filters, setFilters] = useState({
+        site: "",
+        studio: "",
+        month: currentMonth,
+        date_from: monthRange(currentMonth).date_from,
+        date_to: today,
+    });
     const [summary, setSummary] = useState(null);
     const [revenue, setRevenue] = useState(null);
     const [attendance, setAttendance] = useState(null);
@@ -245,10 +266,26 @@ export default function Dashboard() {
         headers: { Authorization: `Token ${token}` },
     }), [token]);
 
-    const fetchSites = async () => {
+    const fetchAllPages = async (endpoint) => {
+        let url = `${backendUrl}/api/data/${endpoint}/`;
+        let rows = [];
+        while (url) {
+            const response = await axios.get(url, authHeaders);
+            const pageRows = response.data.results || response.data;
+            rows = [...rows, ...pageRows];
+            url = response.data.next || null;
+        }
+        return rows;
+    };
+
+    const fetchLookups = async () => {
         if (!token) return;
-        const response = await axios.get(`${backendUrl}/api/data/sites/`, authHeaders);
-        setSites(response.data.results || response.data);
+        const [nextSites, nextStudios] = await Promise.all([
+            fetchAllPages("sites"),
+            fetchAllPages("studios"),
+        ]);
+        setSites(nextSites);
+        setStudios(nextStudios);
     };
 
     const fetchDashboard = async () => {
@@ -257,7 +294,15 @@ export default function Dashboard() {
         setError("");
         try {
             const params = new URLSearchParams();
-            Object.entries(filters).forEach(([key, value]) => {
+            const dateFilters = periodMode === "month"
+                ? monthRange(filters.month)
+                : { date_from: filters.date_from, date_to: filters.date_to };
+            const requestFilters = {
+                site: filters.site,
+                studio: filters.studio,
+                ...dateFilters,
+            };
+            Object.entries(requestFilters).forEach(([key, value]) => {
                 if (value) params.set(key, value);
             });
             const queryString = params.toString();
@@ -281,7 +326,7 @@ export default function Dashboard() {
     };
 
     useEffect(() => {
-        fetchSites().catch(() => {});
+        fetchLookups().catch(() => {});
     }, [token]);
 
     useEffect(() => {
@@ -289,6 +334,9 @@ export default function Dashboard() {
     }, [token]);
 
     const totals = summary?.totals || {};
+    const visibleStudios = filters.site
+        ? studios.filter((studio) => String(studio.site) === String(filters.site))
+        : studios;
 
     return (
         <MainPage>
@@ -309,7 +357,7 @@ export default function Dashboard() {
                                 select
                                 label="Site"
                                 value={filters.site}
-                                onChange={(event) => setFilters({ ...filters, site: event.target.value })}
+                                onChange={(event) => setFilters({ ...filters, site: event.target.value, studio: "" })}
                             >
                                 <MenuItem value="">All Sites</MenuItem>
                                 {sites.map((site) => (
@@ -317,19 +365,51 @@ export default function Dashboard() {
                                 ))}
                             </TextField>
                             <TextField
-                                label="Date From"
-                                type="date"
-                                value={filters.date_from}
-                                InputLabelProps={{ shrink: true }}
-                                onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
-                            />
+                                select
+                                label="Studio"
+                                value={filters.studio}
+                                onChange={(event) => setFilters({ ...filters, studio: event.target.value })}
+                            >
+                                <MenuItem value="">All Studios</MenuItem>
+                                {visibleStudios.map((studio) => (
+                                    <MenuItem key={studio.id} value={studio.id}>{studio.name}</MenuItem>
+                                ))}
+                            </TextField>
                             <TextField
-                                label="Date To"
-                                type="date"
-                                value={filters.date_to}
-                                InputLabelProps={{ shrink: true }}
-                                onChange={(event) => setFilters({ ...filters, date_to: event.target.value })}
-                            />
+                                select
+                                label="Period"
+                                value={periodMode}
+                                onChange={(event) => setPeriodMode(event.target.value)}
+                            >
+                                <MenuItem value="month">Natural Month</MenuItem>
+                                <MenuItem value="range">Date Range</MenuItem>
+                            </TextField>
+                            {periodMode === "month" ? (
+                                <TextField
+                                    label="Month"
+                                    type="month"
+                                    value={filters.month}
+                                    InputLabelProps={{ shrink: true }}
+                                    onChange={(event) => setFilters({ ...filters, month: event.target.value })}
+                                />
+                            ) : (
+                                <>
+                                    <TextField
+                                        label="Date From"
+                                        type="date"
+                                        value={filters.date_from}
+                                        InputLabelProps={{ shrink: true }}
+                                        onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
+                                    />
+                                    <TextField
+                                        label="Date To"
+                                        type="date"
+                                        value={filters.date_to}
+                                        InputLabelProps={{ shrink: true }}
+                                        onChange={(event) => setFilters({ ...filters, date_to: event.target.value })}
+                                    />
+                                </>
+                            )}
                         </div>
                         <div>
                             <Button variant="contained" onClick={fetchDashboard} disabled={loading}>
@@ -337,6 +417,12 @@ export default function Dashboard() {
                             </Button>
                         </div>
                     </Paper>
+
+                    {filters.studio && (
+                        <Alert severity="info">
+                            Studio filter applies to attendance, sales, and occupancy. Service purchases and retention remain site-level because the current Sales by Service report does not include studio.
+                        </Alert>
+                    )}
 
                     <Paper style={{ padding: "0 12px" }}>
                         <Tabs

@@ -25,16 +25,31 @@ const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { mi
 const csvValue = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
 
 
+const currentMonthValue = () => new Date().toISOString().slice(0, 7);
+
+
+const monthRange = (monthValue) => {
+    const [year, month] = monthValue.split("-").map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    return {
+        date_from: `${monthValue}-01`,
+        date_to: `${monthValue}-${String(lastDay).padStart(2, "0")}`,
+    };
+};
+
+
 export default function RetentionFollowUp() {
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const today = new Date().toISOString().slice(0, 10);
-    const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const currentMonth = currentMonthValue();
 
     const [sites, setSites] = useState([]);
+    const [periodMode, setPeriodMode] = useState("month");
     const [filters, setFilters] = useState({
         site: "",
-        date_from: threeMonthsAgo,
+        month: currentMonth,
+        date_from: monthRange(currentMonth).date_from,
         date_to: today,
         status: "not_renewed",
         search: "",
@@ -60,7 +75,16 @@ export default function RetentionFollowUp() {
         setError("");
         try {
             const params = new URLSearchParams();
-            Object.entries(filters).forEach(([key, value]) => {
+            const dateFilters = periodMode === "month"
+                ? monthRange(filters.month)
+                : { date_from: filters.date_from, date_to: filters.date_to };
+            const requestFilters = {
+                site: filters.site,
+                status: filters.status,
+                search: filters.search,
+                ...dateFilters,
+            };
+            Object.entries(requestFilters).forEach(([key, value]) => {
                 if (value) params.set(key, value);
             });
             const response = await axios.get(`${backendUrl}/api/data/analytics/retention-followup/?${params.toString()}`, authHeaders);
@@ -74,6 +98,9 @@ export default function RetentionFollowUp() {
     };
 
     const exportCsv = () => {
+        const dateFilters = periodMode === "month"
+            ? monthRange(filters.month)
+            : { date_from: filters.date_from, date_to: filters.date_to };
         const headers = [
             "Client",
             "MindBody ID",
@@ -104,7 +131,7 @@ export default function RetentionFollowUp() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `retention-followup-${filters.status}-${filters.date_from}-${filters.date_to}.csv`);
+        link.setAttribute("download", `retention-followup-${filters.status}-${dateFilters.date_from}-${dateFilters.date_to}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -155,19 +182,37 @@ export default function RetentionFollowUp() {
                                 <MenuItem value="renewed">Renewed / Reactivated</MenuItem>
                             </TextField>
                             <TextField
-                                label="Date From"
-                                type="date"
-                                value={filters.date_from}
-                                InputLabelProps={{ shrink: true }}
-                                onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
+                                select
+                                label="Period"
+                                value={periodMode}
+                                onChange={(event) => setPeriodMode(event.target.value)}
                             />
-                            <TextField
-                                label="Date To"
-                                type="date"
-                                value={filters.date_to}
-                                InputLabelProps={{ shrink: true }}
-                                onChange={(event) => setFilters({ ...filters, date_to: event.target.value })}
-                            />
+                            {periodMode === "month" ? (
+                                <TextField
+                                    label="Month"
+                                    type="month"
+                                    value={filters.month}
+                                    InputLabelProps={{ shrink: true }}
+                                    onChange={(event) => setFilters({ ...filters, month: event.target.value })}
+                                />
+                            ) : (
+                                <>
+                                    <TextField
+                                        label="Date From"
+                                        type="date"
+                                        value={filters.date_from}
+                                        InputLabelProps={{ shrink: true }}
+                                        onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
+                                    />
+                                    <TextField
+                                        label="Date To"
+                                        type="date"
+                                        value={filters.date_to}
+                                        InputLabelProps={{ shrink: true }}
+                                        onChange={(event) => setFilters({ ...filters, date_to: event.target.value })}
+                                    />
+                                </>
+                            )}
                             <TextField
                                 label="Search"
                                 value={filters.search}
