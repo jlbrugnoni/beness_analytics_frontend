@@ -108,6 +108,40 @@ const RetentionTable = ({ title, rows, mode = "expired" }) => (
 );
 
 
+const OccupationTable = ({ title, rows, labelKey = "name" }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>{title}</h2>
+        <TableContainer style={{ maxHeight: 360 }}>
+            <Table size="small" stickyHeader>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Concept</TableCell>
+                        <TableCell align="right">Capacity</TableCell>
+                        <TableCell align="right">Attendance</TableCell>
+                        <TableCell align="right">Occupancy</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {(rows || []).map((row, index) => (
+                        <TableRow key={`${title}-${index}`}>
+                            <TableCell>{row[labelKey] || "N/A"}</TableCell>
+                            <TableCell align="right">{formatNumber(row.capacity)}</TableCell>
+                            <TableCell align="right">{formatNumber(row.attended)}</TableCell>
+                            <TableCell align="right">{formatNumber(row.occupation_rate)}%</TableCell>
+                        </TableRow>
+                    ))}
+                    {!rows?.length && (
+                        <TableRow>
+                            <TableCell colSpan={4}>No data</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    </Paper>
+);
+
+
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatSignedNumber = (value) => {
@@ -129,6 +163,7 @@ export default function Dashboard() {
     const [revenue, setRevenue] = useState(null);
     const [attendance, setAttendance] = useState(null);
     const [retention, setRetention] = useState(null);
+    const [occupation, setOccupation] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -152,16 +187,18 @@ export default function Dashboard() {
                 if (value) params.set(key, value);
             });
             const queryString = params.toString();
-            const [summaryResponse, revenueResponse, attendanceResponse, retentionResponse] = await Promise.all([
+            const [summaryResponse, revenueResponse, attendanceResponse, retentionResponse, occupationResponse] = await Promise.all([
                 axios.get(`${backendUrl}/api/data/analytics/summary/?${queryString}`, authHeaders),
                 axios.get(`${backendUrl}/api/data/analytics/revenue/?${queryString}`, authHeaders),
                 axios.get(`${backendUrl}/api/data/analytics/attendance/?${queryString}`, authHeaders),
                 axios.get(`${backendUrl}/api/data/analytics/retention/?${queryString}`, authHeaders),
+                axios.get(`${backendUrl}/api/data/analytics/occupation/?${queryString}`, authHeaders),
             ]);
             setSummary(summaryResponse.data);
             setRevenue(revenueResponse.data);
             setAttendance(attendanceResponse.data);
             setRetention(retentionResponse.data);
+            setOccupation(occupationResponse.data);
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading dashboard.");
         } finally {
@@ -254,6 +291,20 @@ export default function Dashboard() {
                         </Alert>
                     )}
 
+                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                        <KpiCard label="Scheduled Capacity" value={formatNumber(occupation?.scheduled_capacity)} />
+                        <KpiCard label="Matched Attendance" value={formatNumber(occupation?.matched_attended_visits)} />
+                        <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
+                        <KpiCard label="Scheduled Classes" value={formatNumber(occupation?.available_classes)} />
+                        <KpiCard label="Closed / Unavailable" value={formatNumber(occupation?.closed_or_unavailable_classes)} />
+                        <KpiCard label="Unscheduled Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
+                    </div>
+
+                    <Alert severity="info">
+                        La ocupacion se calcula con clases programadas y asistencias emparejadas por site, estudio, fecha y hora.
+                        Para empezar, crea salas y clases en Data &gt; Rooms, Scheduled Classes y Closures.
+                    </Alert>
+
                     <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
                         <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
                         <BreakdownTable title="Revenue by Payment Method" rows={revenue?.by_payment_method} money />
@@ -270,9 +321,14 @@ export default function Dashboard() {
                         <RetentionTable title="Renewed / Reactivated Samples" rows={retention?.renewed_samples} mode="renewed" />
                     </div>
 
+                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+                        <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
+                        <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
+                    </div>
+
                     <Alert severity="info">
-                        Este dashboard es la primera base de KPIs. La ocupacion real se agregara cuando carguemos salas,
-                        capacidades y horarios programados.
+                        Este dashboard es la primera base de KPIs. La ocupacion por sala sera mas exacta cuando las
+                        asistencias puedan emparejarse con una sala especifica.
                     </Alert>
                 </div>
             </div>

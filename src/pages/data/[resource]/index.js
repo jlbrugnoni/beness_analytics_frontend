@@ -46,6 +46,10 @@ export default function ResourcePage() {
 
     const [rows, setRows] = useState([]);
     const [sites, setSites] = useState([]);
+    const [studios, setStudios] = useState([]);
+    const [rooms, setRooms] = useState([]);
+    const [staffMembers, setStaffMembers] = useState([]);
+    const [pricingOptions, setPricingOptions] = useState([]);
     const [serviceCategories, setServiceCategories] = useState([]);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingRow, setEditingRow] = useState(null);
@@ -85,14 +89,34 @@ export default function ResourcePage() {
         }
     };
 
+    const fetchAllPages = async (endpoint) => {
+        let url = `${backendUrl}/api/data/${endpoint}/`;
+        let allRows = [];
+        while (url) {
+            const response = await axios.get(url, authHeaders);
+            const pageRows = response.data.results || response.data;
+            allRows = [...allRows, ...pageRows];
+            url = response.data.next || null;
+        }
+        return allRows;
+    };
+
     const fetchLookups = async () => {
         if (!token) return;
-        const [sitesResponse, categoriesResponse] = await Promise.all([
-            axios.get(`${backendUrl}/api/data/sites/`, authHeaders),
-            axios.get(`${backendUrl}/api/data/service-categories/`, authHeaders),
+        const [nextSites, nextStudios, nextRooms, nextStaffMembers, nextPricingOptions, nextServiceCategories] = await Promise.all([
+            fetchAllPages("sites"),
+            fetchAllPages("studios"),
+            fetchAllPages("rooms"),
+            fetchAllPages("staff-members"),
+            fetchAllPages("pricing-options"),
+            fetchAllPages("service-categories"),
         ]);
-        setSites(sitesResponse.data.results || sitesResponse.data);
-        setServiceCategories(categoriesResponse.data.results || categoriesResponse.data);
+        setSites(nextSites);
+        setStudios(nextStudios);
+        setRooms(nextRooms);
+        setStaffMembers(nextStaffMembers);
+        setPricingOptions(nextPricingOptions);
+        setServiceCategories(nextServiceCategories);
     };
 
     useEffect(() => {
@@ -132,7 +156,10 @@ export default function ResourcePage() {
         try {
             const payload = { ...formData };
             config.fields.forEach((field) => {
-                if ((field.type === "site" || field.type === "serviceCategory") && payload[field.name] === "") {
+                if (
+                    ["site", "studio", "room", "staffMember", "pricingOption", "serviceCategory", "time"].includes(field.type)
+                    && payload[field.name] === ""
+                ) {
                     payload[field.name] = null;
                 }
             });
@@ -171,12 +198,29 @@ export default function ResourcePage() {
             );
         }
 
-        if (field.type === "select" || field.type === "site" || field.type === "serviceCategory") {
-            const options = field.type === "site"
-                ? sites.map((site) => ({ value: site.id, label: site.name }))
-                : field.type === "serviceCategory"
-                    ? serviceCategories.map((category) => ({ value: category.id, label: `${category.site_name} - ${category.name}` }))
-                    : field.options;
+        if (
+            field.type === "select"
+            || field.type === "site"
+            || field.type === "studio"
+            || field.type === "room"
+            || field.type === "staffMember"
+            || field.type === "pricingOption"
+            || field.type === "serviceCategory"
+        ) {
+            let options = field.options || [];
+            if (field.type === "site") {
+                options = sites.map((site) => ({ value: site.id, label: site.name }));
+            } else if (field.type === "studio") {
+                options = studios.map((studio) => ({ value: studio.id, label: `${studio.site_name} - ${studio.name}` }));
+            } else if (field.type === "room") {
+                options = rooms.map((room) => ({ value: room.id, label: `${room.studio_name} - ${room.name}` }));
+            } else if (field.type === "staffMember") {
+                options = staffMembers.map((staff) => ({ value: staff.id, label: `${staff.site_name} - ${staff.name}` }));
+            } else if (field.type === "pricingOption") {
+                options = pricingOptions.map((option) => ({ value: option.id, label: `${option.site_name} - ${option.name}` }));
+            } else if (field.type === "serviceCategory") {
+                options = serviceCategories.map((category) => ({ value: category.id, label: `${category.site_name} - ${category.name}` }));
+            }
 
             return (
                 <TextField

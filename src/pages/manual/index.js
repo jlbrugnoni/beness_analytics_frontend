@@ -93,13 +93,24 @@ export default function Manual() {
 
                     <Section title="7. KPIs de ocupacion">
                         <p>
-                            La ocupacion real todavia requiere datos internos de capacidad. La formula sera:
+                            La ocupacion real usa datos internos de capacidad. La formula es:
                             <strong> ocupacion = asistencias reales / capacidad programada</strong>.
                         </p>
                         <p>
-                            Para calcularla necesitamos crear estudios, salas, tipo de sala, cantidad de reformers o cupos,
-                            horarios programados y duracion de sesiones. Sin esa informacion solo podemos ver asistencia,
-                            pero no porcentaje real de ocupacion.
+                            La capacidad programada viene de <strong>Scheduled Classes</strong>. Cada clase tiene fecha,
+                            hora, sala, tipo de sesion, capacidad y estado. Si una clase esta cancelada o marcada como
+                            unavailable, no suma capacidad disponible.
+                        </p>
+                        <p>
+                            Las salas se crean en <strong>Rooms</strong> con cupos para grupo y privado. Las vacaciones,
+                            festivos, cierres parciales o bloqueos de sala se crean en <strong>Closures</strong>. Un cierre
+                            activo elimina de la capacidad las clases afectadas por fecha, estudio, sala y horario.
+                        </p>
+                        <p>
+                            Actualmente las asistencias se emparejan con la programacion por site, estudio, fecha y hora.
+                            Si dos salas del mismo estudio funcionan exactamente a la misma hora, el porcentaje es mas
+                            confiable a nivel estudio/franja horaria que a nivel sala, porque el reporte de asistencia no
+                            trae la sala exacta de cada visita.
                         </p>
                     </Section>
 
