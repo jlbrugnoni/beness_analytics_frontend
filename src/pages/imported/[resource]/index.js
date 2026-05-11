@@ -10,6 +10,10 @@ import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
@@ -29,6 +33,14 @@ const formatCell = (value, column) => {
     if (column.type === "datetime") return new Date(value).toLocaleString();
     return String(value);
 };
+
+
+const SummaryBox = ({ label, value }) => (
+    <Paper variant="outlined" style={{ padding: "12px" }}>
+        <div style={{ color: "#666", fontSize: "13px" }}>{label}</div>
+        <div style={{ fontSize: "22px", fontWeight: 700 }}>{formatCell(value, {})}</div>
+    </Paper>
+);
 
 
 export default function ImportedResourcePage() {
@@ -51,6 +63,9 @@ export default function ImportedResourcePage() {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [detail, setDetail] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
 
     const authHeaders = useMemo(() => ({
         headers: { Authorization: `Token ${token}` },
@@ -101,6 +116,24 @@ export default function ImportedResourcePage() {
     const totalPages = Math.max(1, Math.ceil(count / 15));
     const updateFilter = (key, value) => {
         setFilters((current) => ({ ...current, [key]: value }));
+    };
+
+    const openImportDetail = async (row) => {
+        setDetailOpen(true);
+        setDetail(null);
+        setDetailLoading(true);
+        try {
+            const response = await axios.get(
+                `${backendUrl}/api/data/report-imports/${row.id}/detail-summary/`,
+                authHeaders,
+            );
+            setDetail(response.data);
+        } catch (err) {
+            setError(err.response?.data?.detail || "Error loading import detail.");
+            setDetailOpen(false);
+        } finally {
+            setDetailLoading(false);
+        }
     };
 
     return (
@@ -192,6 +225,7 @@ export default function ImportedResourcePage() {
                                 {config.columns.map((column) => (
                                     <TableCell key={column.field}>{column.label}</TableCell>
                                 ))}
+                                {resource === "report-imports" && <TableCell>Actions</TableCell>}
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -202,11 +236,18 @@ export default function ImportedResourcePage() {
                                             {formatCell(row[column.field], column)}
                                         </TableCell>
                                     ))}
+                                    {resource === "report-imports" && (
+                                        <TableCell>
+                                            <Button size="small" variant="outlined" onClick={() => openImportDetail(row)}>
+                                                Details
+                                            </Button>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))}
                             {!rows.length && (
                                 <TableRow>
-                                    <TableCell colSpan={config.columns.length}>No records found.</TableCell>
+                                    <TableCell colSpan={config.columns.length + (resource === "report-imports" ? 1 : 0)}>No records found.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -223,6 +264,88 @@ export default function ImportedResourcePage() {
                     </Button>
                 </div>
             </div>
+
+            <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} fullWidth maxWidth="lg">
+                <DialogTitle>Import Detail</DialogTitle>
+                <DialogContent style={{ display: "grid", gap: "16px", paddingTop: "12px" }}>
+                    {detailLoading && <Alert severity="info">Loading import detail...</Alert>}
+                    {detail && (
+                        <>
+                            <div>
+                                <h2 style={{ margin: 0 }}>{detail.file_name}</h2>
+                                <p style={{ margin: "6px 0 0", color: "#666" }}>
+                                    {detail.report_type} | {detail.status} | {formatCell(detail.uploaded_at, { type: "datetime" })}
+                                </p>
+                            </div>
+
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                                {Object.entries(detail.counts || {}).map(([key, value]) => (
+                                    <SummaryBox key={key} label={key.replaceAll("_", " ")} value={value} />
+                                ))}
+                            </div>
+
+                            <Paper variant="outlined" style={{ padding: "14px" }}>
+                                <h3 style={{ marginTop: 0 }}>Changed / Created Version Samples</h3>
+                                <TableContainer style={{ maxHeight: 300 }}>
+                                    <Table size="small" stickyHeader>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Row</TableCell>
+                                                <TableCell>Changed Fields</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {(detail.changed_samples || []).map((sample, index) => (
+                                                <TableRow key={`changed-${index}`}>
+                                                    <TableCell>{sample.row_number || "N/A"}</TableCell>
+                                                    <TableCell>{sample.changed_fields?.join(", ") || "None"}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                            {!detail.changed_samples?.length && (
+                                                <TableRow>
+                                                    <TableCell colSpan={2}>No changed samples.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Paper>
+
+                            <Paper variant="outlined" style={{ padding: "14px" }}>
+                                <h3 style={{ marginTop: 0 }}>Invalid Row Samples</h3>
+                                <TableContainer style={{ maxHeight: 300 }}>
+                                    <Table size="small" stickyHeader>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Row</TableCell>
+                                                <TableCell>Errors</TableCell>
+                                                <TableCell>Summary</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {(detail.invalid_samples || []).map((sample, index) => (
+                                                <TableRow key={`invalid-${index}`}>
+                                                    <TableCell>{sample.row_number}</TableCell>
+                                                    <TableCell>{sample.errors?.join(", ") || "None"}</TableCell>
+                                                    <TableCell>{sample.summary || "N/A"}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                            {!detail.invalid_samples?.length && (
+                                                <TableRow>
+                                                    <TableCell colSpan={3}>No invalid samples.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Paper>
+                        </>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDetailOpen(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </MainPage>
     );
 }
