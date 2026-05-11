@@ -45,9 +45,11 @@ export default function RetentionFollowUp() {
     const currentMonth = currentMonthValue();
 
     const [sites, setSites] = useState([]);
+    const [studios, setStudios] = useState([]);
     const [periodMode, setPeriodMode] = useState("month");
     const [filters, setFilters] = useState({
         site: "",
+        studio: "",
         month: currentMonth,
         date_from: monthRange(currentMonth).date_from,
         date_to: today,
@@ -63,10 +65,26 @@ export default function RetentionFollowUp() {
         headers: { Authorization: `Token ${token}` },
     }), [token]);
 
-    const fetchSites = async () => {
+    const fetchAllPages = async (endpoint) => {
+        let url = `${backendUrl}/api/data/${endpoint}/`;
+        let rows = [];
+        while (url) {
+            const response = await axios.get(url, authHeaders);
+            const pageRows = response.data.results || response.data;
+            rows = [...rows, ...pageRows];
+            url = response.data.next || null;
+        }
+        return rows;
+    };
+
+    const fetchLookups = async () => {
         if (!token) return;
-        const response = await axios.get(`${backendUrl}/api/data/sites/`, authHeaders);
-        setSites(response.data.results || response.data);
+        const [nextSites, nextStudios] = await Promise.all([
+            fetchAllPages("sites"),
+            fetchAllPages("studios"),
+        ]);
+        setSites(nextSites);
+        setStudios(nextStudios);
     };
 
     const fetchRows = async () => {
@@ -80,6 +98,7 @@ export default function RetentionFollowUp() {
                 : { date_from: filters.date_from, date_to: filters.date_to };
             const requestFilters = {
                 site: filters.site,
+                studio: filters.studio,
                 status: filters.status,
                 search: filters.search,
                 ...dateFilters,
@@ -102,30 +121,38 @@ export default function RetentionFollowUp() {
             ? monthRange(filters.month)
             : { date_from: filters.date_from, date_to: filters.date_to };
         const headers = [
+            "Month",
+            "Status",
             "Client",
             "MindBody ID",
             "Email",
             "Phone",
+            "Studio",
             "Service",
             "Sale Date",
+            "Activation Date",
             "Expiration Date",
+            "Membership Days",
+            "Previous Membership Days",
             "Amount",
-            "Renewal Service",
-            "Renewal Sale Date",
-            "Days From Expiration",
+            "Studio Inference",
         ];
         const lines = rows.map((row) => [
+            row.month,
+            row.status,
             row.client,
             row.client_mindbody_id,
             row.client_email,
             row.client_phone,
+            row.studio,
             row.service,
             row.sale_date,
+            row.activation_date,
             row.expiration_date,
+            row.membership_days,
+            row.previous_membership_days,
             row.total_amount,
-            row.renewal_service,
-            row.renewal_sale_date,
-            row.days_from_expiration_to_renewal,
+            row.studio_inference_method,
         ].map(csvValue).join(","));
         const blob = new Blob([[headers.map(csvValue).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
@@ -138,13 +165,37 @@ export default function RetentionFollowUp() {
         URL.revokeObjectURL(url);
     };
 
+    const rebuildSnapshots = async () => {
+        if (!window.confirm("Rebuild monthly membership snapshots for the selected site and period?")) return;
+        setLoading(true);
+        setError("");
+        try {
+            const dateFilters = periodMode === "month"
+                ? monthRange(filters.month)
+                : { date_from: filters.date_from, date_to: filters.date_to };
+            await axios.post(`${backendUrl}/api/data/analytics/membership-months/rebuild/`, {
+                site: filters.site,
+                ...dateFilters,
+            }, authHeaders);
+            await fetchRows();
+        } catch (err) {
+            setError(err.response?.data?.detail || err.response?.data?.error || "Error rebuilding membership snapshots.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        fetchSites().catch(() => {});
+        fetchLookups().catch(() => {});
     }, [token]);
 
     useEffect(() => {
         fetchRows();
     }, [token]);
+
+    const visibleStudios = filters.site
+        ? studios.filter((studio) => String(studio.site) === String(filters.site))
+        : studios;
 
     return (
         <MainPage>
@@ -165,11 +216,22 @@ export default function RetentionFollowUp() {
                                 select
                                 label="Site"
                                 value={filters.site}
-                                onChange={(event) => setFilters({ ...filters, site: event.target.value })}
+                                onChange={(event) => setFilters({ ...filters, site: event.target.value, studio: "" })}
                             >
                                 <MenuItem value="">All Sites</MenuItem>
                                 {sites.map((site) => (
                                     <MenuItem key={site.id} value={site.id}>{site.name}</MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField
+                                select
+                                label="Studio"
+                                value={filters.studio}
+                                onChange={(event) => setFilters({ ...filters, studio: event.target.value })}
+                            >
+                                <MenuItem value="">All Studios</MenuItem>
+                                {visibleStudios.map((studio) => (
+                                    <MenuItem key={studio.id} value={studio.id}>{studio.name}</MenuItem>
                                 ))}
                             </TextField>
                             <TextField
@@ -179,7 +241,9 @@ export default function RetentionFollowUp() {
                                 onChange={(event) => setFilters({ ...filters, status: event.target.value })}
                             >
                                 <MenuItem value="not_renewed">Not Renewed</MenuItem>
-                                <MenuItem value="renewed">Renewed / Reactivated</MenuItem>
+                                <MenuItem value="retained">Retained</MenuItem>
+                                <MenuItem value="new">New</MenuItem>
+                                <MenuItem value="reactivated">Reactivated</MenuItem>
                             </TextField>
                             <TextField
                                 select
@@ -223,6 +287,9 @@ export default function RetentionFollowUp() {
                             <Button variant="contained" onClick={fetchRows} disabled={loading}>
                                 {loading ? "Loading..." : "Apply Filters"}
                             </Button>
+                            <Button variant="outlined" onClick={rebuildSnapshots} disabled={loading}>
+                                Rebuild Month
+                            </Button>
                             <Button variant="outlined" onClick={exportCsv} disabled={!rows.length}>
                                 Export CSV
                             </Button>
@@ -231,7 +298,8 @@ export default function RetentionFollowUp() {
 
                     <Alert severity="info">
                         This list uses only Pricing Options marked as Track Retention. Records are based on services
-                        that expired inside the selected date range.
+                        with at least 15 active membership days in the selected month. Not renewed is counted in the
+                        month where the client stopped being a member.
                     </Alert>
 
                     <Paper style={{ padding: "16px" }}>
@@ -242,9 +310,10 @@ export default function RetentionFollowUp() {
                                     <TableRow>
                                         <TableCell>Client</TableCell>
                                         <TableCell>Contact</TableCell>
+                                        <TableCell>Month</TableCell>
+                                        <TableCell>Status</TableCell>
+                                        <TableCell>Studio</TableCell>
                                         <TableCell>Service</TableCell>
-                                        <TableCell>Expiration</TableCell>
-                                        <TableCell>Renewal</TableCell>
                                         <TableCell align="right">Days</TableCell>
                                         <TableCell align="right">Amount</TableCell>
                                     </TableRow>
@@ -260,19 +329,20 @@ export default function RetentionFollowUp() {
                                                 <div>{row.client_email || "N/A"}</div>
                                                 <div style={{ color: "#666", fontSize: "12px" }}>{row.client_phone || ""}</div>
                                             </TableCell>
-                                            <TableCell>{row.service || "N/A"}</TableCell>
-                                            <TableCell>{row.expiration_date || "N/A"}</TableCell>
+                                            <TableCell>{row.month || "N/A"}</TableCell>
+                                            <TableCell>{row.status || "N/A"}</TableCell>
                                             <TableCell>
-                                                {row.renewal_service || "N/A"}
-                                                {row.renewal_sale_date ? ` (${row.renewal_sale_date})` : ""}
+                                                <div>{row.studio || "Unknown"}</div>
+                                                <div style={{ color: "#666", fontSize: "12px" }}>{row.studio_inference_method || ""}</div>
                                             </TableCell>
-                                            <TableCell align="right">{row.days_from_expiration_to_renewal ?? "N/A"}</TableCell>
+                                            <TableCell>{row.service || "N/A"}</TableCell>
+                                            <TableCell align="right">{row.membership_days || row.previous_membership_days || "N/A"}</TableCell>
                                             <TableCell align="right">{formatMoney(row.total_amount)}</TableCell>
                                         </TableRow>
                                     ))}
                                     {!rows.length && (
                                         <TableRow>
-                                            <TableCell colSpan={7}>No data</TableCell>
+                                            <TableCell colSpan={8}>No data</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

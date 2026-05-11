@@ -96,44 +96,37 @@ const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = 
 };
 
 
-const RetentionTable = ({ title, rows, mode = "expired" }) => (
+const RetentionTable = ({ title, rows }) => (
     <Paper style={{ padding: "16px" }}>
         <h2 style={{ marginTop: 0 }}>{title}</h2>
         <TableContainer style={{ maxHeight: 360 }}>
             <Table size="small" stickyHeader>
                 <TableHead>
                     <TableRow>
+                        <TableCell>Month</TableCell>
                         <TableCell>Client</TableCell>
+                        <TableCell>Studio</TableCell>
                         <TableCell>Service</TableCell>
-                        <TableCell>Expiration</TableCell>
-                        {mode === "upcoming" && <TableCell align="right">Days Left</TableCell>}
-                        {mode === "renewed" && <TableCell>Renewal</TableCell>}
-                        {mode === "renewed" && <TableCell align="right">Days</TableCell>}
+                        <TableCell>Status</TableCell>
+                        <TableCell align="right">Days</TableCell>
                         <TableCell align="right">Amount</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {(rows || []).map((row, index) => (
-                        <TableRow key={`${title}-${row.client_id || index}-${row.expiration_date || index}`}>
+                        <TableRow key={`${title}-${row.id || index}`}>
+                            <TableCell>{row.month || "N/A"}</TableCell>
                             <TableCell>{row.client || "N/A"}</TableCell>
+                            <TableCell>{row.studio || "Unknown"}</TableCell>
                             <TableCell>{row.service || "N/A"}</TableCell>
-                            <TableCell>{row.expiration_date || "N/A"}</TableCell>
-                            {mode === "upcoming" && <TableCell align="right">{formatNumber(row.days_until_expiration)}</TableCell>}
-                            {mode === "renewed" && (
-                                <TableCell>
-                                    {row.renewal_service || "N/A"}
-                                    {row.renewal_sale_date ? ` (${row.renewal_sale_date})` : ""}
-                                </TableCell>
-                            )}
-                            {mode === "renewed" && (
-                                <TableCell align="right">{formatSignedNumber(row.days_from_expiration_to_renewal)}</TableCell>
-                            )}
+                            <TableCell>{row.status || "N/A"}</TableCell>
+                            <TableCell align="right">{formatNumber(row.membership_days || row.previous_membership_days)}</TableCell>
                             <TableCell align="right">{formatMoney(row.total_amount)}</TableCell>
                         </TableRow>
                     ))}
                     {!rows?.length && (
                         <TableRow>
-                            <TableCell colSpan={mode === "expired" ? 4 : 6}>No data</TableCell>
+                            <TableCell colSpan={7}>No data</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -217,13 +210,6 @@ const InstructorQualityTable = ({ rows }) => (
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const formatSignedNumber = (value) => {
-    if (value === null || value === undefined) return "N/A";
-    const number = Number(value);
-    return number > 0 ? `+${formatNumber(number)}` : formatNumber(number);
-};
-
-
 const currentMonthValue = () => new Date().toISOString().slice(0, 7);
 
 
@@ -420,7 +406,8 @@ export default function Dashboard() {
 
                     {filters.studio && (
                         <Alert severity="info">
-                            Studio filter applies to attendance, sales, and occupancy. Service purchases and retention remain site-level because the current Sales by Service report does not include studio.
+                            Studio filter applies to attendance, sales, occupancy, and monthly retention snapshots.
+                            Service purchase revenue remains site-level because Sales by Service does not include studio.
                         </Alert>
                     )}
 
@@ -512,13 +499,17 @@ export default function Dashboard() {
                     {activeTab === "retention" && (
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Expired Services" value={formatNumber(retention?.expired_services)} />
-                                <KpiCard label="Renewed / Reactivated" value={formatNumber(retention?.renewed_or_reactivated_services)} />
+                                <KpiCard label="Previous Members" value={formatNumber(retention?.previous_month_members)} />
+                                <KpiCard label="Current Members" value={formatNumber(retention?.current_month_members)} />
+                                <KpiCard label="Retained Members" value={formatNumber(retention?.retained_members)} />
+                                <KpiCard label="New Members" value={formatNumber(retention?.new_members)} />
+                                <KpiCard label="Reactivated Members" value={formatNumber(retention?.reactivated_members)} />
                                 <KpiCard label="Not Renewed" value={formatNumber(retention?.not_renewed_services)} />
                                 <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
+                                <KpiCard label="Churn Rate" value={`${formatNumber(retention?.churn_rate)}%`} />
                                 <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
-                                <KpiCard label="Expiring Next 30 Days" value={formatNumber(retention?.upcoming_expirations_30_days)} />
                                 <KpiCard label="Tracked Products" value={formatNumber(retention?.tracked_pricing_options)} />
+                                <KpiCard label="Snapshot Rows" value={formatNumber(retention?.snapshot_rows)} />
                             </div>
 
                             {retention?.tracked_pricing_options === 0 && (
@@ -526,11 +517,17 @@ export default function Dashboard() {
                                     No hay productos marcados para analizar retencion. Marca las membresias en Data &gt; Pricing Options.
                                 </Alert>
                             )}
+                            {retention?.snapshot_rows === 0 && (
+                                <Alert severity="warning">
+                                    No hay snapshots mensuales para este periodo. Abre Retention Follow-up y reconstruye el mes.
+                                </Alert>
+                            )}
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
                                 <RetentionTable title="Not Renewed Clients" rows={retention?.not_renewed_clients} />
-                                <RetentionTable title="Upcoming Expirations" rows={retention?.upcoming_expirations} mode="upcoming" />
-                                <RetentionTable title="Renewed / Reactivated Samples" rows={retention?.renewed_samples} mode="renewed" />
+                                <RetentionTable title="Retained Samples" rows={retention?.retained_samples} />
+                                <RetentionTable title="New Member Samples" rows={retention?.new_member_samples} />
+                                <RetentionTable title="Reactivated Samples" rows={retention?.reactivated_samples} />
                             </div>
 
                             <div>

@@ -131,10 +131,24 @@ export default function Manual() {
                             ahi deben marcarse membresias o productos recurrentes; no clases gratis, clases sueltas,
                             paquetes no recurrentes ni privadas si no se quieren medir como renovacion.
                         </p>
-                        <p><strong>Servicios expirados:</strong> servicios trackeados con fecha de expiracion dentro del periodo.</p>
-                        <p><strong>Reactivacion:</strong> cliente que compra otro servicio trackeado despues de la venta original y con expiracion igual o posterior.</p>
-                        <p><strong>No reactivados:</strong> clientes con servicio trackeado expirado sin compra posterior detectada.</p>
-                        <p><strong>Dias a reactivar:</strong> diferencia entre fecha de expiracion y siguiente fecha de venta del mismo cliente.</p>
+                        <p>
+                            La retencion se calcula por mes natural usando snapshots mensuales. Un cliente cuenta como
+                            miembro de un mes si tuvo al menos <strong>15 dias activos</strong> de una membresia trackeada
+                            dentro de ese mes.
+                        </p>
+                        <p><strong>Miembros anteriores:</strong> clientes que fueron miembros en el mes anterior al periodo seleccionado.</p>
+                        <p><strong>Miembros actuales:</strong> clientes que son miembros en el mes seleccionado.</p>
+                        <p><strong>Retenidos:</strong> clientes que fueron miembros el mes anterior y tambien son miembros el mes actual.</p>
+                        <p><strong>No renovados:</strong> clientes que fueron miembros el mes anterior pero no son miembros el mes actual. Se cuentan en el mes en que faltan, no en el mes en que expiro la membresia anterior.</p>
+                        <p><strong>Nuevos:</strong> clientes que son miembros este mes, no fueron miembros el mes anterior y no tienen historial previo de membresia trackeada.</p>
+                        <p><strong>Reactivados:</strong> clientes que son miembros este mes, no fueron miembros el mes anterior, pero si tuvieron membresia trackeada en algun momento anterior.</p>
+                        <p><strong>Tasa de retencion:</strong> retenidos / miembros anteriores.</p>
+                        <p><strong>Tasa de cancelacion:</strong> no renovados / miembros anteriores.</p>
+                        <p>
+                            El estudio de retencion se infiere por asistencia: primero se usa el estudio donde el cliente
+                            asistio mas durante el mes. Si no hay asistencia en ese mes, se usa la asistencia reciente
+                            anterior. Si tampoco existe, queda como Unknown.
+                        </p>
                     </Section>
 
                     <Section title="9. Limitaciones actuales">
