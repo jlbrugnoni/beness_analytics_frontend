@@ -11,12 +11,14 @@ import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Tab from "@mui/material/Tab";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 
 
@@ -203,6 +205,7 @@ export default function Dashboard() {
     const [attendance, setAttendance] = useState(null);
     const [retention, setRetention] = useState(null);
     const [occupation, setOccupation] = useState(null);
+    const [activeTab, setActiveTab] = useState("overview");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -303,91 +306,141 @@ export default function Dashboard() {
                         </div>
                     </Paper>
 
-                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                        <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
-                        <KpiCard label="Service Revenue" value={formatMoney(totals.service_revenue)} />
-                        <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
-                        <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
-                        <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
-                        <KpiCard label="Attended Visits" value={formatNumber(totals.attended_visits)} />
-                        <KpiCard label="Avg Revenue / Visit" value={formatMoney(totals.average_revenue_per_attended_visit)} />
-                        <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
-                        <KpiCard label="Late Cancel Rate" value={`${formatNumber(totals.late_cancel_rate)}%`} />
-                        <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
-                        <KpiCard label="Service Purchases" value={formatNumber(totals.service_purchases)} />
-                    </div>
+                    <Paper style={{ padding: "0 12px" }}>
+                        <Tabs
+                            value={activeTab}
+                            onChange={(_, value) => setActiveTab(value)}
+                            variant="scrollable"
+                            scrollButtons="auto"
+                        >
+                            <Tab label="Overview" value="overview" />
+                            <Tab label="Revenue" value="revenue" />
+                            <Tab label="Attendance" value="attendance" />
+                            <Tab label="Retention" value="retention" />
+                            <Tab label="Occupancy" value="occupancy" />
+                        </Tabs>
+                    </Paper>
 
-                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                        <KpiCard label="Expired Services" value={formatNumber(retention?.expired_services)} />
-                        <KpiCard label="Renewed / Reactivated" value={formatNumber(retention?.renewed_or_reactivated_services)} />
-                        <KpiCard label="Not Renewed" value={formatNumber(retention?.not_renewed_services)} />
-                        <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
-                        <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
-                        <KpiCard label="Expiring Next 30 Days" value={formatNumber(retention?.upcoming_expirations_30_days)} />
-                        <KpiCard label="Tracked Products" value={formatNumber(retention?.tracked_pricing_options)} />
-                    </div>
-
-                    {retention?.tracked_pricing_options === 0 && (
-                        <Alert severity="warning">
-                            No hay productos marcados para analizar retencion. Marca las membresias en Data &gt; Pricing Options.
-                        </Alert>
+                    {activeTab === "overview" && (
+                        <>
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                                <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
+                                <KpiCard label="Service Revenue" value={formatMoney(totals.service_revenue)} />
+                                <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
+                                <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
+                                <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
+                                <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
+                                <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
+                                <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
+                            </div>
+                        </>
                     )}
 
-                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                        <KpiCard label="Scheduled Capacity" value={formatNumber(occupation?.scheduled_capacity)} />
-                        <KpiCard label="Matched Attendance" value={formatNumber(occupation?.matched_attended_visits)} />
-                        <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
-                        <KpiCard label="Scheduled Classes" value={formatNumber(occupation?.available_classes)} />
-                        <KpiCard label="Closed / Unavailable" value={formatNumber(occupation?.closed_or_unavailable_classes)} />
-                        <KpiCard label="Unscheduled Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
-                    </div>
+                    {activeTab === "revenue" && (
+                        <>
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                                <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
+                                <KpiCard label="Service Revenue" value={formatMoney(totals.service_revenue)} />
+                                <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
+                                <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
+                                <KpiCard label="Sales Count" value={formatNumber(totals.sales_count)} />
+                                <KpiCard label="Service Purchases" value={formatNumber(totals.service_purchases)} />
+                            </div>
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+                                <BreakdownTable title="Revenue by Weekday" rows={revenue?.sales_by_weekday} nameKey="weekday" money />
+                                <BreakdownTable title="Services by Weekday" rows={revenue?.services_by_weekday} nameKey="weekday" money />
+                                <BreakdownTable title="Visit Revenue by Weekday" rows={revenue?.visits_by_weekday} nameKey="weekday" money />
+                                <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
+                                <BreakdownTable title="Revenue by Payment Method" rows={revenue?.by_payment_method} money />
+                                <BreakdownTable title="Revenue by Item" rows={revenue?.by_item} money />
+                                <BreakdownTable title="Revenue by Service" rows={revenue?.by_service} money />
+                                <BreakdownTable title="Discounts" rows={[
+                                    { name: "Discounts", total: revenue?.discounts || 0 },
+                                    { name: "Taxes", total: revenue?.taxes || 0 },
+                                ]} money />
+                            </div>
+                        </>
+                    )}
 
-                    <Alert severity="info">
-                        La ocupacion se calcula con clases programadas y asistencias emparejadas por site, estudio, fecha y hora.
-                        Para empezar, crea salas y clases en Data &gt; Rooms, Scheduled Classes y Closures.
-                    </Alert>
+                    {activeTab === "attendance" && (
+                        <>
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                                <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
+                                <KpiCard label="Attended Visits" value={formatNumber(totals.attended_visits)} />
+                                <KpiCard label="Avg Revenue / Visit" value={formatMoney(totals.average_revenue_per_attended_visit)} />
+                                <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
+                                <KpiCard label="Late Cancel Rate" value={`${formatNumber(totals.late_cancel_rate)}%`} />
+                                <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
+                            </div>
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+                                <BreakdownTable title="Attendance by Weekday" rows={attendance?.by_weekday} nameKey="weekday" />
+                                <BreakdownTable title="Attendance by Studio" rows={attendance?.by_studio} />
+                                <BreakdownTable title="Attendance by Instructor" rows={attendance?.by_instructor} />
+                                <BreakdownTable title="Attendance by Service" rows={attendance?.by_service} />
+                                <BreakdownTable title="Attendance by Hour" rows={attendance?.by_hour} nameKey="hour" />
+                                <InstructorQualityTable rows={attendance?.instructor_quality} />
+                            </div>
+                        </>
+                    )}
 
-                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                        <BreakdownTable title="Revenue by Weekday" rows={revenue?.sales_by_weekday} nameKey="weekday" money />
-                        <BreakdownTable title="Services by Weekday" rows={revenue?.services_by_weekday} nameKey="weekday" money />
-                        <BreakdownTable title="Visit Revenue by Weekday" rows={revenue?.visits_by_weekday} nameKey="weekday" money />
-                        <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
-                        <BreakdownTable title="Revenue by Payment Method" rows={revenue?.by_payment_method} money />
-                        <BreakdownTable title="Revenue by Item" rows={revenue?.by_item} money />
-                        <BreakdownTable title="Revenue by Service" rows={revenue?.by_service} money />
-                        <BreakdownTable title="Attendance by Weekday" rows={attendance?.by_weekday} nameKey="weekday" />
-                        <BreakdownTable title="Attendance by Studio" rows={attendance?.by_studio} />
-                        <BreakdownTable title="Attendance by Instructor" rows={attendance?.by_instructor} />
-                        <BreakdownTable title="Attendance by Service" rows={attendance?.by_service} />
-                        <BreakdownTable title="Attendance by Hour" rows={attendance?.by_hour} nameKey="hour" />
-                        <BreakdownTable title="Discounts" rows={[
-                            { name: "Discounts", total: revenue?.discounts || 0 },
-                            { name: "Taxes", total: revenue?.taxes || 0 },
-                        ]} money />
-                        <InstructorQualityTable rows={attendance?.instructor_quality} />
-                    </div>
+                    {activeTab === "retention" && (
+                        <>
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                                <KpiCard label="Expired Services" value={formatNumber(retention?.expired_services)} />
+                                <KpiCard label="Renewed / Reactivated" value={formatNumber(retention?.renewed_or_reactivated_services)} />
+                                <KpiCard label="Not Renewed" value={formatNumber(retention?.not_renewed_services)} />
+                                <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
+                                <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
+                                <KpiCard label="Expiring Next 30 Days" value={formatNumber(retention?.upcoming_expirations_30_days)} />
+                                <KpiCard label="Tracked Products" value={formatNumber(retention?.tracked_pricing_options)} />
+                            </div>
 
-                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
-                        <RetentionTable title="Not Renewed Clients" rows={retention?.not_renewed_clients} />
-                        <RetentionTable title="Upcoming Expirations" rows={retention?.upcoming_expirations} mode="upcoming" />
-                        <RetentionTable title="Renewed / Reactivated Samples" rows={retention?.renewed_samples} mode="renewed" />
-                    </div>
+                            {retention?.tracked_pricing_options === 0 && (
+                                <Alert severity="warning">
+                                    No hay productos marcados para analizar retencion. Marca las membresias en Data &gt; Pricing Options.
+                                </Alert>
+                            )}
 
-                    <div>
-                        <Link href="/retention">
-                            <Button variant="outlined">Open Retention Follow-up</Button>
-                        </Link>
-                    </div>
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
+                                <RetentionTable title="Not Renewed Clients" rows={retention?.not_renewed_clients} />
+                                <RetentionTable title="Upcoming Expirations" rows={retention?.upcoming_expirations} mode="upcoming" />
+                                <RetentionTable title="Renewed / Reactivated Samples" rows={retention?.renewed_samples} mode="renewed" />
+                            </div>
 
-                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                        <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
-                        <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
-                    </div>
+                            <div>
+                                <Link href="/retention">
+                                    <Button variant="outlined">Open Retention Follow-up</Button>
+                                </Link>
+                            </div>
+                        </>
+                    )}
 
-                    <Alert severity="info">
-                        Este dashboard es la primera base de KPIs. La ocupacion por sala sera mas exacta cuando las
-                        asistencias puedan emparejarse con una sala especifica.
-                    </Alert>
+                    {activeTab === "occupancy" && (
+                        <>
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                                <KpiCard label="Scheduled Capacity" value={formatNumber(occupation?.scheduled_capacity)} />
+                                <KpiCard label="Matched Attendance" value={formatNumber(occupation?.matched_attended_visits)} />
+                                <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
+                                <KpiCard label="Scheduled Classes" value={formatNumber(occupation?.available_classes)} />
+                                <KpiCard label="Closed / Unavailable" value={formatNumber(occupation?.closed_or_unavailable_classes)} />
+                                <KpiCard label="Unscheduled Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
+                            </div>
+
+                            <Alert severity="info">
+                                La ocupacion se calcula con clases programadas y asistencias emparejadas por site, estudio, fecha y hora.
+                                Para empezar, crea salas y clases en Data &gt; Rooms, Scheduled Classes y Closures.
+                            </Alert>
+
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+                                <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
+                                <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
+                            </div>
+
+                            <Alert severity="info">
+                                La ocupacion por sala sera mas exacta cuando las asistencias puedan emparejarse con una sala especifica.
+                            </Alert>
+                        </>
+                    )}
                 </div>
             </div>
         </MainPage>
