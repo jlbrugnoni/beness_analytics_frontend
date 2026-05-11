@@ -64,6 +64,38 @@ const BreakdownTable = ({ title, rows, nameKey = "name", valueKey = "total", mon
 );
 
 
+const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = false, limit = 14 }) => {
+    const chartRows = (rows || []).slice(-limit);
+    const maxValue = Math.max(...chartRows.map((row) => Number(row[valueKey] || 0)), 0);
+
+    return (
+        <Paper style={{ padding: "16px" }}>
+            <h2 style={{ marginTop: 0 }}>{title}</h2>
+            <div style={{ display: "grid", gap: "10px" }}>
+                {chartRows.map((row, index) => {
+                    const value = Number(row[valueKey] || 0);
+                    const width = maxValue ? Math.max(4, (value / maxValue) * 100) : 0;
+                    return (
+                        <div key={`${title}-${index}`} style={{ display: "grid", gridTemplateColumns: "120px 1fr 90px", alignItems: "center", gap: "10px" }}>
+                            <div style={{ fontSize: "13px", color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {row[labelKey] || "N/A"}
+                            </div>
+                            <div style={{ height: "12px", background: "#eef1f4", borderRadius: "6px", overflow: "hidden" }}>
+                                <div style={{ width: `${width}%`, height: "100%", background: "#2f6f73" }} />
+                            </div>
+                            <div style={{ fontSize: "13px", textAlign: "right", fontWeight: 600 }}>
+                                {money ? formatMoney(value) : formatNumber(value)}
+                            </div>
+                        </div>
+                    );
+                })}
+                {!chartRows.length && <div>No data</div>}
+            </div>
+        </Paper>
+    );
+};
+
+
 const RetentionTable = ({ title, rows, mode = "expired" }) => (
     <Paper style={{ padding: "16px" }}>
         <h2 style={{ marginTop: 0 }}>{title}</h2>
@@ -333,6 +365,10 @@ export default function Dashboard() {
                                 <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
                                 <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
                             </div>
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+                                <BarChart title="Sales Revenue Trend" rows={revenue?.sales_by_date} money />
+                                <BarChart title="Attendance Trend" rows={attendance?.by_date} />
+                            </div>
                         </>
                     )}
 
@@ -347,6 +383,8 @@ export default function Dashboard() {
                                 <KpiCard label="Service Purchases" value={formatNumber(totals.service_purchases)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+                                <BarChart title="Sales Revenue by Date" rows={revenue?.sales_by_date} money />
+                                <BarChart title="Sales Revenue by Weekday" rows={revenue?.sales_by_weekday} labelKey="weekday" money limit={7} />
                                 <BreakdownTable title="Revenue by Weekday" rows={revenue?.sales_by_weekday} nameKey="weekday" money />
                                 <BreakdownTable title="Services by Weekday" rows={revenue?.services_by_weekday} nameKey="weekday" money />
                                 <BreakdownTable title="Visit Revenue by Weekday" rows={revenue?.visits_by_weekday} nameKey="weekday" money />
@@ -373,6 +411,8 @@ export default function Dashboard() {
                                 <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+                                <BarChart title="Attendance by Date" rows={attendance?.by_date} />
+                                <BarChart title="Attendance by Hour" rows={attendance?.by_hour} labelKey="hour" limit={24} />
                                 <BreakdownTable title="Attendance by Weekday" rows={attendance?.by_weekday} nameKey="weekday" />
                                 <BreakdownTable title="Attendance by Studio" rows={attendance?.by_studio} />
                                 <BreakdownTable title="Attendance by Instructor" rows={attendance?.by_instructor} />
