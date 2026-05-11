@@ -61,8 +61,60 @@ const BreakdownTable = ({ title, rows, nameKey = "name", valueKey = "total", mon
 );
 
 
+const RetentionTable = ({ title, rows, mode = "expired" }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>{title}</h2>
+        <TableContainer style={{ maxHeight: 360 }}>
+            <Table size="small" stickyHeader>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Client</TableCell>
+                        <TableCell>Service</TableCell>
+                        <TableCell>Expiration</TableCell>
+                        {mode === "upcoming" && <TableCell align="right">Days Left</TableCell>}
+                        {mode === "renewed" && <TableCell>Renewal</TableCell>}
+                        {mode === "renewed" && <TableCell align="right">Days</TableCell>}
+                        <TableCell align="right">Amount</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {(rows || []).map((row, index) => (
+                        <TableRow key={`${title}-${row.client_id || index}-${row.expiration_date || index}`}>
+                            <TableCell>{row.client || "N/A"}</TableCell>
+                            <TableCell>{row.service || "N/A"}</TableCell>
+                            <TableCell>{row.expiration_date || "N/A"}</TableCell>
+                            {mode === "upcoming" && <TableCell align="right">{formatNumber(row.days_until_expiration)}</TableCell>}
+                            {mode === "renewed" && (
+                                <TableCell>
+                                    {row.renewal_service || "N/A"}
+                                    {row.renewal_sale_date ? ` (${row.renewal_sale_date})` : ""}
+                                </TableCell>
+                            )}
+                            {mode === "renewed" && (
+                                <TableCell align="right">{formatSignedNumber(row.days_from_expiration_to_renewal)}</TableCell>
+                            )}
+                            <TableCell align="right">{formatMoney(row.total_amount)}</TableCell>
+                        </TableRow>
+                    ))}
+                    {!rows?.length && (
+                        <TableRow>
+                            <TableCell colSpan={mode === "expired" ? 4 : 6}>No data</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    </Paper>
+);
+
+
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatSignedNumber = (value) => {
+    if (value === null || value === undefined) return "N/A";
+    const number = Number(value);
+    return number > 0 ? `+${formatNumber(number)}` : formatNumber(number);
+};
 
 
 export default function Dashboard() {
@@ -76,6 +128,7 @@ export default function Dashboard() {
     const [summary, setSummary] = useState(null);
     const [revenue, setRevenue] = useState(null);
     const [attendance, setAttendance] = useState(null);
+    const [retention, setRetention] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -99,14 +152,16 @@ export default function Dashboard() {
                 if (value) params.set(key, value);
             });
             const queryString = params.toString();
-            const [summaryResponse, revenueResponse, attendanceResponse] = await Promise.all([
+            const [summaryResponse, revenueResponse, attendanceResponse, retentionResponse] = await Promise.all([
                 axios.get(`${backendUrl}/api/data/analytics/summary/?${queryString}`, authHeaders),
                 axios.get(`${backendUrl}/api/data/analytics/revenue/?${queryString}`, authHeaders),
                 axios.get(`${backendUrl}/api/data/analytics/attendance/?${queryString}`, authHeaders),
+                axios.get(`${backendUrl}/api/data/analytics/retention/?${queryString}`, authHeaders),
             ]);
             setSummary(summaryResponse.data);
             setRevenue(revenueResponse.data);
             setAttendance(attendanceResponse.data);
+            setRetention(retentionResponse.data);
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading dashboard.");
         } finally {
@@ -183,6 +238,15 @@ export default function Dashboard() {
                         <KpiCard label="Service Purchases" value={formatNumber(totals.service_purchases)} />
                     </div>
 
+                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                        <KpiCard label="Expired Services" value={formatNumber(retention?.expired_services)} />
+                        <KpiCard label="Renewed / Reactivated" value={formatNumber(retention?.renewed_or_reactivated_services)} />
+                        <KpiCard label="Not Renewed" value={formatNumber(retention?.not_renewed_services)} />
+                        <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
+                        <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
+                        <KpiCard label="Expiring Next 30 Days" value={formatNumber(retention?.upcoming_expirations_30_days)} />
+                    </div>
+
                     <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
                         <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
                         <BreakdownTable title="Revenue by Payment Method" rows={revenue?.by_payment_method} money />
@@ -191,6 +255,12 @@ export default function Dashboard() {
                         <BreakdownTable title="Attendance by Instructor" rows={attendance?.by_instructor} />
                         <BreakdownTable title="Attendance by Service" rows={attendance?.by_service} />
                         <BreakdownTable title="Attendance by Hour" rows={attendance?.by_hour} nameKey="hour" />
+                    </div>
+
+                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
+                        <RetentionTable title="Not Renewed Clients" rows={retention?.not_renewed_clients} />
+                        <RetentionTable title="Upcoming Expirations" rows={retention?.upcoming_expirations} mode="upcoming" />
+                        <RetentionTable title="Renewed / Reactivated Samples" rows={retention?.renewed_samples} mode="renewed" />
                     </div>
 
                     <Alert severity="info">
