@@ -80,6 +80,10 @@ export default function Manual() {
                         <p><strong>Ingresos por ventas:</strong> suma de Total Pagado con Metodo de Pago en Sales.</p>
                         <p><strong>Ingresos por servicios:</strong> suma de Cantidad total en SalesByService.</p>
                         <p><strong>Ingresos por visita:</strong> suma de Ingresos por visita en Attendance.</p>
+                        <p><strong>Ticket promedio:</strong> ingresos por ventas / cantidad de ventas unicas segun numero de venta.</p>
+                        <p><strong>Descuentos:</strong> suma del monto de descuento en Sales.</p>
+                        <p><strong>Impuestos:</strong> suma del impuesto en Sales.</p>
+                        <p><strong>Ingresos por dia de semana:</strong> agrupa las ventas por fecha de venta y suma el total pagado.</p>
                         <p>Estos valores pueden diferir porque cada reporte mide el negocio desde un angulo diferente: venta, servicio adquirido o visita realizada.</p>
                     </Section>
 
@@ -89,6 +93,12 @@ export default function Manual() {
                         <p><strong>Tasa de no-show:</strong> no-shows / visitas totales.</p>
                         <p><strong>Tasa de late cancel:</strong> late cancels / visitas totales.</p>
                         <p><strong>Visitas sin ingreso:</strong> visitas cuyo ingreso por visita es cero.</p>
+                        <p><strong>Ingreso promedio por visita asistida:</strong> ingresos por visita / asistencias reales.</p>
+                        <p>
+                            El ranking de instructores muestra visitas totales, asistencias reales, tasa de no-show, tasa de
+                            late cancel e ingreso asociado a las visitas del instructor. No representa rentabilidad neta
+                            porque todavia no incluye coste de nomina.
+                        </p>
                     </Section>
 
                     <Section title="7. KPIs de ocupacion">

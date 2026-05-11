@@ -142,6 +142,44 @@ const OccupationTable = ({ title, rows, labelKey = "name" }) => (
 );
 
 
+const InstructorQualityTable = ({ rows }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>Instructor Quality</h2>
+        <TableContainer style={{ maxHeight: 360 }}>
+            <Table size="small" stickyHeader>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Instructor</TableCell>
+                        <TableCell align="right">Visits</TableCell>
+                        <TableCell align="right">Attended</TableCell>
+                        <TableCell align="right">No-show</TableCell>
+                        <TableCell align="right">Late Cancel</TableCell>
+                        <TableCell align="right">Revenue</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {(rows || []).map((row, index) => (
+                        <TableRow key={`instructor-quality-${index}`}>
+                            <TableCell>{row.name || "N/A"}</TableCell>
+                            <TableCell align="right">{formatNumber(row.total)}</TableCell>
+                            <TableCell align="right">{formatNumber(row.attended)}</TableCell>
+                            <TableCell align="right">{formatNumber(row.no_show_rate)}%</TableCell>
+                            <TableCell align="right">{formatNumber(row.late_cancel_rate)}%</TableCell>
+                            <TableCell align="right">{formatMoney(row.revenue)}</TableCell>
+                        </TableRow>
+                    ))}
+                    {!rows?.length && (
+                        <TableRow>
+                            <TableCell colSpan={6}>No data</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    </Paper>
+);
+
+
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatSignedNumber = (value) => {
@@ -267,8 +305,11 @@ export default function Dashboard() {
                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                         <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
                         <KpiCard label="Service Revenue" value={formatMoney(totals.service_revenue)} />
+                        <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
+                        <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
                         <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
                         <KpiCard label="Attended Visits" value={formatNumber(totals.attended_visits)} />
+                        <KpiCard label="Avg Revenue / Visit" value={formatMoney(totals.average_revenue_per_attended_visit)} />
                         <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
                         <KpiCard label="Late Cancel Rate" value={`${formatNumber(totals.late_cancel_rate)}%`} />
                         <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
@@ -306,13 +347,23 @@ export default function Dashboard() {
                     </Alert>
 
                     <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+                        <BreakdownTable title="Revenue by Weekday" rows={revenue?.sales_by_weekday} nameKey="weekday" money />
+                        <BreakdownTable title="Services by Weekday" rows={revenue?.services_by_weekday} nameKey="weekday" money />
+                        <BreakdownTable title="Visit Revenue by Weekday" rows={revenue?.visits_by_weekday} nameKey="weekday" money />
                         <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
                         <BreakdownTable title="Revenue by Payment Method" rows={revenue?.by_payment_method} money />
+                        <BreakdownTable title="Revenue by Item" rows={revenue?.by_item} money />
                         <BreakdownTable title="Revenue by Service" rows={revenue?.by_service} money />
+                        <BreakdownTable title="Attendance by Weekday" rows={attendance?.by_weekday} nameKey="weekday" />
                         <BreakdownTable title="Attendance by Studio" rows={attendance?.by_studio} />
                         <BreakdownTable title="Attendance by Instructor" rows={attendance?.by_instructor} />
                         <BreakdownTable title="Attendance by Service" rows={attendance?.by_service} />
                         <BreakdownTable title="Attendance by Hour" rows={attendance?.by_hour} nameKey="hour" />
+                        <BreakdownTable title="Discounts" rows={[
+                            { name: "Discounts", total: revenue?.discounts || 0 },
+                            { name: "Taxes", total: revenue?.taxes || 0 },
+                        ]} money />
+                        <InstructorQualityTable rows={attendance?.instructor_quality} />
                     </div>
 
                     <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
