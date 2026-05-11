@@ -14,6 +14,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import PeopleIcon from "@mui/icons-material/People";
+import ReplayIcon from "@mui/icons-material/Replay";
 import SettingsIcon from "@mui/icons-material/Settings";
 import StorageIcon from "@mui/icons-material/Storage";
 
@@ -30,6 +31,7 @@ import routePermissions from "@/constants/routePermissions";
 const navItems = [
     { href: "/home", label: "Home", key: "home", icon: HomeIcon },
     { href: "/dashboard", label: "Dashboard", key: "dashboard", icon: DashboardIcon },
+    { href: "/retention", label: "Retention", key: "retention", icon: ReplayIcon },
     { href: "/uploads", label: "Uploads", key: "uploads", icon: CloudUploadIcon },
     { href: "/imported", label: "Imported", key: "imported", icon: AssessmentIcon },
     { href: "/data", label: "Data", key: "data", icon: StorageIcon },

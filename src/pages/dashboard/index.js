@@ -1,4 +1,5 @@
 import Head from "next/head";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
@@ -370,6 +371,12 @@ export default function Dashboard() {
                         <RetentionTable title="Not Renewed Clients" rows={retention?.not_renewed_clients} />
                         <RetentionTable title="Upcoming Expirations" rows={retention?.upcoming_expirations} mode="upcoming" />
                         <RetentionTable title="Renewed / Reactivated Samples" rows={retention?.renewed_samples} mode="renewed" />
+                    </div>
+
+                    <div>
+                        <Link href="/retention">
+                            <Button variant="outlined">Open Retention Follow-up</Button>
+                        </Link>
                     </div>
 
                     <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
