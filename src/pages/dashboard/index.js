@@ -110,6 +110,8 @@ const RetentionTable = ({ title, rows }) => (
                         <TableCell>Status</TableCell>
                         <TableCell align="right">Days</TableCell>
                         <TableCell align="right">Amount</TableCell>
+                        <TableCell align="right">Purchases</TableCell>
+                        <TableCell align="right">Lifetime</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -122,11 +124,13 @@ const RetentionTable = ({ title, rows }) => (
                             <TableCell>{row.status || "N/A"}</TableCell>
                             <TableCell align="right">{formatNumber(row.membership_days || row.previous_membership_days)}</TableCell>
                             <TableCell align="right">{formatMoney(row.total_amount)}</TableCell>
+                            <TableCell align="right">{formatNumber(row.tracked_membership_purchase_count)}</TableCell>
+                            <TableCell align="right">{formatMoney(row.lifetime_membership_value)}</TableCell>
                         </TableRow>
                     ))}
                     {!rows?.length && (
                         <TableRow>
-                            <TableCell colSpan={7}>No data</TableCell>
+                            <TableCell colSpan={9}>No data</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -594,7 +598,7 @@ export default function Dashboard() {
                                 <KpiCard label="Retained Members" value={formatNumber(retention?.retained_members)} />
                                 <KpiCard label="New Members" value={formatNumber(retention?.new_members)} />
                                 <KpiCard label="Reactivated Members" value={formatNumber(retention?.reactivated_members)} />
-                                <KpiCard label="Not Renewed" value={formatNumber(retention?.not_renewed_services)} />
+                                <KpiCard label="Not Renewed Members" value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)} />
                                 <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
                                 <KpiCard label="Churn Rate" value={`${formatNumber(retention?.churn_rate)}%`} />
                                 <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />

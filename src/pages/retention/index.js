@@ -192,6 +192,10 @@ export default function RetentionFollowUp() {
             "Membership Days",
             "Previous Membership Days",
             "Amount",
+            "Tracked Membership Purchases",
+            "First Membership Purchase",
+            "Last Membership Purchase",
+            "Lifetime Membership Value",
             "Studio Inference",
         ];
         const lines = rows.map((row) => [
@@ -209,6 +213,10 @@ export default function RetentionFollowUp() {
             row.membership_days,
             row.previous_membership_days,
             row.total_amount,
+            row.tracked_membership_purchase_count,
+            row.first_membership_purchase_date,
+            row.last_membership_purchase_date,
+            row.lifetime_membership_value,
             row.studio_inference_method,
         ].map(csvValue).join(","));
         const blob = new Blob([[headers.map(csvValue).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -403,6 +411,8 @@ export default function RetentionFollowUp() {
                                         <TableCell>Service</TableCell>
                                         <TableCell align="right">Days</TableCell>
                                         <TableCell align="right">Amount</TableCell>
+                                        <TableCell align="right">Purchases</TableCell>
+                                        <TableCell>History</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -425,11 +435,18 @@ export default function RetentionFollowUp() {
                                             <TableCell>{row.service || "N/A"}</TableCell>
                                             <TableCell align="right">{row.membership_days || row.previous_membership_days || "N/A"}</TableCell>
                                             <TableCell align="right">{formatMoney(row.total_amount)}</TableCell>
+                                            <TableCell align="right">{row.tracked_membership_purchase_count || 0}</TableCell>
+                                            <TableCell>
+                                                <div>{formatMoney(row.lifetime_membership_value)}</div>
+                                                <div style={{ color: "#666", fontSize: "12px" }}>
+                                                    {row.first_membership_purchase_date || "N/A"} - {row.last_membership_purchase_date || "N/A"}
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                     {!rows.length && (
                                         <TableRow>
-                                            <TableCell colSpan={8}>No data</TableCell>
+                                            <TableCell colSpan={10}>No data</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
