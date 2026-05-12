@@ -23,6 +23,7 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
+import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import EditIcon from "@mui/icons-material/Edit";
@@ -30,6 +31,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 
 const emptyValueForField = (field) => {
+    if (field.default !== undefined) return field.default;
     if (field.type === "boolean") return true;
     return "";
 };
@@ -44,11 +46,19 @@ export default function ResourcePage() {
 
     const [rows, setRows] = useState([]);
     const [sites, setSites] = useState([]);
+    const [studios, setStudios] = useState([]);
+    const [rooms, setRooms] = useState([]);
+    const [staffMembers, setStaffMembers] = useState([]);
+    const [pricingOptions, setPricingOptions] = useState([]);
     const [serviceCategories, setServiceCategories] = useState([]);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingRow, setEditingRow] = useState(null);
     const [formData, setFormData] = useState({});
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(0);
+    const [count, setCount] = useState(0);
+    const rowsPerPage = 15;
 
     const initialFormData = useMemo(() => {
         if (!config) return {};
@@ -62,24 +72,55 @@ export default function ResourcePage() {
         headers: { Authorization: `Token ${token}` },
     }), [token]);
 
-    const fetchRows = async () => {
+    const fetchRows = async (nextPage = page) => {
         if (!token || !config) return;
-        const response = await axios.get(`${backendUrl}/api/data/${config.endpoint}/`, authHeaders);
-        setRows(response.data.results || response.data);
+        setLoading(true);
+        try {
+            const response = await axios.get(
+                `${backendUrl}/api/data/${config.endpoint}/?page=${nextPage + 1}`,
+                authHeaders,
+            );
+            const responseRows = response.data.results || response.data;
+            setRows(responseRows);
+            setCount(response.data.count ?? responseRows.length);
+            setPage(nextPage);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchAllPages = async (endpoint) => {
+        let url = `${backendUrl}/api/data/${endpoint}/`;
+        let allRows = [];
+        while (url) {
+            const response = await axios.get(url, authHeaders);
+            const pageRows = response.data.results || response.data;
+            allRows = [...allRows, ...pageRows];
+            url = response.data.next || null;
+        }
+        return allRows;
     };
 
     const fetchLookups = async () => {
         if (!token) return;
-        const [sitesResponse, categoriesResponse] = await Promise.all([
-            axios.get(`${backendUrl}/api/data/sites/`, authHeaders),
-            axios.get(`${backendUrl}/api/data/service-categories/`, authHeaders),
+        const [nextSites, nextStudios, nextRooms, nextStaffMembers, nextPricingOptions, nextServiceCategories] = await Promise.all([
+            fetchAllPages("sites"),
+            fetchAllPages("studios"),
+            fetchAllPages("rooms"),
+            fetchAllPages("staff-members"),
+            fetchAllPages("pricing-options"),
+            fetchAllPages("service-categories"),
         ]);
-        setSites(sitesResponse.data.results || sitesResponse.data);
-        setServiceCategories(categoriesResponse.data.results || categoriesResponse.data);
+        setSites(nextSites);
+        setStudios(nextStudios);
+        setRooms(nextRooms);
+        setStaffMembers(nextStaffMembers);
+        setPricingOptions(nextPricingOptions);
+        setServiceCategories(nextServiceCategories);
     };
 
     useEffect(() => {
-        fetchRows().catch((err) => setError(err.response?.data?.detail || "Error loading data."));
+        fetchRows(0).catch((err) => setError(err.response?.data?.detail || "Error loading data."));
     }, [token, config?.endpoint]);
 
     useEffect(() => {
@@ -115,7 +156,10 @@ export default function ResourcePage() {
         try {
             const payload = { ...formData };
             config.fields.forEach((field) => {
-                if ((field.type === "site" || field.type === "serviceCategory") && payload[field.name] === "") {
+                if (
+                    ["site", "studio", "room", "staffMember", "pricingOption", "serviceCategory", "time"].includes(field.type)
+                    && payload[field.name] === ""
+                ) {
                     payload[field.name] = null;
                 }
             });
@@ -126,7 +170,7 @@ export default function ResourcePage() {
                 await axios.post(`${backendUrl}/api/data/${config.endpoint}/`, payload, authHeaders);
             }
             setDialogOpen(false);
-            await fetchRows();
+            await fetchRows(page);
         } catch (err) {
             setError(JSON.stringify(err.response?.data || "Error saving record."));
         }
@@ -135,7 +179,7 @@ export default function ResourcePage() {
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this record?")) return;
         await axios.delete(`${backendUrl}/api/data/${config.endpoint}/${id}/`, authHeaders);
-        await fetchRows();
+        await fetchRows(page);
     };
 
     const renderField = (field) => {
@@ -154,12 +198,29 @@ export default function ResourcePage() {
             );
         }
 
-        if (field.type === "select" || field.type === "site" || field.type === "serviceCategory") {
-            const options = field.type === "site"
-                ? sites.map((site) => ({ value: site.id, label: site.name }))
-                : field.type === "serviceCategory"
-                    ? serviceCategories.map((category) => ({ value: category.id, label: `${category.site_name} - ${category.name}` }))
-                    : field.options;
+        if (
+            field.type === "select"
+            || field.type === "site"
+            || field.type === "studio"
+            || field.type === "room"
+            || field.type === "staffMember"
+            || field.type === "pricingOption"
+            || field.type === "serviceCategory"
+        ) {
+            let options = field.options || [];
+            if (field.type === "site") {
+                options = sites.map((site) => ({ value: site.id, label: site.name }));
+            } else if (field.type === "studio") {
+                options = studios.map((studio) => ({ value: studio.id, label: `${studio.site_name} - ${studio.name}` }));
+            } else if (field.type === "room") {
+                options = rooms.map((room) => ({ value: room.id, label: `${room.studio_name} - ${room.name}` }));
+            } else if (field.type === "staffMember") {
+                options = staffMembers.map((staff) => ({ value: staff.id, label: `${staff.site_name} - ${staff.name}` }));
+            } else if (field.type === "pricingOption") {
+                options = pricingOptions.map((option) => ({ value: option.id, label: `${option.site_name} - ${option.name}` }));
+            } else if (field.type === "serviceCategory") {
+                options = serviceCategories.map((category) => ({ value: category.id, label: `${category.site_name} - ${category.name}` }));
+            }
 
             return (
                 <TextField
@@ -235,9 +296,26 @@ export default function ResourcePage() {
                                     </TableCell>
                                 </TableRow>
                             ))}
+                            {!rows.length && (
+                                <TableRow>
+                                    <TableCell colSpan={config.columns.length + 1}>
+                                        {loading ? "Loading..." : "No records found."}
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </TableContainer>
+                <div style={{ width: "90%", display: "flex", justifyContent: "flex-end" }}>
+                    <TablePagination
+                        component="div"
+                        count={count}
+                        page={page}
+                        rowsPerPage={rowsPerPage}
+                        rowsPerPageOptions={[rowsPerPage]}
+                        onPageChange={(_, nextPage) => fetchRows(nextPage)}
+                    />
+                </div>
             </div>
 
             <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
