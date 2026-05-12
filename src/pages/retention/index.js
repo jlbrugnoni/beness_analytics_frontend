@@ -20,6 +20,11 @@ import TextField from "@mui/material/TextField";
 
 
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatActivityStatus = (value) => ({
+    inactive: "Inactive",
+    attending_unpaid: "Attending Unpaid",
+    attending_paid: "Attending Paid",
+}[value] || "N/A");
 
 
 const csvValue = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
@@ -196,6 +201,14 @@ export default function RetentionFollowUp() {
             "First Membership Purchase",
             "Last Membership Purchase",
             "Lifetime Membership Value",
+            "Not Renewed Activity",
+            "Post-expiration Attendance",
+            "Post-expiration Unpaid Attendance",
+            "Post-expiration Paid Attendance",
+            "Post-expiration Revenue",
+            "Post-expiration First Visit",
+            "Post-expiration Last Visit",
+            "Post-expiration Pricing Options",
             "Studio Inference",
         ];
         const lines = rows.map((row) => [
@@ -217,6 +230,14 @@ export default function RetentionFollowUp() {
             row.first_membership_purchase_date,
             row.last_membership_purchase_date,
             row.lifetime_membership_value,
+            formatActivityStatus(row.not_renewed_activity_status),
+            row.post_expiration_attendance_count,
+            row.post_expiration_unpaid_attendance_count,
+            row.post_expiration_paid_attendance_count,
+            row.post_expiration_revenue,
+            row.post_expiration_first_visit_date,
+            row.post_expiration_last_visit_date,
+            (row.post_expiration_pricing_options || []).join(" | "),
             row.studio_inference_method,
         ].map(csvValue).join(","));
         const blob = new Blob([[headers.map(csvValue).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -407,6 +428,7 @@ export default function RetentionFollowUp() {
                                         <TableCell>Contact</TableCell>
                                         <TableCell>Month</TableCell>
                                         <TableCell>Status</TableCell>
+                                        <TableCell>Activity</TableCell>
                                         <TableCell>Studio</TableCell>
                                         <TableCell>Service</TableCell>
                                         <TableCell align="right">Days</TableCell>
@@ -429,6 +451,14 @@ export default function RetentionFollowUp() {
                                             <TableCell>{row.month || "N/A"}</TableCell>
                                             <TableCell>{row.status || "N/A"}</TableCell>
                                             <TableCell>
+                                                <div>{formatActivityStatus(row.not_renewed_activity_status)}</div>
+                                                {!!row.post_expiration_attendance_count && (
+                                                    <div style={{ color: "#666", fontSize: "12px" }}>
+                                                        {row.post_expiration_attendance_count} visits / {formatMoney(row.post_expiration_revenue)}
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
                                                 <div>{row.studio || "Unknown"}</div>
                                                 <div style={{ color: "#666", fontSize: "12px" }}>{row.studio_inference_method || ""}</div>
                                             </TableCell>
@@ -446,7 +476,7 @@ export default function RetentionFollowUp() {
                                     ))}
                                     {!rows.length && (
                                         <TableRow>
-                                            <TableCell colSpan={10}>No data</TableCell>
+                                            <TableCell colSpan={11}>No data</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

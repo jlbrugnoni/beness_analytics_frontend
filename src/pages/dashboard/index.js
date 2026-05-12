@@ -108,6 +108,7 @@ const RetentionTable = ({ title, rows }) => (
                         <TableCell>Studio</TableCell>
                         <TableCell>Service</TableCell>
                         <TableCell>Status</TableCell>
+                        <TableCell>Activity</TableCell>
                         <TableCell align="right">Days</TableCell>
                         <TableCell align="right">Amount</TableCell>
                         <TableCell align="right">Purchases</TableCell>
@@ -122,6 +123,14 @@ const RetentionTable = ({ title, rows }) => (
                             <TableCell>{row.studio || "Unknown"}</TableCell>
                             <TableCell>{row.service || "N/A"}</TableCell>
                             <TableCell>{row.status || "N/A"}</TableCell>
+                            <TableCell>
+                                <div>{formatActivityStatus(row.not_renewed_activity_status)}</div>
+                                {!!row.post_expiration_attendance_count && (
+                                    <div style={{ color: "#666", fontSize: "12px" }}>
+                                        {formatNumber(row.post_expiration_attendance_count)} visits
+                                    </div>
+                                )}
+                            </TableCell>
                             <TableCell align="right">{formatNumber(row.membership_days || row.previous_membership_days)}</TableCell>
                             <TableCell align="right">{formatMoney(row.total_amount)}</TableCell>
                             <TableCell align="right">{formatNumber(row.tracked_membership_purchase_count)}</TableCell>
@@ -130,7 +139,7 @@ const RetentionTable = ({ title, rows }) => (
                     ))}
                     {!rows?.length && (
                         <TableRow>
-                            <TableCell colSpan={9}>No data</TableCell>
+                            <TableCell colSpan={10}>No data</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -214,6 +223,11 @@ const InstructorQualityTable = ({ rows }) => (
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatActivityStatus = (value) => ({
+    inactive: "Inactive",
+    attending_unpaid: "Attending Unpaid",
+    attending_paid: "Attending Paid",
+}[value] || "N/A");
 
 
 const monthOptions = [
@@ -599,6 +613,10 @@ export default function Dashboard() {
                                 <KpiCard label="New Members" value={formatNumber(retention?.new_members)} />
                                 <KpiCard label="Reactivated Members" value={formatNumber(retention?.reactivated_members)} />
                                 <KpiCard label="Not Renewed Members" value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)} />
+                                <KpiCard label="Not Renewed Inactive" value={formatNumber(retention?.not_renewed_inactive)} />
+                                <KpiCard label="Not Renewed Attending Unpaid" value={formatNumber(retention?.not_renewed_attending_unpaid)} />
+                                <KpiCard label="Not Renewed Attending Paid" value={formatNumber(retention?.not_renewed_attending_paid)} />
+                                <KpiCard label="Post-expiration Attendance" value={formatNumber(retention?.not_renewed_post_expiration_attendance)} />
                                 <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
                                 <KpiCard label="Churn Rate" value={`${formatNumber(retention?.churn_rate)}%`} />
                                 <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
