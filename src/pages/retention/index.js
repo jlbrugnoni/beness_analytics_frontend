@@ -25,6 +25,34 @@ const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { mi
 const csvValue = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
 
 
+const monthOptions = [
+    { value: "01", label: "January" },
+    { value: "02", label: "February" },
+    { value: "03", label: "March" },
+    { value: "04", label: "April" },
+    { value: "05", label: "May" },
+    { value: "06", label: "June" },
+    { value: "07", label: "July" },
+    { value: "08", label: "August" },
+    { value: "09", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+];
+
+
+const yearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 5 }, (_, index) => currentYear - 3 + index);
+};
+
+
+const currentMonthValue = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+
 const lastCompletedMonthValue = () => {
     const now = new Date();
     const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -32,6 +60,15 @@ const lastCompletedMonthValue = () => {
     const month = String(previousMonth.getMonth() + 1).padStart(2, "0");
     return `${year}-${month}`;
 };
+
+
+const monthParts = (monthValue) => {
+    const [year, month] = monthValue.split("-");
+    return { year, month };
+};
+
+
+const buildMonthValue = (year, month) => `${year}-${month}`;
 
 
 const monthRange = (monthValue) => {
@@ -44,6 +81,25 @@ const monthRange = (monthValue) => {
 };
 
 
+const selectedDateRange = (periodMode, filters) => {
+    if (periodMode === "last_completed_month") return monthRange(lastCompletedMonthValue());
+    if (periodMode === "current_month") return monthRange(currentMonthValue());
+    if (periodMode === "specific_month") return monthRange(filters.month);
+    return { date_from: filters.date_from, date_to: filters.date_to };
+};
+
+
+const formatDisplayDate = (value) => {
+    if (!value) return "N/A";
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+};
+
+
 export default function RetentionFollowUp() {
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -51,7 +107,7 @@ export default function RetentionFollowUp() {
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
-    const [periodMode, setPeriodMode] = useState("month");
+    const [periodMode, setPeriodMode] = useState("last_completed_month");
     const [filters, setFilters] = useState({
         site: "",
         studio: "",
@@ -98,9 +154,7 @@ export default function RetentionFollowUp() {
         setError("");
         try {
             const params = new URLSearchParams();
-            const dateFilters = periodMode === "month"
-                ? monthRange(filters.month)
-                : { date_from: filters.date_from, date_to: filters.date_to };
+            const dateFilters = selectedDateRange(periodMode, filters);
             const requestFilters = {
                 site: filters.site,
                 studio: filters.studio,
@@ -122,9 +176,7 @@ export default function RetentionFollowUp() {
     };
 
     const exportCsv = () => {
-        const dateFilters = periodMode === "month"
-            ? monthRange(filters.month)
-            : { date_from: filters.date_from, date_to: filters.date_to };
+        const dateFilters = selectedDateRange(periodMode, filters);
         const headers = [
             "Month",
             "Status",
@@ -175,9 +227,7 @@ export default function RetentionFollowUp() {
         setLoading(true);
         setError("");
         try {
-            const dateFilters = periodMode === "month"
-                ? monthRange(filters.month)
-                : { date_from: filters.date_from, date_to: filters.date_to };
+            const dateFilters = selectedDateRange(periodMode, filters);
             await axios.post(`${backendUrl}/api/data/analytics/membership-months/rebuild/`, {
                 site: filters.site,
                 ...dateFilters,
@@ -201,6 +251,8 @@ export default function RetentionFollowUp() {
     const visibleStudios = filters.site
         ? studios.filter((studio) => String(studio.site) === String(filters.site))
         : studios;
+    const activeDateRange = selectedDateRange(periodMode, filters);
+    const selectedMonthParts = monthParts(filters.month);
 
     return (
         <MainPage>
@@ -255,16 +307,43 @@ export default function RetentionFollowUp() {
                                 label="Period"
                                 value={periodMode}
                                 onChange={(event) => setPeriodMode(event.target.value)}
-                            />
-                            {periodMode === "month" ? (
-                                <TextField
-                                    label="Month"
-                                    type="month"
-                                    value={filters.month}
-                                    InputLabelProps={{ shrink: true }}
-                                    onChange={(event) => setFilters({ ...filters, month: event.target.value })}
-                                />
-                            ) : (
+                            >
+                                <MenuItem value="last_completed_month">Last Completed Month</MenuItem>
+                                <MenuItem value="current_month">Current Month</MenuItem>
+                                <MenuItem value="specific_month">Specific Month</MenuItem>
+                                <MenuItem value="range">Date Range</MenuItem>
+                            </TextField>
+                            {periodMode === "specific_month" && (
+                                <>
+                                    <TextField
+                                        select
+                                        label="Month"
+                                        value={selectedMonthParts.month}
+                                        onChange={(event) => setFilters({
+                                            ...filters,
+                                            month: buildMonthValue(selectedMonthParts.year, event.target.value),
+                                        })}
+                                    >
+                                        {monthOptions.map((month) => (
+                                            <MenuItem key={month.value} value={month.value}>{month.label}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                    <TextField
+                                        select
+                                        label="Year"
+                                        value={Number(selectedMonthParts.year)}
+                                        onChange={(event) => setFilters({
+                                            ...filters,
+                                            month: buildMonthValue(event.target.value, selectedMonthParts.month),
+                                        })}
+                                    >
+                                        {yearOptions().map((year) => (
+                                            <MenuItem key={year} value={year}>{year}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                </>
+                            )}
+                            {periodMode === "range" && (
                                 <>
                                     <TextField
                                         label="Date From"
@@ -288,12 +367,15 @@ export default function RetentionFollowUp() {
                                 onChange={(event) => setFilters({ ...filters, search: event.target.value })}
                             />
                         </div>
+                        <div style={{ color: "#666", fontSize: "14px" }}>
+                            Showing: {formatDisplayDate(activeDateRange.date_from)} - {formatDisplayDate(activeDateRange.date_to)}
+                        </div>
                         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                             <Button variant="contained" onClick={fetchRows} disabled={loading}>
                                 {loading ? "Loading..." : "Apply Filters"}
                             </Button>
                             <Button variant="outlined" onClick={rebuildSnapshots} disabled={loading}>
-                                Rebuild Month
+                                Rebuild Snapshots
                             </Button>
                             <Button variant="outlined" onClick={exportCsv} disabled={!rows.length}>
                                 Export CSV
