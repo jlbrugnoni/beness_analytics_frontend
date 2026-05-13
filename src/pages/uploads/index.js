@@ -25,6 +25,7 @@ const reportTypes = [
     { value: "attendance_with_revenue", label: "Attendance with Revenue" },
     { value: "sales", label: "Sales" },
     { value: "sales_by_service", label: "Sales by Service" },
+    { value: "trainer_availability", label: "Trainer Availability" },
 ];
 
 
@@ -89,6 +90,17 @@ const formatValue = (value) => {
     if (value === null || value === undefined || value === "") return "N/A";
     if (typeof value === "number") return value.toLocaleString();
     return value;
+};
+
+
+const formatSampleList = (items) => {
+    if (!items?.length) return "None";
+    return items.map((item) => {
+        if (typeof item === "object" && item !== null) {
+            return Object.entries(item).map(([key, value]) => `${key}: ${value}`).join(" / ");
+        }
+        return item;
+    }).join(", ");
 };
 
 
@@ -287,7 +299,7 @@ export default function Uploads() {
                                 <input
                                     hidden
                                     type="file"
-                                    accept=".xlsx"
+                                    accept=".xlsx,.xls"
                                     onChange={(event) => setFile(event.target.files?.[0] || null)}
                                 />
                             </Button>
@@ -299,9 +311,9 @@ export default function Uploads() {
                                 variant="contained"
                                 color="success"
                                 onClick={handleImport}
-                                disabled={importing || !preview || !preview.is_valid_schema || preview.row_counts.invalid_rows > 0}
+                                disabled={importing || !preview || !preview.is_valid_schema || preview.row_counts.invalid_rows > 0 || reportType === "trainer_availability"}
                             >
-                                {importing ? "Importing..." : "Confirm Import"}
+                                {reportType === "trainer_availability" ? "Import In Next Phase" : importing ? "Importing..." : "Confirm Import"}
                             </Button>
                             <Link href="/data">
                                 <Button variant="text">Manage Data Tables</Button>
@@ -333,15 +345,15 @@ export default function Uploads() {
 
                             {preview.data_quality?.requires_review && (
                                 <Alert severity="warning">
-                                    This report has attendance collisions. Review the samples before trusting the import for KPIs.
+                                    This report has items that require review. Check the samples before trusting the import for KPIs.
                                 </Alert>
                             )}
 
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
-                                <SummaryBox label="Data Rows" value={preview.row_counts.data_rows} />
+                                <SummaryBox label="Data Rows" value={preview.row_counts.data_rows ?? preview.row_counts.class_rows} />
                                 <SummaryBox label="Valid Rows" value={preview.row_counts.valid_rows} />
                                 <SummaryBox label="Invalid Rows" value={preview.row_counts.invalid_rows} />
-                                <SummaryBox label="Repeated Rows" value={preview.row_counts.duplicate_extra_rows} />
+                                <SummaryBox label="Repeated Rows" value={preview.row_counts.duplicate_extra_rows ?? preview.data_quality?.exact_duplicate_groups ?? 0} />
                                 <SummaryBox label="Revenue" value={formatValue(preview.revenue?.total)} />
                                 <SummaryBox label="Date From" value={formatValue(preview.date_range?.from)} />
                                 <SummaryBox label="Date To" value={formatValue(preview.date_range?.to)} />
@@ -392,6 +404,20 @@ export default function Uploads() {
                                 </Paper>
                             )}
 
+                            {preview.schedule && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Schedule</h2>
+                                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                                        <SummaryBox label="Classes" value={preview.schedule.class_count} />
+                                        <SummaryBox label="Valid Classes" value={preview.schedule.valid_class_count} />
+                                        <SummaryBox label="Needs Review" value={preview.schedule.needs_review_count} />
+                                        <SummaryBox label="Studios" value={preview.schedule.studios?.length} />
+                                        <SummaryBox label="Rooms" value={preview.schedule.rooms?.length} />
+                                        <SummaryBox label="Staff" value={preview.schedule.staff_members?.length} />
+                                    </div>
+                                </Paper>
+                            )}
+
                             <Paper style={{ padding: "18px" }}>
                                 <h2 style={{ marginTop: 0 }}>Lookup Records</h2>
                                 <TableContainer>
@@ -410,7 +436,7 @@ export default function Uploads() {
                                                     <TableCell style={{ textTransform: "capitalize" }}>{row.label}</TableCell>
                                                     <TableCell>{row.total}</TableCell>
                                                     <TableCell>{row.new}</TableCell>
-                                                    <TableCell>{row.sample_new.join(", ") || "None"}</TableCell>
+                                                    <TableCell>{formatSampleList(row.sample_new)}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -424,9 +450,72 @@ export default function Uploads() {
                             />
 
                             <SampleTable
-                                title="Attendance Collision Samples"
+                                title="Natural Key Collision Samples"
                                 samples={preview.data_quality?.natural_key_collision_samples}
                             />
+
+                            <SampleTable
+                                title="Exact Duplicate Class Samples"
+                                samples={preview.data_quality?.exact_duplicate_samples}
+                            />
+
+                            {preview.data_quality?.same_room_time_different_staff?.length > 0 && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Room-Time Conflicts</h2>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>Date</TableCell>
+                                                    <TableCell>Time</TableCell>
+                                                    <TableCell>Studio</TableCell>
+                                                    <TableCell>Room</TableCell>
+                                                    <TableCell>Staff</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {preview.data_quality.same_room_time_different_staff.map((row, index) => (
+                                                    <TableRow key={`room-conflict-${index}`}>
+                                                        <TableCell>{row.date}</TableCell>
+                                                        <TableCell>{row.start_time} - {row.end_time}</TableCell>
+                                                        <TableCell>{row.studio}</TableCell>
+                                                        <TableCell>{row.room}</TableCell>
+                                                        <TableCell>{row.staff_members.join(", ")}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
+                            )}
+
+                            {preview.data_quality?.same_staff_time_multiple_rooms?.length > 0 && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Staff-Time Conflicts</h2>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>Date</TableCell>
+                                                    <TableCell>Time</TableCell>
+                                                    <TableCell>Staff</TableCell>
+                                                    <TableCell>Rooms</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {preview.data_quality.same_staff_time_multiple_rooms.map((row, index) => (
+                                                    <TableRow key={`staff-conflict-${index}`}>
+                                                        <TableCell>{row.date}</TableCell>
+                                                        <TableCell>{row.start_time} - {row.end_time}</TableCell>
+                                                        <TableCell>{row.staff}</TableCell>
+                                                        <TableCell>{row.rooms.join(", ")}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
+                            )}
 
                             {preview.invalid_row_samples.length > 0 && (
                                 <Paper style={{ padding: "18px" }}>
