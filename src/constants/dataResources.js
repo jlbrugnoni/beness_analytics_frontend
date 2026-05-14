@@ -211,6 +211,8 @@ export const dataResources = {
                     { value: "scheduled", label: "Scheduled" },
                     { value: "cancelled", label: "Cancelled" },
                     { value: "unavailable", label: "Unavailable" },
+                    { value: "needs_review", label: "Needs Review" },
+                    { value: "conflict", label: "Conflict" },
                 ],
             },
             { name: "reason", label: "Reason" },

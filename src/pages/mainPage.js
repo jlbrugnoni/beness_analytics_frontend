@@ -12,6 +12,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import HomeIcon from "@mui/icons-material/Home";
 import DashboardIcon from "@mui/icons-material/Dashboard";
+import EventNoteIcon from "@mui/icons-material/EventNote";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import PeopleIcon from "@mui/icons-material/People";
 import ReplayIcon from "@mui/icons-material/Replay";
@@ -32,6 +33,7 @@ const navItems = [
     { href: "/home", label: "Home", key: "home", icon: HomeIcon },
     { href: "/dashboard", label: "Dashboard", key: "dashboard", icon: DashboardIcon },
     { href: "/retention", label: "Retention", key: "retention", icon: ReplayIcon },
+    { href: "/schedule", label: "Schedule", key: "schedule", icon: EventNoteIcon },
     { href: "/uploads", label: "Uploads", key: "uploads", icon: CloudUploadIcon },
     { href: "/imported", label: "Imported", key: "imported", icon: AssessmentIcon },
     { href: "/data", label: "Data", key: "data", icon: StorageIcon },

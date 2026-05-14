@@ -115,9 +115,17 @@ const importMetricLabels = {
     service_purchases_created: "Service Purchases Created",
     service_purchases_changed: "Service Purchases Changed",
     service_purchases_identical: "Service Purchases Identical",
+    scheduled_classes_created: "Scheduled Classes Created",
+    scheduled_classes_changed: "Scheduled Classes Changed",
+    scheduled_classes_identical: "Scheduled Classes Identical",
+    scheduled_classes_needing_review: "Classes Needing Review",
+    scheduled_classes_conflict: "Classes With Conflict",
     natural_key_collisions: "Natural Key Collisions",
     versions_created: "Versions Created",
 };
+
+
+const roomCapacityKey = (row) => row.room_key || `${row.studio}::${row.room}`;
 
 
 export default function Uploads() {
@@ -134,6 +142,7 @@ export default function Uploads() {
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
     const [resetting, setResetting] = useState(false);
+    const [roomCapacities, setRoomCapacities] = useState({});
 
     const authHeaders = useMemo(() => ({
         headers: { Authorization: `Token ${token}` },
@@ -163,6 +172,7 @@ export default function Uploads() {
         setError("");
         setPreview(null);
         setImportResult(null);
+        setRoomCapacities({});
 
         const formData = new FormData();
         formData.append("site", site);
@@ -200,6 +210,16 @@ export default function Uploads() {
         formData.append("site", site);
         formData.append("report_type", reportType);
         formData.append("file", file);
+        if (reportType === "trainer_availability") {
+            formData.append("room_capacities", JSON.stringify(
+                (preview.capacity_requirements || []).map((row) => ({
+                    studio: row.studio,
+                    room: row.room,
+                    group_capacity: Number(roomCapacities[roomCapacityKey(row)] || 0),
+                    private_capacity: 0,
+                }))
+            ));
+        }
 
         try {
             const response = await axios.post(`${backendUrl}/api/data/report-imports/import-file/`, formData, {
@@ -250,6 +270,28 @@ export default function Uploads() {
             ...value,
         }))
         : [];
+    const capacityRequirements = preview?.capacity_requirements || [];
+    const missingCapacityCount = reportType === "trainer_availability"
+        ? capacityRequirements.filter((row) => Number(roomCapacities[roomCapacityKey(row)] || 0) <= 0).length
+        : 0;
+    const canImport = Boolean(preview)
+        && preview.is_valid_schema
+        && !importing
+        && (preview.row_counts.invalid_rows === 0 || reportType === "trainer_availability")
+        && missingCapacityCount === 0;
+
+    useEffect(() => {
+        if (!preview?.capacity_requirements) {
+            setRoomCapacities({});
+            return;
+        }
+        const nextCapacities = {};
+        preview.capacity_requirements.forEach((row) => {
+            const key = roomCapacityKey(row);
+            nextCapacities[key] = row.current_capacity > 0 ? String(row.current_capacity) : "";
+        });
+        setRoomCapacities(nextCapacities);
+    }, [preview]);
 
     return (
         <MainPage>
@@ -311,9 +353,9 @@ export default function Uploads() {
                                 variant="contained"
                                 color="success"
                                 onClick={handleImport}
-                                disabled={importing || !preview || !preview.is_valid_schema || preview.row_counts.invalid_rows > 0 || reportType === "trainer_availability"}
+                                disabled={!canImport}
                             >
-                                {reportType === "trainer_availability" ? "Import In Next Phase" : importing ? "Importing..." : "Confirm Import"}
+                                {importing ? "Importing..." : "Confirm Import"}
                             </Button>
                             <Link href="/data">
                                 <Button variant="text">Manage Data Tables</Button>
@@ -415,6 +457,56 @@ export default function Uploads() {
                                         <SummaryBox label="Rooms" value={preview.schedule.rooms?.length} />
                                         <SummaryBox label="Staff" value={preview.schedule.staff_members?.length} />
                                     </div>
+                                </Paper>
+                            )}
+
+                            {capacityRequirements.length > 0 && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Room Capacities Required</h2>
+                                    {missingCapacityCount > 0 && (
+                                        <Alert severity="warning" style={{ marginBottom: "14px" }}>
+                                            Add a positive group capacity for every room before importing this schedule.
+                                        </Alert>
+                                    )}
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>Studio</TableCell>
+                                                    <TableCell>Room</TableCell>
+                                                    <TableCell>Status</TableCell>
+                                                    <TableCell style={{ width: "180px" }}>Group Capacity</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {capacityRequirements.map((row) => {
+                                                    const key = roomCapacityKey(row);
+                                                    return (
+                                                        <TableRow key={key}>
+                                                            <TableCell>{row.studio}</TableCell>
+                                                            <TableCell>{row.room}</TableCell>
+                                                            <TableCell>{row.is_new ? "New room" : "Capacity missing"}</TableCell>
+                                                            <TableCell>
+                                                                <TextField
+                                                                    size="small"
+                                                                    type="number"
+                                                                    value={roomCapacities[key] ?? ""}
+                                                                    onChange={(event) => {
+                                                                        setRoomCapacities((current) => ({
+                                                                            ...current,
+                                                                            [key]: event.target.value,
+                                                                        }));
+                                                                    }}
+                                                                    inputProps={{ min: 1 }}
+                                                                    error={Number(roomCapacities[key] || 0) <= 0}
+                                                                />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
                                 </Paper>
                             )}
 
