@@ -131,6 +131,8 @@ export default function SchedulePage() {
     const [weekStart, setWeekStart] = useState(formatDate(startOfWeek(new Date())));
     const [classes, setClasses] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [matching, setMatching] = useState(false);
+    const [matchResult, setMatchResult] = useState(null);
     const [error, setError] = useState("");
 
     const authHeaders = useMemo(() => ({
@@ -164,30 +166,54 @@ export default function SchedulePage() {
         loadLookups().catch((err) => setError(err.response?.data?.detail || "Error loading filters."));
     }, [token]);
 
+    const loadClasses = async () => {
+        if (!token || !site) return;
+        setLoading(true);
+        setError("");
+        try {
+            const params = {
+                site,
+                date_from: weekStart,
+                date_to: weekDays[6].value,
+            };
+            if (studio) params.studio = studio;
+            const rows = await fetchAll(`${backendUrl}/api/data/scheduled-classes/`, authHeaders, params);
+            rows.sort((a, b) => `${a.class_date} ${a.start_time}`.localeCompare(`${b.class_date} ${b.start_time}`));
+            setClasses(rows);
+        } catch (err) {
+            setError(err.response?.data?.detail || "Error loading schedule.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const loadClasses = async () => {
-            if (!token || !site) return;
-            setLoading(true);
-            setError("");
-            try {
-                const params = {
+        loadClasses();
+    }, [token, site, studio, weekStart]);
+
+    const handleRebuildMatches = async () => {
+        if (!site) return;
+        setMatching(true);
+        setError("");
+        setMatchResult(null);
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/data/analytics/class-matches/rebuild/`,
+                {
                     site,
                     date_from: weekStart,
                     date_to: weekDays[6].value,
-                };
-                if (studio) params.studio = studio;
-                const rows = await fetchAll(`${backendUrl}/api/data/scheduled-classes/`, authHeaders, params);
-                rows.sort((a, b) => `${a.class_date} ${a.start_time}`.localeCompare(`${b.class_date} ${b.start_time}`));
-                setClasses(rows);
-            } catch (err) {
-                setError(err.response?.data?.detail || "Error loading schedule.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadClasses();
-    }, [token, site, studio, weekStart]);
+                },
+                authHeaders,
+            );
+            setMatchResult(response.data);
+            await loadClasses();
+        } catch (err) {
+            setError(err.response?.data?.error || "Error rebuilding class matches.");
+        } finally {
+            setMatching(false);
+        }
+    };
 
     const filteredStudios = studios.filter((item) => !site || String(item.site) === String(site));
     const classesByDate = weekDays.reduce((acc, day) => {
@@ -249,8 +275,17 @@ export default function SchedulePage() {
                             <Link href="/data/scheduled-classes">
                                 <Button variant="text">Manage Scheduled Classes</Button>
                             </Link>
+                            <Button variant="contained" onClick={handleRebuildMatches} disabled={matching || !site}>
+                                {matching ? "Matching..." : "Rebuild Attendance Matches"}
+                            </Button>
                         </div>
                     </Paper>
+
+                    {matchResult && (
+                        <Alert severity="success">
+                            Matches rebuilt: {matchResult.exact_instructor_time} exact, {matchResult.single_class_same_time} by time, {matchResult.ambiguous} ambiguous, {matchResult.unmatched} unmatched.
+                        </Alert>
+                    )}
 
                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
                         <SummaryCard label="Classes" value={summary.total} />
