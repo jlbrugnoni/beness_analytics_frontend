@@ -389,6 +389,9 @@ export default function SchedulePage() {
                             <Link href="/data/weekly-room-templates">
                                 <Button variant="text">Manage Templates</Button>
                             </Link>
+                            <Link href="/schedule/templates">
+                                <Button variant="contained" color="secondary">Visual Template Builder</Button>
+                            </Link>
                             <Button variant="outlined" onClick={handleGenerateExpectedSlots} disabled={generating || !site}>
                                 {generating ? "Generating..." : "Generate Expected Slots"}
                             </Button>
