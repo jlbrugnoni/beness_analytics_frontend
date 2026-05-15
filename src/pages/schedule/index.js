@@ -128,7 +128,7 @@ const ClassCard = ({ item }) => {
     );
 };
 
-const ExpectedSlotCard = ({ item }) => {
+const ExpectedSlotCard = ({ item, onCreateClass, onResolve }) => {
     const colors = expectedColors[item.status] || expectedColors.missing;
     return (
         <div
@@ -153,6 +153,14 @@ const ExpectedSlotCard = ({ item }) => {
                 <Chip size="small" label={`Cap. ${item.capacity || 0}`} />
                 {item.scheduled_class_name && <Chip size="small" label="Detected" />}
             </div>
+            {item.status === "missing" && (
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    <Button size="small" variant="contained" onClick={() => onCreateClass(item)}>Create Class</Button>
+                    <Button size="small" variant="outlined" onClick={() => onResolve(item, "cancelled")}>Cancel</Button>
+                    <Button size="small" variant="outlined" onClick={() => onResolve(item, "unavailable")}>Unavailable</Button>
+                    <Button size="small" variant="text" onClick={() => onResolve(item, "ignored")}>Ignore</Button>
+                </div>
+            )}
         </div>
     );
 };
@@ -299,6 +307,35 @@ export default function SchedulePage() {
         }
     };
 
+    const handleCreateClassFromSlot = async (slot) => {
+        if (!window.confirm("Create this scheduled class from the expected slot?")) return;
+        setError("");
+        try {
+            await axios.post(
+                `${backendUrl}/api/data/expected-class-slots/${slot.id}/create-scheduled-class/`,
+                {},
+                authHeaders,
+            );
+            await loadClasses();
+        } catch (err) {
+            setError(err.response?.data?.error || "Error creating scheduled class.");
+        }
+    };
+
+    const handleResolveSlot = async (slot, statusValue) => {
+        setError("");
+        try {
+            await axios.post(
+                `${backendUrl}/api/data/expected-class-slots/${slot.id}/resolve/`,
+                { status: statusValue },
+                authHeaders,
+            );
+            await loadClasses();
+        } catch (err) {
+            setError(err.response?.data?.error || "Error resolving expected slot.");
+        }
+    };
+
     const filteredStudios = studios.filter((item) => !site || String(item.site) === String(site));
     const filteredRooms = rooms.filter((item) => {
         if (site && String(item.site) !== String(site)) return false;
@@ -440,7 +477,12 @@ export default function SchedulePage() {
                                 </div>
                                 <div style={{ display: "grid", gap: "10px" }}>
                                     {(expectedByDate[day.value] || []).map((item) => (
-                                        <ExpectedSlotCard key={`expected-${item.id}`} item={item} />
+                                        <ExpectedSlotCard
+                                            key={`expected-${item.id}`}
+                                            item={item}
+                                            onCreateClass={handleCreateClassFromSlot}
+                                            onResolve={handleResolveSlot}
+                                        />
                                     ))}
                                     {(classesByDate[day.value] || []).map((item) => (
                                         expectedScheduledClassIds.has(item.id) ? null : <ClassCard key={`detected-${item.id}`} item={item} />

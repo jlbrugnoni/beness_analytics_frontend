@@ -39,22 +39,28 @@ const fetchAll = async (url, authHeaders, params = {}) => {
 };
 
 
-const timeFromHour = (hour) => `${String(hour).padStart(2, "0")}:00`;
+const formatTime = (hour, minute = 0) => `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+const shortTime = (value) => (value || "").slice(0, 5);
 const addMinutes = (time, minutes) => {
     const [hour, minute] = time.split(":").map(Number);
     const date = new Date(2000, 0, 1, hour, minute + minutes);
-    return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    return formatTime(date.getHours(), date.getMinutes());
 };
-const shortTime = (value) => (value || "").slice(0, 5);
+const slotKey = (item) => `${item.weekday}-${shortTime(item.start_time)}`;
+const rowTimes = Array.from({ length: (END_HOUR - START_HOUR) * 2 }, (_, index) => {
+    const hour = START_HOUR + Math.floor(index / 2);
+    const minute = index % 2 === 0 ? 0 : 30;
+    return formatTime(hour, minute);
+});
 
 
-const TemplateBlock = ({ item, onDelete }) => (
+const TemplateBlock = ({ item, draft = false, onDelete }) => (
     <div
         style={{
-            border: "1px solid #72a987",
-            borderLeft: "5px solid #2f6f73",
-            background: "#e7f3ec",
-            color: "#24533a",
+            border: `1px solid ${draft ? "#e0ac42" : "#72a987"}`,
+            borderLeft: `5px solid ${draft ? "#e0ac42" : "#2f6f73"}`,
+            background: draft ? "#fff5df" : "#e7f3ec",
+            color: draft ? "#79520c" : "#24533a",
             borderRadius: "8px",
             padding: "9px",
             display: "grid",
@@ -66,18 +72,18 @@ const TemplateBlock = ({ item, onDelete }) => (
             <Button
                 size="small"
                 color="error"
-                onClick={() => onDelete(item.id)}
+                onClick={() => onDelete(item)}
                 style={{ minWidth: 32, padding: 4 }}
-                title="Delete template"
+                title={draft ? "Remove draft block" : "Delete template"}
             >
                 <DeleteIcon fontSize="small" />
             </Button>
         </div>
         <div style={{ fontWeight: 700 }}>{item.name}</div>
-        <div style={{ fontSize: "13px" }}>{item.staff_member_name || "No expected instructor"}</div>
+        <div style={{ fontSize: "13px" }}>{item.staff_member_name || item.staff_label || "No fixed instructor"}</div>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
             <Chip size="small" label={`Cap. ${item.capacity || 0}`} />
-            <Chip size="small" label={item.active_until ? `${item.active_from} to ${item.active_until}` : `From ${item.active_from}`} />
+            <Chip size="small" label={draft ? "Draft" : "Saved"} />
         </div>
     </div>
 );
@@ -92,12 +98,13 @@ export default function WeeklyTemplateBuilder() {
     const [rooms, setRooms] = useState([]);
     const [staffMembers, setStaffMembers] = useState([]);
     const [templates, setTemplates] = useState([]);
+    const [draftBlocks, setDraftBlocks] = useState([]);
     const [site, setSite] = useState("");
     const [studio, setStudio] = useState("");
     const [room, setRoom] = useState("");
     const [staffMember, setStaffMember] = useState("");
     const [className, setClassName] = useState("Pilates");
-    const [duration, setDuration] = useState(50);
+    const [duration, setDuration] = useState(55);
     const [capacity, setCapacity] = useState(10);
     const [activeFrom, setActiveFrom] = useState(new Date().toISOString().slice(0, 10));
     const [activeUntil, setActiveUntil] = useState("");
@@ -134,6 +141,7 @@ export default function WeeklyTemplateBuilder() {
         return true;
     });
     const filteredStaff = staffMembers.filter((item) => !site || String(item.site) === String(site));
+    const selectedStaff = filteredStaff.find((item) => String(item.id) === String(staffMember));
 
     const loadTemplates = async () => {
         if (!token || !site) return;
@@ -146,83 +154,121 @@ export default function WeeklyTemplateBuilder() {
     };
 
     useEffect(() => {
+        setDraftBlocks([]);
         loadTemplates().catch((err) => setError(err.response?.data?.detail || "Error loading templates."));
     }, [token, site, studio, room]);
 
-    const createTemplate = async (weekday, startTime) => {
+    const hasBlockAt = (weekday, startTime) => {
+        const key = `${weekday}-${startTime}`;
+        return [...templates, ...draftBlocks].some((item) => slotKey(item) === key);
+    };
+
+    const addDraftBlock = (weekday, startTime) => {
         if (!site || !studio || !room) {
             setError("Select site, studio and room before creating blocks.");
+            return;
+        }
+        if (hasBlockAt(weekday, startTime)) {
+            setError("That room already has a block at this weekday and start time.");
+            return;
+        }
+        setError("");
+        setDraftBlocks((current) => [
+            ...current,
+            {
+                draft_id: `${weekday}-${startTime}-${Date.now()}`,
+                site,
+                studio,
+                room,
+                staff_member: staffMember || null,
+                staff_label: selectedStaff?.name || "",
+                name: className || "Pilates",
+                weekday,
+                start_time: startTime,
+                end_time: addMinutes(startTime, Number(duration || 55)),
+                capacity: Number(capacity || 0),
+                active_from: activeFrom,
+                active_until: activeUntil || null,
+                active: true,
+            },
+        ]);
+    };
+
+    const removeDraftBlock = (item) => {
+        setDraftBlocks((current) => current.filter((row) => row.draft_id !== item.draft_id));
+    };
+
+    const deleteTemplate = async (item) => {
+        if (!window.confirm("Delete this saved weekly block?")) return;
+        await axios.delete(`${backendUrl}/api/data/weekly-room-templates/${item.id}/`, authHeaders);
+        await loadTemplates();
+    };
+
+    const saveDraftBlocks = async () => {
+        if (!draftBlocks.length) return;
+        if (!activeFrom) {
+            setError("Select Active From before saving the schedule.");
             return;
         }
         setSaving(true);
         setError("");
         try {
-            await axios.post(`${backendUrl}/api/data/weekly-room-templates/`, {
-                site,
-                studio,
-                room,
-                staff_member: staffMember || null,
-                name: className || "Pilates",
-                weekday,
-                start_time: startTime,
-                end_time: addMinutes(startTime, Number(duration || 50)),
-                capacity: Number(capacity || 0),
-                active_from: activeFrom,
-                active_until: activeUntil || null,
-                active: true,
-            }, authHeaders);
-            await loadTemplates();
-        } catch (err) {
-            setError(JSON.stringify(err.response?.data || "Error creating template."));
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const deleteTemplate = async (id) => {
-        if (!window.confirm("Delete this weekly block?")) return;
-        await axios.delete(`${backendUrl}/api/data/weekly-room-templates/${id}/`, authHeaders);
-        await loadTemplates();
-    };
-
-    const copyDay = async (fromWeekday, toWeekday) => {
-        if (fromWeekday === toWeekday) return;
-        const source = templates.filter((item) => Number(item.weekday) === Number(fromWeekday));
-        if (!source.length) return;
-        setSaving(true);
-        setError("");
-        try {
-            await Promise.all(source.map((item) => axios.post(`${backendUrl}/api/data/weekly-room-templates/`, {
+            await Promise.all(draftBlocks.map((item) => axios.post(`${backendUrl}/api/data/weekly-room-templates/`, {
                 site: item.site,
                 studio: item.studio,
                 room: item.room,
                 staff_member: item.staff_member || null,
                 name: item.name,
-                weekday: toWeekday,
+                weekday: item.weekday,
                 start_time: shortTime(item.start_time),
                 end_time: shortTime(item.end_time),
                 capacity: item.capacity,
-                active_from: item.active_from,
-                active_until: item.active_until || null,
+                active_from: activeFrom,
+                active_until: activeUntil || null,
                 active: true,
             }, authHeaders)));
+            setDraftBlocks([]);
             await loadTemplates();
         } catch (err) {
-            setError(JSON.stringify(err.response?.data || "Error copying day."));
+            setError(JSON.stringify(err.response?.data || "Error saving schedule."));
         } finally {
             setSaving(false);
         }
     };
 
-    const templatesByDayHour = useMemo(() => {
+    const copyDayToDraft = (fromWeekday, toWeekday) => {
+        if (fromWeekday === toWeekday) return;
+        const source = [...templates, ...draftBlocks].filter((item) => Number(item.weekday) === Number(fromWeekday));
+        const nextDrafts = [];
+        const existingKeys = new Set([...templates, ...draftBlocks].map(slotKey));
+        source.forEach((item) => {
+            const key = `${toWeekday}-${shortTime(item.start_time)}`;
+            if (existingKeys.has(key)) return;
+            nextDrafts.push({
+                ...item,
+                id: undefined,
+                draft_id: `copy-${toWeekday}-${item.start_time}-${Date.now()}-${nextDrafts.length}`,
+                weekday: toWeekday,
+                staff_label: item.staff_member_name || item.staff_label || "",
+            });
+            existingKeys.add(key);
+        });
+        if (!nextDrafts.length) {
+            setError("No blocks copied because the destination already has those start times.");
+            return;
+        }
+        setError("");
+        setDraftBlocks((current) => [...current, ...nextDrafts]);
+    };
+
+    const blocksBySlot = useMemo(() => {
         const grouped = {};
-        templates.forEach((item) => {
-            const hour = Number(shortTime(item.start_time).split(":")[0]);
-            const key = `${item.weekday}-${hour}`;
+        [...templates, ...draftBlocks].forEach((item) => {
+            const key = `${item.weekday}-${shortTime(item.start_time)}`;
             grouped[key] = [...(grouped[key] || []), item];
         });
         return grouped;
-    }, [templates]);
+    }, [templates, draftBlocks]);
 
     return (
         <MainPage>
@@ -236,6 +282,11 @@ export default function WeeklyTemplateBuilder() {
 
                 <div style={{ display: "grid", gap: "16px" }}>
                     {error && <Alert severity="error">{error}</Alert>}
+                    {draftBlocks.length > 0 && (
+                        <Alert severity="info">
+                            {draftBlocks.length} draft blocks ready. They are not saved until you click Save Schedule.
+                        </Alert>
+                    )}
 
                     <Paper style={{ padding: "18px", display: "grid", gap: "14px" }}>
                         <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
@@ -272,6 +323,12 @@ export default function WeeklyTemplateBuilder() {
                         </div>
 
                         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                            <Button variant="contained" onClick={saveDraftBlocks} disabled={saving || draftBlocks.length === 0}>
+                                {saving ? "Saving..." : `Save Schedule (${draftBlocks.length})`}
+                            </Button>
+                            <Button variant="outlined" color="error" onClick={() => setDraftBlocks([])} disabled={!draftBlocks.length}>
+                                Clear Draft
+                            </Button>
                             <Link href="/schedule">
                                 <Button variant="outlined">Back To Schedule</Button>
                             </Link>
@@ -282,7 +339,7 @@ export default function WeeklyTemplateBuilder() {
                     </Paper>
 
                     <Paper style={{ padding: "12px", overflowX: "auto" }}>
-                        <div style={{ minWidth: "1050px", display: "grid", gridTemplateColumns: "74px repeat(7, minmax(130px, 1fr))", gap: "8px" }}>
+                        <div style={{ minWidth: "1120px", display: "grid", gridTemplateColumns: "74px repeat(7, minmax(140px, 1fr))", gap: "8px" }}>
                             <div />
                             {DAY_LABELS.map((label, weekday) => (
                                 <div key={label} style={{ display: "grid", gap: "8px" }}>
@@ -292,7 +349,7 @@ export default function WeeklyTemplateBuilder() {
                                         size="small"
                                         label="Copy from"
                                         value=""
-                                        onChange={(event) => copyDay(Number(event.target.value), weekday)}
+                                        onChange={(event) => copyDayToDraft(Number(event.target.value), weekday)}
                                     >
                                         {DAY_LABELS.map((option, index) => (
                                             <MenuItem key={option} value={index} disabled={index === weekday}>{option}</MenuItem>
@@ -301,17 +358,17 @@ export default function WeeklyTemplateBuilder() {
                                 </div>
                             ))}
 
-                            {Array.from({ length: END_HOUR - START_HOUR }, (_, index) => START_HOUR + index).map((hour) => (
-                                <Fragment key={`row-${hour}`}>
-                                    <div style={{ fontWeight: 700, paddingTop: "12px" }}>{timeFromHour(hour)}</div>
+                            {rowTimes.map((time) => (
+                                <Fragment key={`row-${time}`}>
+                                    <div style={{ fontWeight: 700, paddingTop: "12px" }}>{time}</div>
                                     {DAY_LABELS.map((_, weekday) => {
-                                        const key = `${weekday}-${hour}`;
-                                        const cellTemplates = templatesByDayHour[key] || [];
+                                        const key = `${weekday}-${time}`;
+                                        const cellBlocks = blocksBySlot[key] || [];
                                         return (
                                             <div
-                                                key={`${weekday}-${hour}`}
+                                                key={`${weekday}-${time}`}
                                                 style={{
-                                                    minHeight: "118px",
+                                                    minHeight: "112px",
                                                     border: "1px solid #dde2e6",
                                                     borderRadius: "8px",
                                                     padding: "8px",
@@ -321,14 +378,19 @@ export default function WeeklyTemplateBuilder() {
                                                     background: "#fbfcfd",
                                                 }}
                                             >
-                                                {cellTemplates.map((item) => (
-                                                    <TemplateBlock key={item.id} item={item} onDelete={deleteTemplate} />
+                                                {cellBlocks.map((item) => (
+                                                    <TemplateBlock
+                                                        key={item.id || item.draft_id}
+                                                        item={item}
+                                                        draft={!item.id}
+                                                        onDelete={item.id ? deleteTemplate : removeDraftBlock}
+                                                    />
                                                 ))}
                                                 <Button
                                                     size="small"
                                                     variant="outlined"
-                                                    disabled={saving || !site || !studio || !room}
-                                                    onClick={() => createTemplate(weekday, timeFromHour(hour))}
+                                                    disabled={saving || !site || !studio || !room || cellBlocks.length > 0}
+                                                    onClick={() => addDraftBlock(weekday, time)}
                                                 >
                                                     Add
                                                 </Button>
