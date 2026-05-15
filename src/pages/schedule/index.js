@@ -25,6 +25,15 @@ const statusColors = {
     unavailable: { background: "#e8edf7", border: "#7f96c8", color: "#2b477f" },
 };
 
+const expectedColors = {
+    matched: { background: "#e7f3ec", border: "#72a987", color: "#24533a" },
+    missing: { background: "#fde8e8", border: "#df6b6b", color: "#7d1f1f" },
+    cancelled: { background: "#f0f1f3", border: "#b6bcc4", color: "#4e5965" },
+    unavailable: { background: "#e8edf7", border: "#7f96c8", color: "#2b477f" },
+    manually_created: { background: "#eaf4ff", border: "#5b93d3", color: "#1f4d7d" },
+    ignored: { background: "#f7f7f7", border: "#cccccc", color: "#555555" },
+};
+
 
 const formatDate = (date) => {
     const year = date.getFullYear();
@@ -119,6 +128,35 @@ const ClassCard = ({ item }) => {
     );
 };
 
+const ExpectedSlotCard = ({ item }) => {
+    const colors = expectedColors[item.status] || expectedColors.missing;
+    return (
+        <div
+            style={{
+                border: `1px dashed ${colors.border}`,
+                borderLeft: `5px solid ${colors.border}`,
+                background: colors.background,
+                color: colors.color,
+                borderRadius: "8px",
+                padding: "10px",
+                display: "grid",
+                gap: "6px",
+            }}
+        >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "baseline" }}>
+                <strong>{shortTime(item.start_time)}-{shortTime(item.end_time)}</strong>
+                <span style={{ fontSize: "12px", textTransform: "capitalize" }}>{item.status?.replaceAll("_", " ")}</span>
+            </div>
+            <div style={{ fontWeight: 700 }}>{item.name}</div>
+            <div style={{ fontSize: "13px" }}>{item.room_name} · {item.staff_member_name || "No expected instructor"}</div>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                <Chip size="small" label={`Cap. ${item.capacity || 0}`} />
+                {item.scheduled_class_name && <Chip size="small" label="Detected" />}
+            </div>
+        </div>
+    );
+};
+
 
 export default function SchedulePage() {
     const token = useFetchToken();
@@ -126,13 +164,18 @@ export default function SchedulePage() {
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
+    const [rooms, setRooms] = useState([]);
     const [site, setSite] = useState("");
     const [studio, setStudio] = useState("");
+    const [room, setRoom] = useState("");
     const [weekStart, setWeekStart] = useState(formatDate(startOfWeek(new Date())));
     const [classes, setClasses] = useState([]);
+    const [expectedSlots, setExpectedSlots] = useState([]);
     const [loading, setLoading] = useState(false);
     const [matching, setMatching] = useState(false);
+    const [generating, setGenerating] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
+    const [generateResult, setGenerateResult] = useState(null);
     const [error, setError] = useState("");
 
     const authHeaders = useMemo(() => ({
@@ -154,12 +197,14 @@ export default function SchedulePage() {
     useEffect(() => {
         const loadLookups = async () => {
             if (!token) return;
-            const [siteRows, studioRows] = await Promise.all([
+            const [siteRows, studioRows, roomRows] = await Promise.all([
                 fetchAll(`${backendUrl}/api/data/sites/`, authHeaders),
                 fetchAll(`${backendUrl}/api/data/studios/`, authHeaders),
+                fetchAll(`${backendUrl}/api/data/rooms/`, authHeaders),
             ]);
             setSites(siteRows);
             setStudios(studioRows);
+            setRooms(roomRows);
             if (!site && siteRows.length) setSite(siteRows[0].id);
         };
 
@@ -177,9 +222,21 @@ export default function SchedulePage() {
                 date_to: weekDays[6].value,
             };
             if (studio) params.studio = studio;
+            if (room) params.room = room;
             const rows = await fetchAll(`${backendUrl}/api/data/scheduled-classes/`, authHeaders, params);
             rows.sort((a, b) => `${a.class_date} ${a.start_time}`.localeCompare(`${b.class_date} ${b.start_time}`));
             setClasses(rows);
+
+            const expectedParams = {
+                site,
+                date_from: weekStart,
+                date_to: weekDays[6].value,
+            };
+            if (studio) expectedParams.studio = studio;
+            if (room) expectedParams.room = room;
+            const expectedRows = await fetchAll(`${backendUrl}/api/data/expected-class-slots/`, authHeaders, expectedParams);
+            expectedRows.sort((a, b) => `${a.slot_date} ${a.start_time}`.localeCompare(`${b.slot_date} ${b.start_time}`));
+            setExpectedSlots(expectedRows);
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading schedule.");
         } finally {
@@ -189,7 +246,34 @@ export default function SchedulePage() {
 
     useEffect(() => {
         loadClasses();
-    }, [token, site, studio, weekStart]);
+    }, [token, site, studio, room, weekStart]);
+
+    const handleGenerateExpectedSlots = async () => {
+        if (!site) return;
+        setGenerating(true);
+        setError("");
+        setGenerateResult(null);
+        try {
+            const payload = {
+                site,
+                date_from: weekStart,
+                date_to: weekDays[6].value,
+            };
+            if (studio) payload.studio = studio;
+            if (room) payload.room = room;
+            const response = await axios.post(
+                `${backendUrl}/api/data/expected-class-slots/generate/`,
+                payload,
+                authHeaders,
+            );
+            setGenerateResult(response.data);
+            await loadClasses();
+        } catch (err) {
+            setError(err.response?.data?.error || "Error generating expected slots.");
+        } finally {
+            setGenerating(false);
+        }
+    };
 
     const handleRebuildMatches = async () => {
         if (!site) return;
@@ -216,10 +300,20 @@ export default function SchedulePage() {
     };
 
     const filteredStudios = studios.filter((item) => !site || String(item.site) === String(site));
+    const filteredRooms = rooms.filter((item) => {
+        if (site && String(item.site) !== String(site)) return false;
+        if (studio && String(item.studio) !== String(studio)) return false;
+        return true;
+    });
     const classesByDate = weekDays.reduce((acc, day) => {
         acc[day.value] = classes.filter((item) => item.class_date === day.value);
         return acc;
     }, {});
+    const expectedByDate = weekDays.reduce((acc, day) => {
+        acc[day.value] = expectedSlots.filter((item) => item.slot_date === day.value);
+        return acc;
+    }, {});
+    const expectedScheduledClassIds = new Set(expectedSlots.map((item) => item.scheduled_class).filter(Boolean));
     const summary = classes.reduce((acc, item) => {
         acc.total += 1;
         acc.capacity += Number(item.capacity || 0);
@@ -228,6 +322,13 @@ export default function SchedulePage() {
         acc.conflicts += item.status === "conflict" ? 1 : 0;
         return acc;
     }, { total: 0, capacity: 0, attended: 0, needsReview: 0, conflicts: 0 });
+    const expectedSummary = expectedSlots.reduce((acc, item) => {
+        acc.total += 1;
+        acc.matched += item.status === "matched" ? 1 : 0;
+        acc.missing += item.status === "missing" ? 1 : 0;
+        return acc;
+    }, { total: 0, matched: 0, missing: 0 });
+    const unexpectedCount = classes.filter((item) => !expectedScheduledClassIds.has(item.id)).length;
 
     const moveWeek = (days) => setWeekStart(formatDate(addDays(parseDate(weekStart), days)));
 
@@ -249,14 +350,24 @@ export default function SchedulePage() {
                             <TextField select label="Site" value={site} onChange={(event) => {
                                 setSite(event.target.value);
                                 setStudio("");
+                                setRoom("");
                             }}>
                                 {sites.map((item) => (
                                     <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
                                 ))}
                             </TextField>
-                            <TextField select label="Studio" value={studio} onChange={(event) => setStudio(event.target.value)}>
+                            <TextField select label="Studio" value={studio} onChange={(event) => {
+                                setStudio(event.target.value);
+                                setRoom("");
+                            }}>
                                 <MenuItem value="">All studios</MenuItem>
                                 {filteredStudios.map((item) => (
+                                    <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField select label="Room" value={room} onChange={(event) => setRoom(event.target.value)}>
+                                <MenuItem value="">All rooms</MenuItem>
+                                {filteredRooms.map((item) => (
                                     <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
                                 ))}
                             </TextField>
@@ -275,6 +386,12 @@ export default function SchedulePage() {
                             <Link href="/data/scheduled-classes">
                                 <Button variant="text">Manage Scheduled Classes</Button>
                             </Link>
+                            <Link href="/data/weekly-room-templates">
+                                <Button variant="text">Manage Templates</Button>
+                            </Link>
+                            <Button variant="outlined" onClick={handleGenerateExpectedSlots} disabled={generating || !site}>
+                                {generating ? "Generating..." : "Generate Expected Slots"}
+                            </Button>
                             <Button variant="contained" onClick={handleRebuildMatches} disabled={matching || !site}>
                                 {matching ? "Matching..." : "Rebuild Attendance Matches"}
                             </Button>
@@ -287,12 +404,21 @@ export default function SchedulePage() {
                         </Alert>
                     )}
 
+                    {generateResult && (
+                        <Alert severity="success">
+                            Expected slots generated: {generateResult.created} created, {generateResult.updated} updated, {generateResult.matched} matched, {generateResult.missing} missing.
+                        </Alert>
+                    )}
+
                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
                         <SummaryCard label="Classes" value={summary.total} />
                         <SummaryCard label="Capacity" value={summary.capacity} />
                         <SummaryCard label="Attended" value={summary.attended} />
                         <SummaryCard label="Needs Review" value={summary.needsReview} />
                         <SummaryCard label="Conflicts" value={summary.conflicts} />
+                        <SummaryCard label="Expected Slots" value={expectedSummary.total} />
+                        <SummaryCard label="Missing Expected" value={expectedSummary.missing} />
+                        <SummaryCard label="Unexpected Detected" value={unexpectedCount} />
                     </div>
 
                     {loading && <Alert severity="info">Loading schedule...</Alert>}
@@ -310,10 +436,13 @@ export default function SchedulePage() {
                                     <span style={{ color: "#666", fontSize: "13px" }}>{day.value}</span>
                                 </div>
                                 <div style={{ display: "grid", gap: "10px" }}>
-                                    {(classesByDate[day.value] || []).map((item) => (
-                                        <ClassCard key={item.id} item={item} />
+                                    {(expectedByDate[day.value] || []).map((item) => (
+                                        <ExpectedSlotCard key={`expected-${item.id}`} item={item} />
                                     ))}
-                                    {!classesByDate[day.value]?.length && (
+                                    {(classesByDate[day.value] || []).map((item) => (
+                                        expectedScheduledClassIds.has(item.id) ? null : <ClassCard key={`detected-${item.id}`} item={item} />
+                                    ))}
+                                    {!classesByDate[day.value]?.length && !expectedByDate[day.value]?.length && (
                                         <div style={{ color: "#777", fontSize: "14px" }}>No classes</div>
                                     )}
                                 </div>
