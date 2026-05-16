@@ -27,8 +27,8 @@ export default function Manual() {
                     <Section title="1. Objetivo del sistema">
                         <p>
                             Beness Analytics convierte reportes exportados desde MindBody en una base de datos propia para
-                            analizar asistencia, ingresos, servicios vendidos, clientes, instructores, estudios y, en una
-                            fase posterior, ocupacion real de salas.
+                            analizar asistencia, ingresos, servicios vendidos, clientes, instructores, estudios, horarios
+                            programados y ocupacion real de salas.
                         </p>
                         <p>
                             La regla principal es que los KPIs solo deben calcularse sobre datos importados y revisables.
@@ -41,6 +41,7 @@ export default function Manual() {
                         <p><strong>Attendance with Revenue:</strong> visitas por cliente, fecha, hora, instructor, estudio, servicio usado, metodo de pago, no-show, late cancel e ingreso por visita.</p>
                         <p><strong>Sales:</strong> lineas de venta, producto vendido, cliente, fecha, ubicacion, cantidad, descuento, impuesto, total y forma de pago.</p>
                         <p><strong>SalesByService:</strong> servicios o membresias vendidos, fecha de venta, activacion, expiracion, monto, cantidad y cliente. Es la fuente principal para reactivacion y retencion.</p>
+                        <p><strong>Trainer Availability:</strong> agenda exportada desde MindBody con personal, estudio, sala, fecha y horario. Es la fuente principal para crear clases detectadas, incluyendo instructor y capacidad de la sala.</p>
                     </Section>
 
                     <Section title="3. Reglas de importacion">
@@ -103,24 +104,45 @@ export default function Manual() {
 
                     <Section title="7. KPIs de ocupacion">
                         <p>
-                            La ocupacion real usa datos internos de capacidad. La formula es:
+                            La ocupacion real combina tres piezas: clases detectadas desde MindBody, plantillas esperadas
+                            creadas por Beness y asistencias emparejadas con esas clases. La formula es:
                             <strong> ocupacion = asistencias reales / capacidad programada</strong>.
                         </p>
                         <p>
-                            La capacidad programada viene de <strong>Scheduled Classes</strong>. Cada clase tiene fecha,
-                            hora, sala, tipo de sesion, capacidad y estado. Si una clase esta cancelada o marcada como
-                            unavailable, no suma capacidad disponible.
+                            La capacidad programada que usa el dashboard viene de <strong>Scheduled Classes</strong>.
+                            Cada clase tiene fecha, hora, estudio, sala, instructor, capacidad, fuente y estado. Si una
+                            clase esta cancelada o marcada como unavailable, no suma capacidad disponible.
                         </p>
                         <p>
-                            Las salas se crean en <strong>Rooms</strong> con cupos para grupo y privado. Las vacaciones,
-                            festivos, cierres parciales o bloqueos de sala se crean en <strong>Closures</strong>. Un cierre
-                            activo elimina de la capacidad las clases afectadas por fecha, estudio, sala y horario.
+                            Las salas se crean en <strong>Rooms</strong> con cupos para grupo y privado. Cuando se importa
+                            Trainer Availability y aparece una sala nueva o una sala sin capacidad, el sistema pide la
+                            capacidad antes de crear clases. Si una sala cambia de capacidad en el futuro, ese nuevo valor
+                            aplica a clases nuevas; las clases antiguas conservan la capacidad con la que fueron creadas.
                         </p>
                         <p>
-                            Actualmente las asistencias se emparejan con la programacion por site, estudio, fecha y hora.
-                            Si dos salas del mismo estudio funcionan exactamente a la misma hora, el porcentaje es mas
-                            confiable a nivel estudio/franja horaria que a nivel sala, porque el reporte de asistencia no
-                            trae la sala exacta de cada visita.
+                            Las <strong>Weekly Room Templates</strong> representan el horario esperado de una sala: dia
+                            de semana, hora de inicio, hora fin, capacidad, instructor opcional y rango de fechas activo.
+                            Al generar <strong>Expected Slots</strong>, el sistema crea la lista real de clases que
+                            deberian existir en cada fecha. Esos slots sirven para detectar huecos: clases esperadas que
+                            MindBody no trae porque fueron borradas, canceladas o no tuvieron asistencia.
+                        </p>
+                        <p>
+                            Un expected slot puede quedar en varios estados. <strong>Matched</strong> significa que encontro
+                            una clase detectada compatible. <strong>Missing</strong> significa que el horario esperado no
+                            aparece en MindBody. Desde la pantalla de Schedule se puede crear una clase manual, cancelarla,
+                            marcarla unavailable o ignorarla. Las clases creadas manualmente cuentan para ocupacion si
+                            quedan como programadas; canceladas e unavailable no cuentan como capacidad disponible.
+                        </p>
+                        <p>
+                            Las asistencias se emparejan con la programacion por site, estudio, fecha, hora y, cuando es
+                            posible, instructor. Las asistencias reales excluyen no-show y late cancel. No-show y late
+                            cancel se muestran aparte para control operativo, pero no llenan cupos de ocupacion.
+                        </p>
+                        <p>
+                            Si una tarjeta muestra <strong>Cap.</strong> y <strong>Detected cap.</strong>, Cap. es la
+                            capacidad esperada de la plantilla y Detected cap. es la capacidad de la clase detectada. El
+                            dashboard usa la capacidad de la clase programada. Una diferencia entre ambas debe revisarse,
+                            normalmente corrigiendo la plantilla y regenerando expected slots.
                         </p>
                     </Section>
 
@@ -153,9 +175,10 @@ export default function Manual() {
 
                     <Section title="9. Limitaciones actuales">
                         <p>
-                            La ocupacion aun no es calculable hasta cargar capacidad y horarios. La rentabilidad por instructor
-                            no incluye costos ni nomina. Los reportes de MindBody pueden cambiar estados pasados, por lo que
-                            la reimportacion y versionado son parte del control de calidad.
+                            La rentabilidad por instructor no incluye costos ni nomina. La ocupacion por sala depende de
+                            que el horario esperado, las capacidades y el emparejamiento de asistencia esten revisados.
+                            Los reportes de MindBody pueden cambiar estados pasados, por lo que la reimportacion, el
+                            rebuild de matches y el versionado son parte del control de calidad.
                         </p>
                     </Section>
                 </div>

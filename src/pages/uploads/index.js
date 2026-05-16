@@ -25,6 +25,7 @@ const reportTypes = [
     { value: "attendance_with_revenue", label: "Attendance with Revenue" },
     { value: "sales", label: "Sales" },
     { value: "sales_by_service", label: "Sales by Service" },
+    { value: "trainer_availability", label: "Trainer Availability" },
 ];
 
 
@@ -92,6 +93,17 @@ const formatValue = (value) => {
 };
 
 
+const formatSampleList = (items) => {
+    if (!items?.length) return "None";
+    return items.map((item) => {
+        if (typeof item === "object" && item !== null) {
+            return Object.entries(item).map(([key, value]) => `${key}: ${value}`).join(" / ");
+        }
+        return item;
+    }).join(", ");
+};
+
+
 const importMetricLabels = {
     raw_rows_created: "Raw Rows Saved",
     attendance_created: "Attendance Created",
@@ -103,9 +115,17 @@ const importMetricLabels = {
     service_purchases_created: "Service Purchases Created",
     service_purchases_changed: "Service Purchases Changed",
     service_purchases_identical: "Service Purchases Identical",
+    scheduled_classes_created: "Scheduled Classes Created",
+    scheduled_classes_changed: "Scheduled Classes Changed",
+    scheduled_classes_identical: "Scheduled Classes Identical",
+    scheduled_classes_needing_review: "Classes Needing Review",
+    scheduled_classes_conflict: "Classes With Conflict",
     natural_key_collisions: "Natural Key Collisions",
     versions_created: "Versions Created",
 };
+
+
+const roomCapacityKey = (row) => row.room_key || `${row.studio}::${row.room}`;
 
 
 export default function Uploads() {
@@ -118,10 +138,12 @@ export default function Uploads() {
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState(null);
     const [importResult, setImportResult] = useState(null);
+    const [scheduleAutomation, setScheduleAutomation] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
     const [resetting, setResetting] = useState(false);
+    const [roomCapacities, setRoomCapacities] = useState({});
 
     const authHeaders = useMemo(() => ({
         headers: { Authorization: `Token ${token}` },
@@ -151,6 +173,8 @@ export default function Uploads() {
         setError("");
         setPreview(null);
         setImportResult(null);
+        setScheduleAutomation(null);
+        setRoomCapacities({});
 
         const formData = new FormData();
         formData.append("site", site);
@@ -183,11 +207,22 @@ export default function Uploads() {
         setImporting(true);
         setError("");
         setImportResult(null);
+        setScheduleAutomation(null);
 
         const formData = new FormData();
         formData.append("site", site);
         formData.append("report_type", reportType);
         formData.append("file", file);
+        if (reportType === "trainer_availability") {
+            formData.append("room_capacities", JSON.stringify(
+                (preview.capacity_requirements || []).map((row) => ({
+                    studio: row.studio,
+                    room: row.room,
+                    group_capacity: Number(roomCapacities[roomCapacityKey(row)] || 0),
+                    private_capacity: 0,
+                }))
+            ));
+        }
 
         try {
             const response = await axios.post(`${backendUrl}/api/data/report-imports/import-file/`, formData, {
@@ -197,7 +232,10 @@ export default function Uploads() {
                 },
             });
             setImportResult(response.data.import);
-            setPreview(response.data.preview);
+            setScheduleAutomation(response.data.schedule_automation || null);
+            setPreview(null);
+            setFile(null);
+            setRoomCapacities({});
         } catch (err) {
             setError(err.response?.data?.error || "Error importing report.");
         } finally {
@@ -214,6 +252,7 @@ export default function Uploads() {
         setResetting(true);
         setError("");
         setImportResult(null);
+        setScheduleAutomation(null);
 
         try {
             const response = await axios.post(
@@ -238,6 +277,28 @@ export default function Uploads() {
             ...value,
         }))
         : [];
+    const capacityRequirements = preview?.capacity_requirements || [];
+    const missingCapacityCount = reportType === "trainer_availability"
+        ? capacityRequirements.filter((row) => Number(roomCapacities[roomCapacityKey(row)] || 0) <= 0).length
+        : 0;
+    const canImport = Boolean(preview)
+        && preview.is_valid_schema
+        && !importing
+        && (preview.row_counts.invalid_rows === 0 || reportType === "trainer_availability")
+        && missingCapacityCount === 0;
+
+    useEffect(() => {
+        if (!preview?.capacity_requirements) {
+            setRoomCapacities({});
+            return;
+        }
+        const nextCapacities = {};
+        preview.capacity_requirements.forEach((row) => {
+            const key = roomCapacityKey(row);
+            nextCapacities[key] = row.current_capacity > 0 ? String(row.current_capacity) : "";
+        });
+        setRoomCapacities(nextCapacities);
+    }, [preview]);
 
     return (
         <MainPage>
@@ -287,7 +348,7 @@ export default function Uploads() {
                                 <input
                                     hidden
                                     type="file"
-                                    accept=".xlsx"
+                                    accept=".xlsx,.xls"
                                     onChange={(event) => setFile(event.target.files?.[0] || null)}
                                 />
                             </Button>
@@ -299,7 +360,7 @@ export default function Uploads() {
                                 variant="contained"
                                 color="success"
                                 onClick={handleImport}
-                                disabled={importing || !preview || !preview.is_valid_schema || preview.row_counts.invalid_rows > 0}
+                                disabled={!canImport}
                             >
                                 {importing ? "Importing..." : "Confirm Import"}
                             </Button>
@@ -333,15 +394,15 @@ export default function Uploads() {
 
                             {preview.data_quality?.requires_review && (
                                 <Alert severity="warning">
-                                    This report has attendance collisions. Review the samples before trusting the import for KPIs.
+                                    This report has items that require review. Check the samples before trusting the import for KPIs.
                                 </Alert>
                             )}
 
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
-                                <SummaryBox label="Data Rows" value={preview.row_counts.data_rows} />
+                                <SummaryBox label="Data Rows" value={preview.row_counts.data_rows ?? preview.row_counts.class_rows} />
                                 <SummaryBox label="Valid Rows" value={preview.row_counts.valid_rows} />
                                 <SummaryBox label="Invalid Rows" value={preview.row_counts.invalid_rows} />
-                                <SummaryBox label="Repeated Rows" value={preview.row_counts.duplicate_extra_rows} />
+                                <SummaryBox label="Repeated Rows" value={preview.row_counts.duplicate_extra_rows ?? preview.data_quality?.exact_duplicate_groups ?? 0} />
                                 <SummaryBox label="Revenue" value={formatValue(preview.revenue?.total)} />
                                 <SummaryBox label="Date From" value={formatValue(preview.date_range?.from)} />
                                 <SummaryBox label="Date To" value={formatValue(preview.date_range?.to)} />
@@ -392,6 +453,70 @@ export default function Uploads() {
                                 </Paper>
                             )}
 
+                            {preview.schedule && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Schedule</h2>
+                                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                                        <SummaryBox label="Classes" value={preview.schedule.class_count} />
+                                        <SummaryBox label="Valid Classes" value={preview.schedule.valid_class_count} />
+                                        <SummaryBox label="Needs Review" value={preview.schedule.needs_review_count} />
+                                        <SummaryBox label="Studios" value={preview.schedule.studios?.length} />
+                                        <SummaryBox label="Rooms" value={preview.schedule.rooms?.length} />
+                                        <SummaryBox label="Staff" value={preview.schedule.staff_members?.length} />
+                                    </div>
+                                </Paper>
+                            )}
+
+                            {capacityRequirements.length > 0 && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Room Capacities Required</h2>
+                                    {missingCapacityCount > 0 && (
+                                        <Alert severity="warning" style={{ marginBottom: "14px" }}>
+                                            Add a positive group capacity for every room before importing this schedule.
+                                        </Alert>
+                                    )}
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>Studio</TableCell>
+                                                    <TableCell>Room</TableCell>
+                                                    <TableCell>Status</TableCell>
+                                                    <TableCell style={{ width: "180px" }}>Group Capacity</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {capacityRequirements.map((row) => {
+                                                    const key = roomCapacityKey(row);
+                                                    return (
+                                                        <TableRow key={key}>
+                                                            <TableCell>{row.studio}</TableCell>
+                                                            <TableCell>{row.room}</TableCell>
+                                                            <TableCell>{row.is_new ? "New room" : "Capacity missing"}</TableCell>
+                                                            <TableCell>
+                                                                <TextField
+                                                                    size="small"
+                                                                    type="number"
+                                                                    value={roomCapacities[key] ?? ""}
+                                                                    onChange={(event) => {
+                                                                        setRoomCapacities((current) => ({
+                                                                            ...current,
+                                                                            [key]: event.target.value,
+                                                                        }));
+                                                                    }}
+                                                                    inputProps={{ min: 1 }}
+                                                                    error={Number(roomCapacities[key] || 0) <= 0}
+                                                                />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
+                            )}
+
                             <Paper style={{ padding: "18px" }}>
                                 <h2 style={{ marginTop: 0 }}>Lookup Records</h2>
                                 <TableContainer>
@@ -410,7 +535,7 @@ export default function Uploads() {
                                                     <TableCell style={{ textTransform: "capitalize" }}>{row.label}</TableCell>
                                                     <TableCell>{row.total}</TableCell>
                                                     <TableCell>{row.new}</TableCell>
-                                                    <TableCell>{row.sample_new.join(", ") || "None"}</TableCell>
+                                                    <TableCell>{formatSampleList(row.sample_new)}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -424,9 +549,72 @@ export default function Uploads() {
                             />
 
                             <SampleTable
-                                title="Attendance Collision Samples"
+                                title="Natural Key Collision Samples"
                                 samples={preview.data_quality?.natural_key_collision_samples}
                             />
+
+                            <SampleTable
+                                title="Exact Duplicate Class Samples"
+                                samples={preview.data_quality?.exact_duplicate_samples}
+                            />
+
+                            {preview.data_quality?.same_room_time_different_staff?.length > 0 && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Room-Time Conflicts</h2>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>Date</TableCell>
+                                                    <TableCell>Time</TableCell>
+                                                    <TableCell>Studio</TableCell>
+                                                    <TableCell>Room</TableCell>
+                                                    <TableCell>Staff</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {preview.data_quality.same_room_time_different_staff.map((row, index) => (
+                                                    <TableRow key={`room-conflict-${index}`}>
+                                                        <TableCell>{row.date}</TableCell>
+                                                        <TableCell>{row.start_time} - {row.end_time}</TableCell>
+                                                        <TableCell>{row.studio}</TableCell>
+                                                        <TableCell>{row.room}</TableCell>
+                                                        <TableCell>{row.staff_members.join(", ")}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
+                            )}
+
+                            {preview.data_quality?.same_staff_time_multiple_rooms?.length > 0 && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Staff-Time Conflicts</h2>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>Date</TableCell>
+                                                    <TableCell>Time</TableCell>
+                                                    <TableCell>Staff</TableCell>
+                                                    <TableCell>Rooms</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {preview.data_quality.same_staff_time_multiple_rooms.map((row, index) => (
+                                                    <TableRow key={`staff-conflict-${index}`}>
+                                                        <TableCell>{row.date}</TableCell>
+                                                        <TableCell>{row.start_time} - {row.end_time}</TableCell>
+                                                        <TableCell>{row.staff}</TableCell>
+                                                        <TableCell>{row.rooms.join(", ")}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
+                            )}
 
                             {preview.invalid_row_samples.length > 0 && (
                                 <Paper style={{ padding: "18px" }}>
@@ -480,6 +668,35 @@ export default function Uploads() {
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
+                                </Paper>
+                            )}
+
+                            {scheduleAutomation && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Schedule Automation</h2>
+                                    {scheduleAutomation.error ? (
+                                        <Alert severity="warning">{scheduleAutomation.error}</Alert>
+                                    ) : scheduleAutomation.skipped ? (
+                                        <Alert severity="info">{scheduleAutomation.reason || "Schedule automation skipped."}</Alert>
+                                    ) : (
+                                        <>
+                                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+                                                <SummaryBox label="Date From" value={scheduleAutomation.date_range?.from} />
+                                                <SummaryBox label="Date To" value={scheduleAutomation.date_range?.to} />
+                                                <SummaryBox label="Expected Created" value={scheduleAutomation.expected_slots?.created || 0} />
+                                                <SummaryBox label="Expected Updated" value={scheduleAutomation.expected_slots?.updated || 0} />
+                                                <SummaryBox label="Expected Matched" value={scheduleAutomation.expected_slots?.matched || 0} />
+                                                <SummaryBox label="Expected Missing" value={scheduleAutomation.expected_slots?.missing || 0} />
+                                                <SummaryBox label="Manual Classes Created" value={scheduleAutomation.manual_classes?.manual_classes_created || 0} />
+                                                <SummaryBox label="Attendance Matches" value={scheduleAutomation.attendance_matches?.matches_created || 0} />
+                                                <SummaryBox label="Attendance Updated" value={scheduleAutomation.attendance_matches?.matches_updated || 0} />
+                                                <SummaryBox label="Unmatched Attendance" value={scheduleAutomation.attendance_matches?.unmatched || 0} />
+                                            </div>
+                                            <Alert severity="info" style={{ marginTop: "16px" }}>
+                                                Expected slots, missing scheduled classes, and attendance matches were rebuilt automatically for this report range.
+                                            </Alert>
+                                        </>
+                                    )}
                                 </Paper>
                             )}
                         </>
