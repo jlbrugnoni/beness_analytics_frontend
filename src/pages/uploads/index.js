@@ -233,7 +233,9 @@ export default function Uploads() {
             });
             setImportResult(response.data.import);
             setScheduleAutomation(response.data.schedule_automation || null);
-            setPreview(response.data.preview);
+            setPreview(null);
+            setFile(null);
+            setRoomCapacities({});
         } catch (err) {
             setError(err.response?.data?.error || "Error importing report.");
         } finally {
