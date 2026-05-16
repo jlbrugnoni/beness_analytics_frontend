@@ -138,6 +138,7 @@ export default function Uploads() {
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState(null);
     const [importResult, setImportResult] = useState(null);
+    const [scheduleAutomation, setScheduleAutomation] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
@@ -172,6 +173,7 @@ export default function Uploads() {
         setError("");
         setPreview(null);
         setImportResult(null);
+        setScheduleAutomation(null);
         setRoomCapacities({});
 
         const formData = new FormData();
@@ -205,6 +207,7 @@ export default function Uploads() {
         setImporting(true);
         setError("");
         setImportResult(null);
+        setScheduleAutomation(null);
 
         const formData = new FormData();
         formData.append("site", site);
@@ -229,6 +232,7 @@ export default function Uploads() {
                 },
             });
             setImportResult(response.data.import);
+            setScheduleAutomation(response.data.schedule_automation || null);
             setPreview(response.data.preview);
         } catch (err) {
             setError(err.response?.data?.error || "Error importing report.");
@@ -246,6 +250,7 @@ export default function Uploads() {
         setResetting(true);
         setError("");
         setImportResult(null);
+        setScheduleAutomation(null);
 
         try {
             const response = await axios.post(
@@ -661,6 +666,35 @@ export default function Uploads() {
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
+                                </Paper>
+                            )}
+
+                            {scheduleAutomation && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Schedule Automation</h2>
+                                    {scheduleAutomation.error ? (
+                                        <Alert severity="warning">{scheduleAutomation.error}</Alert>
+                                    ) : scheduleAutomation.skipped ? (
+                                        <Alert severity="info">{scheduleAutomation.reason || "Schedule automation skipped."}</Alert>
+                                    ) : (
+                                        <>
+                                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+                                                <SummaryBox label="Date From" value={scheduleAutomation.date_range?.from} />
+                                                <SummaryBox label="Date To" value={scheduleAutomation.date_range?.to} />
+                                                <SummaryBox label="Expected Created" value={scheduleAutomation.expected_slots?.created || 0} />
+                                                <SummaryBox label="Expected Updated" value={scheduleAutomation.expected_slots?.updated || 0} />
+                                                <SummaryBox label="Expected Matched" value={scheduleAutomation.expected_slots?.matched || 0} />
+                                                <SummaryBox label="Expected Missing" value={scheduleAutomation.expected_slots?.missing || 0} />
+                                                <SummaryBox label="Manual Classes Created" value={scheduleAutomation.manual_classes?.manual_classes_created || 0} />
+                                                <SummaryBox label="Attendance Matches" value={scheduleAutomation.attendance_matches?.matches_created || 0} />
+                                                <SummaryBox label="Attendance Updated" value={scheduleAutomation.attendance_matches?.matches_updated || 0} />
+                                                <SummaryBox label="Unmatched Attendance" value={scheduleAutomation.attendance_matches?.unmatched || 0} />
+                                            </div>
+                                            <Alert severity="info" style={{ marginTop: "16px" }}>
+                                                Expected slots, missing scheduled classes, and attendance matches were rebuilt automatically for this report range.
+                                            </Alert>
+                                        </>
+                                    )}
                                 </Paper>
                             )}
                         </>
