@@ -130,6 +130,12 @@ const ClassCard = ({ item }) => {
 
 const ExpectedSlotCard = ({ item, onCreateClass, onResolve }) => {
     const colors = expectedColors[item.status] || expectedColors.missing;
+    const detectedStaff = item.scheduled_class_staff_member_name || item.staff_member_name;
+    const attended = item.scheduled_class_attended_count || 0;
+    const noShows = item.scheduled_class_no_show_count || 0;
+    const lateCancels = item.scheduled_class_late_cancel_count || 0;
+    const isResolvedAway = ["cancelled", "unavailable", "ignored"].includes(item.status);
+    const hasDetectedClass = Boolean(item.scheduled_class);
     return (
         <div
             style={{
@@ -148,19 +154,37 @@ const ExpectedSlotCard = ({ item, onCreateClass, onResolve }) => {
                 <span style={{ fontSize: "12px", textTransform: "capitalize" }}>{item.status?.replaceAll("_", " ")}</span>
             </div>
             <div style={{ fontWeight: 700 }}>{item.name}</div>
-            <div style={{ fontSize: "13px" }}>{item.room_name} · {item.staff_member_name || "No expected instructor"}</div>
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                <Chip size="small" label={`Cap. ${item.capacity || 0}`} />
-                {item.scheduled_class_name && <Chip size="small" label="Detected" />}
-            </div>
-            {item.status === "missing" && (
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                    <Button size="small" variant="contained" onClick={() => onCreateClass(item)}>Create Class</Button>
-                    <Button size="small" variant="outlined" onClick={() => onResolve(item, "cancelled")}>Cancel</Button>
-                    <Button size="small" variant="outlined" onClick={() => onResolve(item, "unavailable")}>Unavailable</Button>
-                    <Button size="small" variant="text" onClick={() => onResolve(item, "ignored")}>Ignore</Button>
+            <div style={{ fontSize: "13px" }}>{item.room_name} · Expected: {item.staff_member_name || "No fixed instructor"}</div>
+            {hasDetectedClass && (
+                <div style={{ fontSize: "13px" }}>
+                    Detected: {item.scheduled_class_name} · {detectedStaff || "No instructor"}
                 </div>
             )}
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                <Chip size="small" label={`Cap. ${item.capacity || 0}`} />
+                {hasDetectedClass && <Chip size="small" label={`Detected cap. ${item.scheduled_class_capacity || 0}`} />}
+                {hasDetectedClass && <Chip size="small" label={`Att. ${attended}`} />}
+                {hasDetectedClass && (noShows || lateCancels) ? (
+                    <Chip size="small" label={`NS/LC ${noShows + lateCancels}`} />
+                ) : null}
+            </div>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                {!hasDetectedClass && item.status === "missing" && (
+                    <Button size="small" variant="contained" onClick={() => onCreateClass(item)}>Create Class</Button>
+                )}
+                {!isResolvedAway && (
+                    <>
+                        <Button size="small" variant="outlined" onClick={() => onResolve(item, "cancelled")}>Cancel</Button>
+                        <Button size="small" variant="outlined" onClick={() => onResolve(item, "unavailable")}>Unavailable</Button>
+                    </>
+                )}
+                {!hasDetectedClass && item.status === "missing" && (
+                    <Button size="small" variant="text" onClick={() => onResolve(item, "ignored")}>Ignore</Button>
+                )}
+                {isResolvedAway && (
+                    <Button size="small" variant="outlined" onClick={() => onResolve(item, "missing")}>Reopen</Button>
+                )}
+            </div>
         </div>
     );
 };
