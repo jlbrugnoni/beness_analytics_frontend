@@ -232,9 +232,11 @@ export default function SchedulePage() {
     const [matching, setMatching] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [resetting, setResetting] = useState(false);
+    const [rematchingSlots, setRematchingSlots] = useState(false);
     const [syncingCapacity, setSyncingCapacity] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
     const [generateResult, setGenerateResult] = useState(null);
+    const [rematchResult, setRematchResult] = useState(null);
     const [resetResult, setResetResult] = useState(null);
     const [capacitySyncResult, setCapacitySyncResult] = useState(null);
     const [error, setError] = useState("");
@@ -357,6 +359,33 @@ export default function SchedulePage() {
             setError(err.response?.data?.error || "Error rebuilding class matches.");
         } finally {
             setMatching(false);
+        }
+    };
+
+    const handleRematchExpectedSlots = async () => {
+        if (!site) return;
+        setRematchingSlots(true);
+        setError("");
+        setRematchResult(null);
+        try {
+            const payload = {
+                site,
+                date_from: weekStart,
+                date_to: weekDays[6].value,
+            };
+            if (studio) payload.studio = studio;
+            if (room) payload.room = room;
+            const response = await axios.post(
+                `${backendUrl}/api/data/expected-class-slots/rematch/`,
+                payload,
+                authHeaders,
+            );
+            setRematchResult(response.data);
+            await loadClasses();
+        } catch (err) {
+            setError(err.response?.data?.error || "Error rematching expected slots.");
+        } finally {
+            setRematchingSlots(false);
         }
     };
 
@@ -561,6 +590,9 @@ export default function SchedulePage() {
                             <Button variant="contained" onClick={handleRebuildMatches} disabled={matching || !site}>
                                 {matching ? "Matching..." : "Rebuild Attendance Matches"}
                             </Button>
+                            <Button variant="outlined" onClick={handleRematchExpectedSlots} disabled={rematchingSlots || !site}>
+                                {rematchingSlots ? "Rematching..." : "Rematch Expected Slots"}
+                            </Button>
                             <Button variant="outlined" onClick={handleSyncTemplateCapacities} disabled={syncingCapacity || !site}>
                                 {syncingCapacity ? "Updating..." : "Sync Template Capacities"}
                             </Button>
@@ -579,6 +611,12 @@ export default function SchedulePage() {
                     {generateResult && (
                         <Alert severity="success">
                             Expected slots generated: {generateResult.created} created, {generateResult.updated} updated, {generateResult.matched} matched, {generateResult.missing} missing. Manual classes created: {generateResult.manual_classes_created || 0}.
+                        </Alert>
+                    )}
+
+                    {rematchResult && (
+                        <Alert severity="success">
+                            Expected slots rematched: {rematchResult.expected_slots_relinked} relinked, {rematchResult.manual_classes_removed} manual duplicates removed, {rematchResult.attendance_matches_transferred} attendance matches transferred. Attendance unmatched: {rematchResult.attendance_matches?.unmatched || 0}.
                         </Alert>
                     )}
 
