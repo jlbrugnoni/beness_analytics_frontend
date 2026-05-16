@@ -578,7 +578,7 @@ export default function SchedulePage() {
 
                     {generateResult && (
                         <Alert severity="success">
-                            Expected slots generated: {generateResult.created} created, {generateResult.updated} updated, {generateResult.matched} matched, {generateResult.missing} missing.
+                            Expected slots generated: {generateResult.created} created, {generateResult.updated} updated, {generateResult.matched} matched, {generateResult.missing} missing. Manual classes created: {generateResult.manual_classes_created || 0}.
                         </Alert>
                     )}
 
