@@ -93,6 +93,13 @@ const SummaryCard = ({ label, value }) => (
     </Paper>
 );
 
+const WarningCard = ({ label, value }) => (
+    <Paper style={{ padding: "14px", minHeight: "72px", border: "1px solid #e0ac42", background: "#fff8ea" }}>
+        <div style={{ color: "#79520c", fontSize: "13px" }}>{label}</div>
+        <div style={{ color: "#79520c", fontSize: "24px", fontWeight: 700 }}>{value}</div>
+    </Paper>
+);
+
 
 const ClassCard = ({ item }) => {
     const colors = statusColors[item.status] || statusColors.scheduled;
@@ -136,6 +143,8 @@ const ExpectedSlotCard = ({ item, onCreateClass, onResolve }) => {
     const lateCancels = item.scheduled_class_late_cancel_count || 0;
     const isResolvedAway = ["cancelled", "unavailable", "ignored"].includes(item.status);
     const hasDetectedClass = Boolean(item.scheduled_class);
+    const hasCapacityMismatch = hasDetectedClass && Number(item.capacity || 0) !== Number(item.scheduled_class_capacity || 0);
+    const hasNoMatchedAttendance = hasDetectedClass && attended === 0 && noShows === 0 && lateCancels === 0;
     return (
         <div
             style={{
@@ -162,12 +171,28 @@ const ExpectedSlotCard = ({ item, onCreateClass, onResolve }) => {
             )}
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                 <Chip size="small" label={`Cap. ${item.capacity || 0}`} />
-                {hasDetectedClass && <Chip size="small" label={`Detected cap. ${item.scheduled_class_capacity || 0}`} />}
+                {hasDetectedClass && (
+                    <Chip
+                        size="small"
+                        color={hasCapacityMismatch ? "warning" : "default"}
+                        label={`Detected cap. ${item.scheduled_class_capacity || 0}`}
+                    />
+                )}
                 {hasDetectedClass && <Chip size="small" label={`Att. ${attended}`} />}
                 {hasDetectedClass && (noShows || lateCancels) ? (
                     <Chip size="small" label={`NS/LC ${noShows + lateCancels}`} />
                 ) : null}
             </div>
+            {hasCapacityMismatch && (
+                <Alert severity="warning" style={{ padding: "0 8px" }}>
+                    Expected capacity differs from detected capacity.
+                </Alert>
+            )}
+            {hasNoMatchedAttendance && (
+                <Alert severity="info" style={{ padding: "0 8px" }}>
+                    No attendance matched yet. Rebuild matches after imports.
+                </Alert>
+            )}
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                 {!hasDetectedClass && item.status === "missing" && (
                     <Button size="small" variant="contained" onClick={() => onCreateClass(item)}>Create Class</Button>
@@ -387,8 +412,19 @@ export default function SchedulePage() {
         acc.total += 1;
         acc.matched += item.status === "matched" ? 1 : 0;
         acc.missing += item.status === "missing" ? 1 : 0;
+        if (item.scheduled_class && Number(item.capacity || 0) !== Number(item.scheduled_class_capacity || 0)) {
+            acc.capacityMismatch += 1;
+        }
+        if (
+            item.scheduled_class
+            && Number(item.scheduled_class_attended_count || 0) === 0
+            && Number(item.scheduled_class_no_show_count || 0) === 0
+            && Number(item.scheduled_class_late_cancel_count || 0) === 0
+        ) {
+            acc.zeroMatchedAttendance += 1;
+        }
         return acc;
-    }, { total: 0, matched: 0, missing: 0 });
+    }, { total: 0, matched: 0, missing: 0, capacityMismatch: 0, zeroMatchedAttendance: 0 });
     const unexpectedCount = classes.filter((item) => !expectedScheduledClassIds.has(item.id)).length;
 
     const moveWeek = (days) => setWeekStart(formatDate(addDays(parseDate(weekStart), days)));
@@ -483,7 +519,19 @@ export default function SchedulePage() {
                         <SummaryCard label="Expected Slots" value={expectedSummary.total} />
                         <SummaryCard label="Missing Expected" value={expectedSummary.missing} />
                         <SummaryCard label="Unexpected Detected" value={unexpectedCount} />
+                        {expectedSummary.capacityMismatch > 0 && (
+                            <WarningCard label="Capacity Mismatch" value={expectedSummary.capacityMismatch} />
+                        )}
+                        {expectedSummary.zeroMatchedAttendance > 0 && (
+                            <WarningCard label="Zero Matched Attendance" value={expectedSummary.zeroMatchedAttendance} />
+                        )}
                     </div>
+
+                    {(expectedSummary.capacityMismatch > 0 || expectedSummary.zeroMatchedAttendance > 0) && (
+                        <Alert severity="warning">
+                            Review the highlighted schedule cards before trusting occupancy. Capacity mismatches usually come from old templates; zero matched attendance usually means the attendance matches need to be rebuilt or the MindBody attendance time/studio does not align with the scheduled class.
+                        </Alert>
+                    )}
 
                     {loading && <Alert severity="info">Loading schedule...</Alert>}
 
