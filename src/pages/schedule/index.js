@@ -231,8 +231,12 @@ export default function SchedulePage() {
     const [loading, setLoading] = useState(false);
     const [matching, setMatching] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [resetting, setResetting] = useState(false);
+    const [syncingCapacity, setSyncingCapacity] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
     const [generateResult, setGenerateResult] = useState(null);
+    const [resetResult, setResetResult] = useState(null);
+    const [capacitySyncResult, setCapacitySyncResult] = useState(null);
     const [error, setError] = useState("");
 
     const authHeaders = useMemo(() => ({
@@ -353,6 +357,68 @@ export default function SchedulePage() {
             setError(err.response?.data?.error || "Error rebuilding class matches.");
         } finally {
             setMatching(false);
+        }
+    };
+
+    const handleSyncTemplateCapacities = async () => {
+        if (!site) return;
+        if (!window.confirm("Update active weekly templates in the current filters using each room's current capacity?")) return;
+        setSyncingCapacity(true);
+        setError("");
+        setCapacitySyncResult(null);
+        try {
+            const payload = { site, active_only: true };
+            if (studio) payload.studio = studio;
+            if (room) payload.room = room;
+            const response = await axios.post(
+                `${backendUrl}/api/data/weekly-room-templates/sync-capacity-from-rooms/`,
+                payload,
+                authHeaders,
+            );
+            setCapacitySyncResult(response.data);
+        } catch (err) {
+            setError(err.response?.data?.error || "Error syncing template capacities.");
+        } finally {
+            setSyncingCapacity(false);
+        }
+    };
+
+    const handleResetScopedSchedule = async () => {
+        if (!site) return;
+        const scopeLabel = [
+            sites.find((item) => String(item.id) === String(site))?.name,
+            studio ? studios.find((item) => String(item.id) === String(studio))?.name : "all studios",
+            room ? rooms.find((item) => String(item.id) === String(room))?.name : "all rooms",
+            `${weekStart} to ${weekDays[6].value}`,
+        ].filter(Boolean).join(" / ");
+        const confirmation = window.prompt(
+            `This will delete expected slots and manually-created scheduled classes for: ${scopeLabel}.\nImported MindBody classes and attendance reports will be preserved.\n\nType RESET SCHEDULE DATA to continue.`
+        );
+        if (confirmation !== "RESET SCHEDULE DATA") return;
+        setResetting(true);
+        setError("");
+        setResetResult(null);
+        try {
+            const payload = {
+                site,
+                date_from: weekStart,
+                date_to: weekDays[6].value,
+                include_manual_classes: true,
+                confirmation,
+            };
+            if (studio) payload.studio = studio;
+            if (room) payload.room = room;
+            const response = await axios.post(
+                `${backendUrl}/api/data/expected-class-slots/reset-scoped/`,
+                payload,
+                authHeaders,
+            );
+            setResetResult(response.data);
+            await loadClasses();
+        } catch (err) {
+            setError(err.response?.data?.error || "Error resetting schedule data.");
+        } finally {
+            setResetting(false);
         }
     };
 
@@ -495,6 +561,12 @@ export default function SchedulePage() {
                             <Button variant="contained" onClick={handleRebuildMatches} disabled={matching || !site}>
                                 {matching ? "Matching..." : "Rebuild Attendance Matches"}
                             </Button>
+                            <Button variant="outlined" onClick={handleSyncTemplateCapacities} disabled={syncingCapacity || !site}>
+                                {syncingCapacity ? "Updating..." : "Sync Template Capacities"}
+                            </Button>
+                            <Button variant="outlined" color="error" onClick={handleResetScopedSchedule} disabled={resetting || !site}>
+                                {resetting ? "Resetting..." : "Reset Expected/Manual"}
+                            </Button>
                         </div>
                     </Paper>
 
@@ -507,6 +579,18 @@ export default function SchedulePage() {
                     {generateResult && (
                         <Alert severity="success">
                             Expected slots generated: {generateResult.created} created, {generateResult.updated} updated, {generateResult.matched} matched, {generateResult.missing} missing.
+                        </Alert>
+                    )}
+
+                    {capacitySyncResult && (
+                        <Alert severity="success">
+                            Template capacities updated: {capacitySyncResult.updated}. Skipped without room capacity: {capacitySyncResult.skipped_without_capacity}.
+                        </Alert>
+                    )}
+
+                    {resetResult && (
+                        <Alert severity="success">
+                            Schedule reset complete: {resetResult.expected_slots_deleted} expected slots deleted, {resetResult.manual_classes_deleted} manually-created classes deleted. Imported MindBody classes were preserved.
                         </Alert>
                     )}
 
