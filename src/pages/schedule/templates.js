@@ -142,6 +142,22 @@ export default function WeeklyTemplateBuilder() {
     });
     const filteredStaff = staffMembers.filter((item) => !site || String(item.site) === String(site));
     const selectedStaff = filteredStaff.find((item) => String(item.id) === String(staffMember));
+    const selectedRoom = filteredRooms.find((item) => String(item.id) === String(room));
+
+    const roomDefaultCapacity = (roomRow) => {
+        const groupCapacity = Number(roomRow?.group_capacity || 0);
+        const privateCapacity = Number(roomRow?.private_capacity || 0);
+        return groupCapacity || privateCapacity || 0;
+    };
+
+    const handleRoomChange = (roomId) => {
+        setRoom(roomId);
+        const nextRoom = filteredRooms.find((item) => String(item.id) === String(roomId));
+        const nextCapacity = roomDefaultCapacity(nextRoom);
+        if (nextCapacity > 0) {
+            setCapacity(nextCapacity);
+        }
+    };
 
     const loadTemplates = async () => {
         if (!token || !site) return;
@@ -304,9 +320,13 @@ export default function WeeklyTemplateBuilder() {
                                 <MenuItem value="">Select studio</MenuItem>
                                 {filteredStudios.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
                             </TextField>
-                            <TextField select label="Room" value={room} onChange={(event) => setRoom(event.target.value)}>
+                            <TextField select label="Room" value={room} onChange={(event) => handleRoomChange(event.target.value)}>
                                 <MenuItem value="">Select room</MenuItem>
-                                {filteredRooms.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
+                                {filteredRooms.map((item) => (
+                                    <MenuItem key={item.id} value={item.id}>
+                                        {item.name} {roomDefaultCapacity(item) ? `(cap. ${roomDefaultCapacity(item)})` : ""}
+                                    </MenuItem>
+                                ))}
                             </TextField>
                             <TextField select label="Expected Instructor" value={staffMember} onChange={(event) => setStaffMember(event.target.value)}>
                                 <MenuItem value="">No fixed instructor</MenuItem>
@@ -317,7 +337,13 @@ export default function WeeklyTemplateBuilder() {
                         <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
                             <TextField label="Class Name" value={className} onChange={(event) => setClassName(event.target.value)} />
                             <TextField label="Duration" type="number" value={duration} onChange={(event) => setDuration(event.target.value)} />
-                            <TextField label="Capacity" type="number" value={capacity} onChange={(event) => setCapacity(event.target.value)} />
+                            <TextField
+                                label="Capacity"
+                                type="number"
+                                value={capacity}
+                                onChange={(event) => setCapacity(event.target.value)}
+                                helperText={selectedRoom ? `Room default: ${roomDefaultCapacity(selectedRoom) || "not set"}` : "Select a room first"}
+                            />
                             <TextField label="Active From" type="date" value={activeFrom} onChange={(event) => setActiveFrom(event.target.value)} InputLabelProps={{ shrink: true }} />
                             <TextField label="Active Until" type="date" value={activeUntil} onChange={(event) => setActiveUntil(event.target.value)} InputLabelProps={{ shrink: true }} />
                         </div>
