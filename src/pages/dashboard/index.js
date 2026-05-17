@@ -321,6 +321,10 @@ const CapacityUsageCard = ({ occupation }) => {
                     <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>Scheduled Classes</div>
                     <div style={{ fontSize: "26px", fontWeight: 800 }}>{formatNumber(occupation?.available_classes)}</div>
                 </div>
+                <div>
+                    <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>Closed / Unavailable</div>
+                    <div style={{ fontSize: "26px", fontWeight: 800 }}>{formatNumber(occupation?.closed_or_unavailable_classes)}</div>
+                </div>
             </div>
         </Paper>
     );
@@ -1110,11 +1114,6 @@ export default function Dashboard() {
                     {activeTab === "occupancy" && (
                         <>
                             <CapacityUsageCard occupation={occupation} />
-
-                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Closed / Unavailable" value={formatNumber(occupation?.closed_or_unavailable_classes)} />
-                                <KpiCard label="Unmatched Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
-                            </div>
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                                 <OccupationTable title="Occupancy by Room" rows={occupation?.by_room_capacity} />
