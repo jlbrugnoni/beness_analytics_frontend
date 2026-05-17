@@ -291,6 +291,42 @@ const OccupancySlotTable = ({ title, rows }) => (
 );
 
 
+const CapacityUsageCard = ({ occupation }) => {
+    const capacity = Number(occupation?.scheduled_capacity || 0);
+    const attended = Number(occupation?.matched_attended_visits || 0);
+    const width = capacity ? Math.min(100, Math.max(0, (attended / capacity) * 100)) : 0;
+
+    return (
+        <Paper style={{ padding: "18px", display: "grid", gap: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", alignItems: "baseline" }}>
+                <div>
+                    <h2 style={{ margin: 0 }}>Capacity Used</h2>
+                    <div style={{ color: "#666", fontSize: "14px", marginTop: "4px" }}>Attendance compared with scheduled capacity.</div>
+                </div>
+                <strong style={{ fontSize: "30px" }}>{formatPercent(occupation?.occupation_rate)}</strong>
+            </div>
+            <div style={{ height: "18px", background: "#eef1f4", borderRadius: "9px", overflow: "hidden" }}>
+                <div style={{ width: `${width}%`, height: "100%", background: "#2f6f73" }} />
+            </div>
+            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                <div>
+                    <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>Attendance Used</div>
+                    <div style={{ fontSize: "26px", fontWeight: 800 }}>{formatNumber(attended)}</div>
+                </div>
+                <div>
+                    <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>Scheduled Capacity</div>
+                    <div style={{ fontSize: "26px", fontWeight: 800 }}>{formatNumber(capacity)}</div>
+                </div>
+                <div>
+                    <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>Scheduled Classes</div>
+                    <div style={{ fontSize: "26px", fontWeight: 800 }}>{formatNumber(occupation?.available_classes)}</div>
+                </div>
+            </div>
+        </Paper>
+    );
+};
+
+
 const InstructorQualityTable = ({ rows }) => (
     <Paper style={{ padding: "16px" }}>
         <h2 style={{ marginTop: 0 }}>Instructor Quality</h2>
@@ -996,11 +1032,9 @@ export default function Dashboard() {
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
                                 <BarChart title="Attendance by Date" rows={attendance?.by_date} />
                                 <BarChart title="Attendance by Hour" rows={attendance?.by_hour} labelKey="hour" limit={24} />
-                                <BreakdownTable title="Attendance by Weekday" rows={attendance?.by_weekday} nameKey="weekday" />
                                 <BreakdownTable title="Attendance by Studio" rows={attendance?.by_studio} />
                                 <BreakdownTable title="Attendance by Instructor" rows={attendance?.by_instructor} />
                                 <BreakdownTable title="Attendance by Service" rows={attendance?.by_service} />
-                                <BreakdownTable title="Attendance by Hour" rows={attendance?.by_hour} nameKey="hour" />
                                 <InstructorQualityTable rows={attendance?.instructor_quality} />
                             </div>
                         </>
@@ -1075,18 +1109,14 @@ export default function Dashboard() {
 
                     {activeTab === "occupancy" && (
                         <>
+                            <CapacityUsageCard occupation={occupation} />
+
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Scheduled Capacity" value={formatNumber(occupation?.scheduled_capacity)} />
-                                <KpiCard label="Matched Attendance" value={formatNumber(occupation?.matched_attended_visits)} />
-                                <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
-                                <KpiCard label="Scheduled Classes" value={formatNumber(occupation?.available_classes)} />
                                 <KpiCard label="Closed / Unavailable" value={formatNumber(occupation?.closed_or_unavailable_classes)} />
-                                <KpiCard label="Unscheduled Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
+                                <KpiCard label="Unmatched Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
                             </div>
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
-                                <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
                                 <OccupationTable title="Occupancy by Room" rows={occupation?.by_room_capacity} />
                                 <OccupancySlotTable title="Lowest Occupancy Slots" rows={lowOccupancySlots} />
                                 <OccupancySlotTable title="Highest Occupancy Slots" rows={highOccupancySlots} />
