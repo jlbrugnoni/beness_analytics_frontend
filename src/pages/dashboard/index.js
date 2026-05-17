@@ -305,6 +305,32 @@ const formatDisplayDate = (value) => {
 };
 
 
+const dashboardModes = {
+    monthly: {
+        title: "Monthly Performance",
+        defaultTab: "monthly_overview",
+    },
+    weekly: {
+        title: "Weekly Operations",
+        defaultTab: "weekly_overview",
+    },
+};
+
+
+const dashboardTabs = {
+    monthly: [
+        { label: "Summary", value: "monthly_overview" },
+        { label: "Revenue", value: "revenue" },
+        { label: "Retention", value: "retention" },
+    ],
+    weekly: [
+        { label: "Summary", value: "weekly_overview" },
+        { label: "Attendance", value: "attendance" },
+        { label: "Occupancy", value: "occupancy" },
+    ],
+};
+
+
 export default function Dashboard() {
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -325,7 +351,8 @@ export default function Dashboard() {
     const [attendance, setAttendance] = useState(null);
     const [retention, setRetention] = useState(null);
     const [occupation, setOccupation] = useState(null);
-    const [activeTab, setActiveTab] = useState("overview");
+    const [dashboardMode, setDashboardMode] = useState("monthly");
+    const [activeTab, setActiveTab] = useState("monthly_overview");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -404,6 +431,13 @@ export default function Dashboard() {
         : studios;
     const activeDateRange = selectedDateRange(periodMode, filters);
     const selectedMonthParts = monthParts(filters.month);
+    const activeDashboardTabs = dashboardTabs[dashboardMode];
+
+    const handleDashboardModeChange = (_, value) => {
+        if (!value) return;
+        setDashboardMode(value);
+        setActiveTab(dashboardModes[value].defaultTab);
+    };
 
     return (
         <MainPage>
@@ -418,7 +452,22 @@ export default function Dashboard() {
                 <div style={{ width: "90%", display: "grid", gap: "16px" }}>
                     {error && <Alert severity="error">{error}</Alert>}
 
+                    <Paper style={{ padding: "0 12px" }}>
+                        <Tabs
+                            value={dashboardMode}
+                            onChange={handleDashboardModeChange}
+                            variant="scrollable"
+                            scrollButtons="auto"
+                        >
+                            <Tab label="Monthly Performance" value="monthly" />
+                            <Tab label="Weekly Operations" value="weekly" />
+                        </Tabs>
+                    </Paper>
+
                     <Paper style={{ padding: "16px", display: "grid", gap: "12px" }}>
+                        <div>
+                            <h2 style={{ margin: 0 }}>{dashboardModes[dashboardMode].title}</h2>
+                        </div>
                         <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                             <TextField
                                 select
@@ -526,29 +575,46 @@ export default function Dashboard() {
                             variant="scrollable"
                             scrollButtons="auto"
                         >
-                            <Tab label="Overview" value="overview" />
-                            <Tab label="Revenue" value="revenue" />
-                            <Tab label="Attendance" value="attendance" />
-                            <Tab label="Retention" value="retention" />
-                            <Tab label="Occupancy" value="occupancy" />
+                            {activeDashboardTabs.map((tab) => (
+                                <Tab key={tab.value} label={tab.label} value={tab.value} />
+                            ))}
                         </Tabs>
                     </Paper>
 
-                    {activeTab === "overview" && (
+                    {activeTab === "monthly_overview" && (
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                                 <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
-                                <KpiCard label="Service Revenue" value={formatMoney(totals.service_revenue)} />
                                 <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
                                 <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
-                                <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
-                                <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
                                 <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
-                                <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
+                                <KpiCard label="Churn Rate" value={`${formatNumber(retention?.churn_rate)}%`} />
+                                <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
+                                <KpiCard label="New Members" value={formatNumber(retention?.new_members)} />
+                                <KpiCard label="Reactivated Members" value={formatNumber(retention?.reactivated_members)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                                 <BarChart title="Sales Revenue Trend" rows={revenue?.sales_by_date} money />
+                                <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === "weekly_overview" && (
+                        <>
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                                <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
+                                <KpiCard label="Attended Visits" value={formatNumber(totals.attended_visits)} />
+                                <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
+                                <KpiCard label="Late Cancel Rate" value={`${formatNumber(totals.late_cancel_rate)}%`} />
+                                <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
+                                <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
+                                <KpiCard label="Scheduled Classes" value={formatNumber(occupation?.available_classes)} />
+                                <KpiCard label="Unscheduled Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
+                            </div>
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                                 <BarChart title="Attendance Trend" rows={attendance?.by_date} />
+                                <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
                             </div>
                         </>
                     )}
