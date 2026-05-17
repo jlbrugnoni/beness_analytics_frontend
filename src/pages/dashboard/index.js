@@ -99,6 +99,40 @@ const BreakdownTable = ({ title, rows, nameKey = "name", valueKey = "total", mon
 );
 
 
+const RankedBarTable = ({ title, rows, nameKey = "name", valueKey = "total", money = false, limit = 12 }) => {
+    const tableRows = (rows || []).slice(0, limit);
+    const maxValue = Math.max(...tableRows.map((row) => Number(row[valueKey] || 0)), 0);
+
+    return (
+        <Paper style={{ padding: "16px" }}>
+            <h2 style={{ marginTop: 0 }}>{title}</h2>
+            <div style={{ display: "grid", gap: "12px" }}>
+                {tableRows.map((row, index) => {
+                    const value = Number(row[valueKey] || 0);
+                    const width = maxValue ? Math.max(4, (value / maxValue) * 100) : 0;
+                    return (
+                        <div key={`${title}-${index}`} style={{ display: "grid", gap: "6px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+                                <span style={{ color: "#444", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {row[nameKey] ?? "N/A"}
+                                </span>
+                                <strong style={{ fontSize: "14px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                    {money ? formatMoney(value) : formatNumber(value)}
+                                </strong>
+                            </div>
+                            <div style={{ height: "10px", background: "#eef1f4", borderRadius: "5px", overflow: "hidden" }}>
+                                <div style={{ width: `${width}%`, height: "100%", background: "#2f6f73" }} />
+                            </div>
+                        </div>
+                    );
+                })}
+                {!tableRows.length && <div>No data</div>}
+            </div>
+        </Paper>
+    );
+};
+
+
 const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = false, limit = 31 }) => {
     const chartRows = (rows || []).slice(-limit);
     const maxValue = Math.max(...chartRows.map((row) => Number(row[valueKey] || 0)), 0);
@@ -881,10 +915,6 @@ export default function Dashboard() {
                                     ]}
                                 />
                             </div>
-                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <BarChart title="Sales Revenue Trend" rows={revenue?.sales_by_date} money />
-                                <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
-                            </div>
                         </>
                     )}
 
@@ -938,14 +968,7 @@ export default function Dashboard() {
                                 <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                                <BarChart title="Sales Revenue by Date" rows={revenue?.sales_by_date} money />
-                                <BreakdownTable title="Visit Revenue by Weekday" rows={revenue?.visits_by_weekday} nameKey="weekday" money />
-                                <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
-                                <BreakdownTable title="Revenue by Item" rows={revenue?.by_item} money />
-                                <BreakdownTable title="Discounts" rows={[
-                                    { name: "Discounts", total: revenue?.discounts || 0 },
-                                    { name: "Taxes", total: revenue?.taxes || 0 },
-                                ]} money />
+                                <RankedBarTable title="Revenue by Item" rows={revenue?.by_item} money />
                             </div>
                         </>
                     )}
