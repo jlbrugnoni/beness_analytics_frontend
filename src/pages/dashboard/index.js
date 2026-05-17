@@ -2,6 +2,8 @@ import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
@@ -9,9 +11,11 @@ import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import LinearProgress from "@mui/material/LinearProgress";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -21,6 +25,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
 
 
 const KpiCard = ({ label, value }) => (
@@ -346,11 +351,31 @@ const monthParts = (monthValue) => {
 const buildMonthValue = (year, month) => `${year}-${month}`;
 
 
+const parseDateValue = (value) => {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+};
+
+
 const formatDateValue = (value) => {
     const year = value.getFullYear();
     const month = String(value.getMonth() + 1).padStart(2, "0");
     const day = String(value.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+};
+
+
+const addMonths = (monthValue, amount) => {
+    const [year, month] = monthValue.split("-").map(Number);
+    const nextDate = new Date(year, month - 1 + amount, 1);
+    return `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
+};
+
+
+const addDays = (dateValue, amount) => {
+    const nextDate = parseDateValue(dateValue);
+    nextDate.setDate(nextDate.getDate() + amount);
+    return formatDateValue(nextDate);
 };
 
 
@@ -388,8 +413,7 @@ const previousWeekRange = () => {
 
 const weekRangeFromDate = (value) => {
     if (!value) return weekRange();
-    const [year, month, day] = value.split("-").map(Number);
-    return weekRange(new Date(year, month - 1, day));
+    return weekRange(parseDateValue(value));
 };
 
 
@@ -410,12 +434,22 @@ const selectedDateRange = (dashboardMode, periodModes, filters) => {
 
 const formatDisplayDate = (value) => {
     if (!value) return "N/A";
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    return parseDateValue(value).toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
         year: "numeric",
     });
+};
+
+
+const formatPeriodTitle = (dashboardMode, dateRange) => {
+    if (!dateRange?.date_from || !dateRange?.date_to) return "N/A";
+    const start = parseDateValue(dateRange.date_from);
+    const end = parseDateValue(dateRange.date_to);
+    if (dashboardMode === "monthly") {
+        return start.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    }
+    return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
 };
 
 
@@ -457,6 +491,8 @@ export default function Dashboard() {
         monthly: "last_completed_month",
         weekly: "current_week",
     });
+    const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+    const [periodNavigationVersion, setPeriodNavigationVersion] = useState(0);
     const [filters, setFilters] = useState({
         site: "",
         studio: "",
@@ -559,7 +595,7 @@ export default function Dashboard() {
 
     useEffect(() => {
         fetchDashboard();
-    }, [token, dashboardMode]);
+    }, [token, dashboardMode, periodNavigationVersion]);
 
     const totals = summary?.totals || {};
     const visibleStudios = filters.site
@@ -567,6 +603,7 @@ export default function Dashboard() {
         : studios;
     const activePeriodMode = periodModes[dashboardMode];
     const activeDateRange = selectedDateRange(dashboardMode, periodModes, filters);
+    const activePeriodTitle = formatPeriodTitle(dashboardMode, activeDateRange);
     const selectedMonthParts = monthParts(filters.month);
     const activeDashboardTabs = dashboardTabs[dashboardMode];
     const occupancySlots = occupation?.by_slot || [];
@@ -590,6 +627,36 @@ export default function Dashboard() {
             ...periodModes,
             [dashboardMode]: event.target.value,
         });
+    };
+
+    const handleSiteChange = (event) => {
+        setFilters({ ...filters, site: event.target.value, studio: "" });
+        setPeriodNavigationVersion((current) => current + 1);
+    };
+
+    const handleStudioChange = (event) => {
+        setFilters({ ...filters, studio: event.target.value });
+        setPeriodNavigationVersion((current) => current + 1);
+    };
+
+    const navigatePeriod = (direction) => {
+        if (dashboardMode === "monthly") {
+            const activeMonth = activeDateRange.date_from.slice(0, 7);
+            const nextMonth = addMonths(activeMonth, direction);
+            setPeriodModes({ ...periodModes, monthly: "specific_month" });
+            setFilters({ ...filters, month: nextMonth });
+        } else {
+            const nextWeekDate = addDays(activeDateRange.date_from, direction * 7);
+            const nextWeekRange = weekRangeFromDate(nextWeekDate);
+            setPeriodModes({ ...periodModes, weekly: "specific_week" });
+            setFilters({
+                ...filters,
+                week_date: nextWeekRange.date_from,
+                date_from: nextWeekRange.date_from,
+                date_to: nextWeekRange.date_to,
+            });
+        }
+        setPeriodNavigationVersion((current) => current + 1);
     };
 
     return (
@@ -617,16 +684,15 @@ export default function Dashboard() {
                         </Tabs>
                     </Paper>
 
-                    <Paper style={{ padding: "16px", display: "grid", gap: "12px" }}>
-                        <div>
-                            <h2 style={{ margin: 0 }}>{dashboardModes[dashboardMode].title}</h2>
-                        </div>
-                        <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                    <Paper style={{ padding: "12px", display: "grid", gap: "12px" }}>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
                             <TextField
                                 select
                                 label="Site"
+                                size="small"
                                 value={filters.site}
-                                onChange={(event) => setFilters({ ...filters, site: event.target.value, studio: "" })}
+                                onChange={handleSiteChange}
+                                style={{ minWidth: "220px" }}
                             >
                                 <MenuItem value="">All Sites</MenuItem>
                                 {sites.map((site) => (
@@ -636,111 +702,132 @@ export default function Dashboard() {
                             <TextField
                                 select
                                 label="Studio"
+                                size="small"
                                 value={filters.studio}
-                                onChange={(event) => setFilters({ ...filters, studio: event.target.value })}
+                                onChange={handleStudioChange}
+                                style={{ minWidth: "220px" }}
                             >
                                 <MenuItem value="">All Studios</MenuItem>
                                 {visibleStudios.map((studio) => (
                                     <MenuItem key={studio.id} value={studio.id}>{studio.name}</MenuItem>
                                 ))}
                             </TextField>
-                            <TextField
-                                select
-                                label="Period"
-                                value={activePeriodMode}
-                                onChange={handlePeriodModeChange}
-                            >
-                                {dashboardMode === "monthly" ? (
-                                    [
-                                        <MenuItem key="last_completed_month" value="last_completed_month">Last Completed Month</MenuItem>,
-                                        <MenuItem key="current_month" value="current_month">Current Month</MenuItem>,
-                                        <MenuItem key="specific_month" value="specific_month">Specific Month</MenuItem>,
-                                    ]
-                                ) : (
-                                    [
-                                        <MenuItem key="current_week" value="current_week">Current Week</MenuItem>,
-                                        <MenuItem key="previous_week" value="previous_week">Previous Week</MenuItem>,
-                                        <MenuItem key="specific_week" value="specific_week">Specific Week</MenuItem>,
-                                        <MenuItem key="range" value="range">Custom Range</MenuItem>,
-                                    ]
-                                )}
-                            </TextField>
-                            {dashboardMode === "monthly" && activePeriodMode === "specific_month" && (
-                                <>
-                                    <TextField
-                                        select
-                                        label="Month"
-                                        value={selectedMonthParts.month}
-                                        onChange={(event) => setFilters({
-                                            ...filters,
-                                            month: buildMonthValue(selectedMonthParts.year, event.target.value),
-                                        })}
-                                    >
-                                        {monthOptions.map((month) => (
-                                            <MenuItem key={month.value} value={month.value}>{month.label}</MenuItem>
-                                        ))}
-                                    </TextField>
-                                    <TextField
-                                        select
-                                        label="Year"
-                                        value={Number(selectedMonthParts.year)}
-                                        onChange={(event) => setFilters({
-                                            ...filters,
-                                            month: buildMonthValue(event.target.value, selectedMonthParts.month),
-                                        })}
-                                    >
-                                        {yearOptions().map((year) => (
-                                            <MenuItem key={year} value={year}>{year}</MenuItem>
-                                        ))}
-                                    </TextField>
-                                </>
-                            )}
-                            {dashboardMode === "weekly" && activePeriodMode === "specific_week" && (
-                                <TextField
-                                    label="Week Of"
-                                    type="date"
-                                    value={filters.week_date}
-                                    InputLabelProps={{ shrink: true }}
-                                    onChange={(event) => setFilters({ ...filters, week_date: event.target.value })}
-                                />
-                            )}
-                            {dashboardMode === "weekly" && activePeriodMode === "range" && (
-                                <>
-                                    <TextField
-                                        label="Date From"
-                                        type="date"
-                                        value={filters.date_from}
-                                        InputLabelProps={{ shrink: true }}
-                                        onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
-                                    />
-                                    <TextField
-                                        label="Date To"
-                                        type="date"
-                                        value={filters.date_to}
-                                        InputLabelProps={{ shrink: true }}
-                                        onChange={(event) => setFilters({ ...filters, date_to: event.target.value })}
-                                    />
-                                </>
-                            )}
-                        </div>
-                        <div style={{ color: "#666", fontSize: "14px" }}>
-                            Showing {dashboardMode === "monthly" ? "monthly performance" : "weekly operations"}:
-                            {" "}{formatDisplayDate(activeDateRange.date_from)} - {formatDisplayDate(activeDateRange.date_to)}
-                        </div>
-                        <div>
-                            <Button variant="contained" onClick={fetchDashboard} disabled={loading}>
-                                {loading ? "Loading..." : "Apply Filters"}
+                            <Button variant="outlined" onClick={() => setAdvancedFiltersOpen(!advancedFiltersOpen)}>
+                                {advancedFiltersOpen ? "Hide Advanced" : "Advanced"}
                             </Button>
-                        </div>
+                        </Stack>
+                        {advancedFiltersOpen && (
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                                <TextField
+                                    select
+                                    label="Period"
+                                    value={activePeriodMode}
+                                    onChange={handlePeriodModeChange}
+                                >
+                                    {dashboardMode === "monthly" ? (
+                                        [
+                                            <MenuItem key="last_completed_month" value="last_completed_month">Last Completed Month</MenuItem>,
+                                            <MenuItem key="current_month" value="current_month">Current Month</MenuItem>,
+                                            <MenuItem key="specific_month" value="specific_month">Specific Month</MenuItem>,
+                                        ]
+                                    ) : (
+                                        [
+                                            <MenuItem key="current_week" value="current_week">Current Week</MenuItem>,
+                                            <MenuItem key="previous_week" value="previous_week">Previous Week</MenuItem>,
+                                            <MenuItem key="specific_week" value="specific_week">Specific Week</MenuItem>,
+                                            <MenuItem key="range" value="range">Custom Range</MenuItem>,
+                                        ]
+                                    )}
+                                </TextField>
+                                {dashboardMode === "monthly" && activePeriodMode === "specific_month" && (
+                                    <>
+                                        <TextField
+                                            select
+                                            label="Month"
+                                            value={selectedMonthParts.month}
+                                            onChange={(event) => setFilters({
+                                                ...filters,
+                                                month: buildMonthValue(selectedMonthParts.year, event.target.value),
+                                            })}
+                                        >
+                                            {monthOptions.map((month) => (
+                                                <MenuItem key={month.value} value={month.value}>{month.label}</MenuItem>
+                                            ))}
+                                        </TextField>
+                                        <TextField
+                                            select
+                                            label="Year"
+                                            value={Number(selectedMonthParts.year)}
+                                            onChange={(event) => setFilters({
+                                                ...filters,
+                                                month: buildMonthValue(event.target.value, selectedMonthParts.month),
+                                            })}
+                                        >
+                                            {yearOptions().map((year) => (
+                                                <MenuItem key={year} value={year}>{year}</MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </>
+                                )}
+                                {dashboardMode === "weekly" && activePeriodMode === "specific_week" && (
+                                    <TextField
+                                        label="Week Of"
+                                        type="date"
+                                        value={filters.week_date}
+                                        InputLabelProps={{ shrink: true }}
+                                        onChange={(event) => setFilters({ ...filters, week_date: event.target.value })}
+                                    />
+                                )}
+                                {dashboardMode === "weekly" && activePeriodMode === "range" && (
+                                    <>
+                                        <TextField
+                                            label="Date From"
+                                            type="date"
+                                            value={filters.date_from}
+                                            InputLabelProps={{ shrink: true }}
+                                            onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
+                                        />
+                                        <TextField
+                                            label="Date To"
+                                            type="date"
+                                            value={filters.date_to}
+                                            InputLabelProps={{ shrink: true }}
+                                            onChange={(event) => setFilters({ ...filters, date_to: event.target.value })}
+                                        />
+                                    </>
+                                )}
+                                <Button variant="contained" onClick={fetchDashboard} disabled={loading}>
+                                    {loading ? "Loading..." : "Apply"}
+                                </Button>
+                            </div>
+                        )}
                         {loading && <LinearProgress />}
                     </Paper>
 
-                    {filters.studio && (
-                        <Alert severity="info">
-                            Studio filter applies to attendance, sales, occupancy, and monthly retention snapshots.
-                            Service-purchase metrics are hidden until they can be reliably attributed by studio.
-                        </Alert>
-                    )}
+                    <Paper variant="outlined" style={{ padding: "10px 14px", background: "#fafafa" }}>
+                        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
+                            <Tooltip title={`Previous ${dashboardMode === "monthly" ? "month" : "week"}`}>
+                                <span>
+                                    <IconButton onClick={() => navigatePeriod(-1)} disabled={loading} size="small">
+                                        <ChevronLeftIcon />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                            <div style={{ minWidth: "220px", textAlign: "center" }}>
+                                <div style={{ fontSize: "18px", fontWeight: 700 }}>{activePeriodTitle}</div>
+                                <div style={{ color: "#666", fontSize: "13px" }}>
+                                    {formatDisplayDate(activeDateRange.date_from)} - {formatDisplayDate(activeDateRange.date_to)}
+                                </div>
+                            </div>
+                            <Tooltip title={`Next ${dashboardMode === "monthly" ? "month" : "week"}`}>
+                                <span>
+                                    <IconButton onClick={() => navigatePeriod(1)} disabled={loading} size="small">
+                                        <ChevronRightIcon />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                        </Stack>
+                    </Paper>
 
                     <Paper style={{ padding: "0 12px" }}>
                         <Tabs
@@ -943,11 +1030,6 @@ export default function Dashboard() {
                                 <KpiCard label="Unscheduled Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
                             </div>
 
-                            <Alert severity="info">
-                                La ocupacion se calcula con clases programadas y asistencias emparejadas por site, estudio, fecha y hora.
-                                Para empezar, crea salas y clases en Data &gt; Rooms, Scheduled Classes y Closures.
-                            </Alert>
-
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                                 <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
                                 <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
@@ -955,10 +1037,6 @@ export default function Dashboard() {
                                 <OccupancySlotTable title="Lowest Occupancy Slots" rows={lowOccupancySlots} />
                                 <OccupancySlotTable title="Highest Occupancy Slots" rows={highOccupancySlots} />
                             </div>
-
-                            <Alert severity="info">
-                                La ocupacion por sala sera mas exacta cuando las asistencias puedan emparejarse con una sala especifica.
-                            </Alert>
                         </>
                     )}
                 </div>
