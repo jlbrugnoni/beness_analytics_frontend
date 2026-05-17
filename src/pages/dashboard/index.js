@@ -276,6 +276,14 @@ const monthParts = (monthValue) => {
 const buildMonthValue = (year, month) => `${year}-${month}`;
 
 
+const formatDateValue = (value) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
+
 const monthRange = (monthValue) => {
     const [year, month] = monthValue.split("-").map(Number);
     const lastDay = new Date(year, month, 0).getDate();
@@ -286,11 +294,47 @@ const monthRange = (monthValue) => {
 };
 
 
-const selectedDateRange = (periodMode, filters) => {
+const weekRange = (value = new Date()) => {
+    const dateValue = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    const weekday = dateValue.getDay();
+    const daysFromMonday = weekday === 0 ? 6 : weekday - 1;
+    const start = new Date(dateValue);
+    start.setDate(dateValue.getDate() - daysFromMonday);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return {
+        date_from: formatDateValue(start),
+        date_to: formatDateValue(end),
+    };
+};
+
+
+const previousWeekRange = () => {
+    const today = new Date();
+    today.setDate(today.getDate() - 7);
+    return weekRange(today);
+};
+
+
+const weekRangeFromDate = (value) => {
+    if (!value) return weekRange();
+    const [year, month, day] = value.split("-").map(Number);
+    return weekRange(new Date(year, month - 1, day));
+};
+
+
+const selectedDateRange = (dashboardMode, periodModes, filters) => {
+    const periodMode = periodModes[dashboardMode];
+    if (dashboardMode === "weekly") {
+        if (periodMode === "current_week") return weekRange();
+        if (periodMode === "previous_week") return previousWeekRange();
+        if (periodMode === "specific_week") return weekRangeFromDate(filters.week_date);
+        return { date_from: filters.date_from, date_to: filters.date_to };
+    }
     if (periodMode === "last_completed_month") return monthRange(lastCompletedMonthValue());
     if (periodMode === "current_month") return monthRange(currentMonthValue());
     if (periodMode === "specific_month") return monthRange(filters.month);
-    return { date_from: filters.date_from, date_to: filters.date_to };
+    return monthRange(lastCompletedMonthValue());
 };
 
 
@@ -335,16 +379,21 @@ export default function Dashboard() {
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const defaultMonth = lastCompletedMonthValue();
+    const defaultWeek = weekRange();
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
-    const [periodMode, setPeriodMode] = useState("last_completed_month");
+    const [periodModes, setPeriodModes] = useState({
+        monthly: "last_completed_month",
+        weekly: "current_week",
+    });
     const [filters, setFilters] = useState({
         site: "",
         studio: "",
         month: defaultMonth,
-        date_from: monthRange(defaultMonth).date_from,
-        date_to: monthRange(defaultMonth).date_to,
+        week_date: defaultWeek.date_from,
+        date_from: defaultWeek.date_from,
+        date_to: defaultWeek.date_to,
     });
     const [summary, setSummary] = useState(null);
     const [revenue, setRevenue] = useState(null);
@@ -388,7 +437,7 @@ export default function Dashboard() {
         setError("");
         try {
             const params = new URLSearchParams();
-            const dateFilters = selectedDateRange(periodMode, filters);
+            const dateFilters = selectedDateRange(dashboardMode, periodModes, filters);
             const requestFilters = {
                 site: filters.site,
                 studio: filters.studio,
@@ -429,7 +478,8 @@ export default function Dashboard() {
     const visibleStudios = filters.site
         ? studios.filter((studio) => String(studio.site) === String(filters.site))
         : studios;
-    const activeDateRange = selectedDateRange(periodMode, filters);
+    const activePeriodMode = periodModes[dashboardMode];
+    const activeDateRange = selectedDateRange(dashboardMode, periodModes, filters);
     const selectedMonthParts = monthParts(filters.month);
     const activeDashboardTabs = dashboardTabs[dashboardMode];
 
@@ -437,6 +487,13 @@ export default function Dashboard() {
         if (!value) return;
         setDashboardMode(value);
         setActiveTab(dashboardModes[value].defaultTab);
+    };
+
+    const handlePeriodModeChange = (event) => {
+        setPeriodModes({
+            ...periodModes,
+            [dashboardMode]: event.target.value,
+        });
     };
 
     return (
@@ -494,15 +551,25 @@ export default function Dashboard() {
                             <TextField
                                 select
                                 label="Period"
-                                value={periodMode}
-                                onChange={(event) => setPeriodMode(event.target.value)}
+                                value={activePeriodMode}
+                                onChange={handlePeriodModeChange}
                             >
-                                <MenuItem value="last_completed_month">Last Completed Month</MenuItem>
-                                <MenuItem value="current_month">Current Month</MenuItem>
-                                <MenuItem value="specific_month">Specific Month</MenuItem>
-                                <MenuItem value="range">Date Range</MenuItem>
+                                {dashboardMode === "monthly" ? (
+                                    [
+                                        <MenuItem key="last_completed_month" value="last_completed_month">Last Completed Month</MenuItem>,
+                                        <MenuItem key="current_month" value="current_month">Current Month</MenuItem>,
+                                        <MenuItem key="specific_month" value="specific_month">Specific Month</MenuItem>,
+                                    ]
+                                ) : (
+                                    [
+                                        <MenuItem key="current_week" value="current_week">Current Week</MenuItem>,
+                                        <MenuItem key="previous_week" value="previous_week">Previous Week</MenuItem>,
+                                        <MenuItem key="specific_week" value="specific_week">Specific Week</MenuItem>,
+                                        <MenuItem key="range" value="range">Custom Range</MenuItem>,
+                                    ]
+                                )}
                             </TextField>
-                            {periodMode === "specific_month" && (
+                            {dashboardMode === "monthly" && activePeriodMode === "specific_month" && (
                                 <>
                                     <TextField
                                         select
@@ -532,7 +599,16 @@ export default function Dashboard() {
                                     </TextField>
                                 </>
                             )}
-                            {periodMode === "range" && (
+                            {dashboardMode === "weekly" && activePeriodMode === "specific_week" && (
+                                <TextField
+                                    label="Week Of"
+                                    type="date"
+                                    value={filters.week_date}
+                                    InputLabelProps={{ shrink: true }}
+                                    onChange={(event) => setFilters({ ...filters, week_date: event.target.value })}
+                                />
+                            )}
+                            {dashboardMode === "weekly" && activePeriodMode === "range" && (
                                 <>
                                     <TextField
                                         label="Date From"
