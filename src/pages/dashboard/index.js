@@ -183,14 +183,14 @@ const RevenueItemChart = ({ rows }) => {
 };
 
 
-const CompletedVisitsRankingChart = ({ title, rows, limit = 10 }) => {
+const CompletedVisitsRankingChart = ({ title, rows, limit = 10, wide = false }) => {
     const chartRows = (rows || []).slice(0, limit).map((row) => ({
         label: row.name || "N/A",
         total: Number(row.total || 0),
     }));
 
     return (
-        <Paper style={{ padding: "16px" }}>
+        <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
             <h2 style={{ marginTop: 0 }}>{title}</h2>
             <div style={{ width: "100%", height: 340 }}>
                 <ResponsiveContainer>
@@ -1444,7 +1444,7 @@ export default function Dashboard() {
                                 <CompletedVisitsByHourChart rows={attendance?.attended_by_hour} wide />
                                 <CompletedVisitsRankingChart title="Completed Visits by Instructor" rows={attendance?.attended_by_instructor} />
                                 <BreakdownTable title="Completed Visits by Studio" rows={attendance?.attended_by_studio} />
-                                <BreakdownTable title="Completed Visits by Service" rows={attendance?.attended_by_service} />
+                                <CompletedVisitsRankingChart title="Completed Visits by Service" rows={attendance?.attended_by_service} wide />
                                 <InstructorQualityTable rows={attendance?.instructor_quality} />
                             </div>
                         </>
