@@ -36,11 +36,16 @@ const KpiCard = ({ label, value }) => (
 );
 
 
-const InsightCard = ({ title, value, caption, details = [], action }) => (
+const InsightCard = ({ title, value, caption, delta, details = [], action }) => (
     <Paper style={{ padding: "18px", display: "grid", gap: "14px", minHeight: "220px" }}>
         <div>
             <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>{title}</div>
             <div style={{ fontSize: "34px", fontWeight: 800, marginTop: "4px" }}>{value}</div>
+            {delta && (
+                <div style={{ color: delta.tone === "down" ? "#b42318" : delta.tone === "flat" ? "#666" : "#1f7a4d", fontSize: "14px", fontWeight: 700, marginTop: "2px" }}>
+                    {delta.label}
+                </div>
+            )}
             {caption && <div style={{ color: "#666", fontSize: "14px", marginTop: "4px" }}>{caption}</div>}
         </div>
         <div style={{ display: "grid", gap: "8px" }}>
@@ -372,6 +377,27 @@ const InstructorQualityTable = ({ rows }) => (
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatPercent = (value) => `${formatNumber(value)}%`;
+const numericValue = (value) => Number(value || 0);
+const comparisonDelta = (current, previous, options = {}) => {
+    const difference = numericValue(current) - numericValue(previous);
+    const decimals = options.decimals ?? 0;
+    const suffix = options.suffix || "";
+    const tone = difference > 0
+        ? (options.invertTone ? "down" : "up")
+        : difference < 0
+            ? (options.invertTone ? "up" : "down")
+            : "flat";
+    const labelValue = Math.abs(difference) < 0.005
+        ? `0${suffix}`
+        : `${difference > 0 ? "+" : ""}${difference.toLocaleString(undefined, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+        })}${suffix}`;
+    return {
+        tone,
+        label: `${labelValue} vs previous ${options.periodLabel || "period"}`,
+    };
+};
 const formatActivityStatus = (value) => ({
     inactive: "Inactive",
     attending_unpaid: "Attending Unpaid",
@@ -506,6 +532,15 @@ const selectedDateRange = (dashboardMode, periodModes, filters) => {
 };
 
 
+const comparisonDateRange = (dashboardMode, dateRange) => {
+    if (!dateRange?.date_from || !dateRange?.date_to) return null;
+    if (dashboardMode === "monthly") {
+        return monthRange(addMonths(dateRange.date_from.slice(0, 7), -1));
+    }
+    return weekRangeFromDate(addDays(dateRange.date_from, -7));
+};
+
+
 const formatDisplayDate = (value) => {
     if (!value) return "N/A";
     return parseDateValue(value).toLocaleDateString(undefined, {
@@ -590,6 +625,9 @@ export default function Dashboard() {
     const [attendance, setAttendance] = useState(null);
     const [retention, setRetention] = useState(null);
     const [occupation, setOccupation] = useState(null);
+    const [comparisonSummary, setComparisonSummary] = useState(null);
+    const [comparisonRetention, setComparisonRetention] = useState(null);
+    const [comparisonOccupation, setComparisonOccupation] = useState(null);
     const [dashboardMode, setDashboardMode] = useState("monthly");
     const [activeTab, setActiveTab] = useState("monthly_overview");
     const [error, setError] = useState("");
@@ -626,19 +664,27 @@ export default function Dashboard() {
         setLoading(true);
         setError("");
         try {
-            const params = new URLSearchParams();
             const dateFilters = selectedDateRange(dashboardMode, periodModes, filters);
-            const requestFilters = {
-                site: filters.site,
-                studio: filters.studio,
-                ...dateFilters,
+            const previousDateFilters = comparisonDateRange(dashboardMode, dateFilters);
+            const queryStringFor = (range) => {
+                const params = new URLSearchParams();
+                const requestFilters = {
+                    site: filters.site,
+                    studio: filters.studio,
+                    ...range,
+                };
+                Object.entries(requestFilters).forEach(([key, value]) => {
+                    if (value) params.set(key, value);
+                });
+                return params.toString();
             };
-            Object.entries(requestFilters).forEach(([key, value]) => {
-                if (value) params.set(key, value);
-            });
-            const queryString = params.toString();
+            const queryString = queryStringFor(dateFilters);
+            const comparisonQueryString = previousDateFilters ? queryStringFor(previousDateFilters) : "";
             const requests = [
                 axios.get(`${backendUrl}/api/data/analytics/summary/?${queryString}`, authHeaders),
+            ];
+            const comparisonRequests = [
+                axios.get(`${backendUrl}/api/data/analytics/summary/?${comparisonQueryString}`, authHeaders),
             ];
 
             if (dashboardMode === "monthly") {
@@ -646,23 +692,40 @@ export default function Dashboard() {
                     axios.get(`${backendUrl}/api/data/analytics/revenue/?${queryString}`, authHeaders),
                     axios.get(`${backendUrl}/api/data/analytics/retention/?${queryString}`, authHeaders),
                 );
+                comparisonRequests.push(
+                    axios.get(`${backendUrl}/api/data/analytics/retention/?${comparisonQueryString}`, authHeaders),
+                );
             } else {
                 requests.push(
                     axios.get(`${backendUrl}/api/data/analytics/attendance/?${queryString}`, authHeaders),
                     axios.get(`${backendUrl}/api/data/analytics/occupation/?${queryString}`, authHeaders),
                 );
+                comparisonRequests.push(
+                    axios.get(`${backendUrl}/api/data/analytics/occupation/?${comparisonQueryString}`, authHeaders),
+                );
             }
 
-            const [summaryResponse, primaryResponse, secondaryResponse] = await Promise.all(requests);
+            const [
+                [summaryResponse, primaryResponse, secondaryResponse],
+                [comparisonSummaryResponse, comparisonSecondaryResponse],
+            ] = await Promise.all([
+                Promise.all(requests),
+                Promise.all(comparisonRequests),
+            ]);
             setSummary(summaryResponse.data);
+            setComparisonSummary(comparisonSummaryResponse.data);
             if (dashboardMode === "monthly") {
                 setRevenue(primaryResponse.data);
                 setRetention(secondaryResponse.data);
+                setComparisonRetention(comparisonSecondaryResponse.data);
+                setComparisonOccupation(null);
                 setAttendance(null);
                 setOccupation(null);
             } else {
                 setAttendance(primaryResponse.data);
                 setOccupation(secondaryResponse.data);
+                setComparisonOccupation(comparisonSecondaryResponse.data);
+                setComparisonRetention(null);
                 setRevenue(null);
                 setRetention(null);
             }
@@ -682,6 +745,8 @@ export default function Dashboard() {
     }, [token, dashboardMode, periodNavigationVersion]);
 
     const totals = summary?.totals || {};
+    const comparisonTotals = comparisonSummary?.totals || {};
+    const periodLabel = dashboardMode === "monthly" ? "month" : "week";
     const visibleStudios = filters.site
         ? studios.filter((studio) => String(studio.site) === String(filters.site))
         : studios;
@@ -932,6 +997,10 @@ export default function Dashboard() {
                                 <InsightCard
                                     title="Revenue Health"
                                     value={formatMoney(totals.sales_revenue)}
+                                    delta={comparisonDelta(totals.sales_revenue, comparisonTotals.sales_revenue, {
+                                        periodLabel,
+                                        decimals: 2,
+                                    })}
                                     caption="Sales revenue for the selected month."
                                     details={[
                                         { label: "Visit revenue", value: formatMoney(totals.visit_revenue) },
@@ -942,6 +1011,11 @@ export default function Dashboard() {
                                 <InsightCard
                                     title="Retention Health"
                                     value={formatPercent(retention?.renewal_rate)}
+                                    delta={comparisonDelta(retention?.renewal_rate, comparisonRetention?.renewal_rate, {
+                                        periodLabel,
+                                        decimals: 2,
+                                        suffix: " pts",
+                                    })}
                                     caption="Renewal rate from monthly membership snapshots."
                                     details={[
                                         { label: "Churn rate", value: formatPercent(retention?.churn_rate) },
@@ -957,6 +1031,11 @@ export default function Dashboard() {
                                 <InsightCard
                                     title="Follow-up Focus"
                                     value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)}
+                                    delta={comparisonDelta(
+                                        retention?.not_renewed_members ?? retention?.not_renewed_services,
+                                        comparisonRetention?.not_renewed_members ?? comparisonRetention?.not_renewed_services,
+                                        { periodLabel, invertTone: true },
+                                    )}
                                     caption="Members who did not renew in the selected month."
                                     details={[
                                         { label: "Value at risk", value: formatMoney(retention?.not_renewed_value) },
@@ -974,6 +1053,7 @@ export default function Dashboard() {
                                 <InsightCard
                                     title="Attendance Health"
                                     value={formatNumber(totals.attended_visits)}
+                                    delta={comparisonDelta(totals.attended_visits, comparisonTotals.attended_visits, { periodLabel })}
                                     caption="Completed visits for the selected week."
                                     details={[
                                         { label: "Total reservations", value: formatNumber(totals.attendance_visits) },
@@ -984,6 +1064,11 @@ export default function Dashboard() {
                                 <InsightCard
                                     title="Occupancy Health"
                                     value={formatPercent(occupation?.occupation_rate)}
+                                    delta={comparisonDelta(occupation?.occupation_rate, comparisonOccupation?.occupation_rate, {
+                                        periodLabel,
+                                        decimals: 2,
+                                        suffix: " pts",
+                                    })}
                                     caption="How much scheduled capacity was used."
                                     details={[
                                         { label: "Attendance used", value: formatNumber(occupation?.matched_attended_visits) },
@@ -994,6 +1079,7 @@ export default function Dashboard() {
                                 <InsightCard
                                     title="Studio Activity"
                                     value={formatNumber(totals.active_clients)}
+                                    delta={comparisonDelta(totals.active_clients, comparisonTotals.active_clients, { periodLabel })}
                                     caption="Clients with activity during the selected week."
                                     details={[
                                         { label: "Scheduled classes", value: formatNumber(occupation?.available_classes) },
