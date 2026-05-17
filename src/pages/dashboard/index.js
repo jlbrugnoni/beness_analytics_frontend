@@ -183,6 +183,79 @@ const RevenueItemChart = ({ rows }) => {
 };
 
 
+const WeeklyAttendanceComparisonChart = ({ rows }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>Completed Visits vs Previous Week</h2>
+        <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer>
+                <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                    <CartesianGrid stroke="#eef1f4" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <ChartTooltip formatter={(value) => formatNumber(value)} />
+                    <Legend />
+                    <Bar dataKey="previous" name="Previous week" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="current" name="Selected week" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                </ComposedChart>
+            </ResponsiveContainer>
+        </div>
+        {!rows.length && <div>No data</div>}
+    </Paper>
+);
+
+
+const BookingQualityChart = ({ rows }) => {
+    const chartRows = (rows || []).map((row) => ({
+        label: formatShortWeekdayDate(row.date),
+        attended: Number(row.attended || 0),
+        no_shows: Number(row.no_shows || 0),
+        late_cancels: Number(row.late_cancels || 0),
+    }));
+
+    return (
+        <Paper style={{ padding: "16px" }}>
+            <h2 style={{ marginTop: 0 }}>Booking Quality by Day</h2>
+            <div style={{ width: "100%", height: 320 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <ChartTooltip formatter={(value) => formatNumber(value)} />
+                        <Legend />
+                        <Bar dataKey="attended" name="Completed visits" stackId="bookings" fill="#2f6f73" />
+                        <Bar dataKey="late_cancels" name="Late cancels" stackId="bookings" fill="#d97706" />
+                        <Bar dataKey="no_shows" name="No-shows" stackId="bookings" fill="#b42318" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const WeeklyOccupancyComparisonChart = ({ rows }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>Occupancy vs Previous Week</h2>
+        <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer>
+                <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                    <CartesianGrid stroke="#eef1f4" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `${value}%`} />
+                    <ChartTooltip formatter={(value) => `${formatNumber(value)}%`} />
+                    <Legend />
+                    <Bar dataKey="previous" name="Previous week" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="current" name="Selected week" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                </ComposedChart>
+            </ResponsiveContainer>
+        </div>
+        {!rows.length && <div>No data</div>}
+    </Paper>
+);
+
+
 const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = false, limit = 31 }) => {
     const chartRows = (rows || []).slice(-limit);
     const maxValue = Math.max(...chartRows.map((row) => Number(row[valueKey] || 0)), 0);
@@ -607,6 +680,37 @@ const retentionTrendRange = (dateRange, months = 6) => {
 };
 
 
+const weekdayIndex = (dateValue) => {
+    const day = parseDateValue(dateValue).getDay();
+    return day === 0 ? 6 : day - 1;
+};
+
+
+const rowsByWeekday = (rows, dateKey = "date") => {
+    const lookup = {};
+    (rows || []).forEach((row) => {
+        if (!row[dateKey]) return;
+        lookup[weekdayIndex(row[dateKey])] = row;
+    });
+    return lookup;
+};
+
+
+const weeklyComparisonRows = (dateRange, currentRows, previousRows, valueKey = "total") => {
+    if (!dateRange?.date_from) return [];
+    const currentLookup = rowsByWeekday(currentRows);
+    const previousLookup = rowsByWeekday(previousRows);
+    return Array.from({ length: 7 }, (_, index) => {
+        const dateValue = addDays(dateRange.date_from, index);
+        return {
+            label: formatShortWeekdayDate(dateValue),
+            current: Number(currentLookup[index]?.[valueKey] || 0),
+            previous: Number(previousLookup[index]?.[valueKey] || 0),
+        };
+    });
+};
+
+
 const formatDisplayDate = (value) => {
     if (!value) return "N/A";
     return parseDateValue(value).toLocaleDateString(undefined, {
@@ -699,6 +803,7 @@ export default function Dashboard() {
     const [occupation, setOccupation] = useState(null);
     const [comparisonSummary, setComparisonSummary] = useState(null);
     const [comparisonRetention, setComparisonRetention] = useState(null);
+    const [comparisonAttendance, setComparisonAttendance] = useState(null);
     const [comparisonOccupation, setComparisonOccupation] = useState(null);
     const [retentionTrend, setRetentionTrend] = useState(null);
     const [dashboardMode, setDashboardMode] = useState("monthly");
@@ -778,13 +883,14 @@ export default function Dashboard() {
                     axios.get(`${backendUrl}/api/data/analytics/occupation/?${queryString}`, authHeaders),
                 );
                 comparisonRequests.push(
+                    axios.get(`${backendUrl}/api/data/analytics/attendance/?${comparisonQueryString}`, authHeaders),
                     axios.get(`${backendUrl}/api/data/analytics/occupation/?${comparisonQueryString}`, authHeaders),
                 );
             }
 
             const [
                 [summaryResponse, primaryResponse, secondaryResponse],
-                [comparisonSummaryResponse, comparisonSecondaryResponse, trendResponse],
+                [comparisonSummaryResponse, comparisonPrimaryResponse, comparisonSecondaryResponse],
             ] = await Promise.all([
                 Promise.all(requests),
                 Promise.all(comparisonRequests),
@@ -794,14 +900,16 @@ export default function Dashboard() {
             if (dashboardMode === "monthly") {
                 setRevenue(primaryResponse.data);
                 setRetention(secondaryResponse.data);
-                setComparisonRetention(comparisonSecondaryResponse.data);
-                setRetentionTrend(trendResponse.data);
+                setComparisonRetention(comparisonPrimaryResponse.data);
+                setRetentionTrend(comparisonSecondaryResponse.data);
+                setComparisonAttendance(null);
                 setComparisonOccupation(null);
                 setAttendance(null);
                 setOccupation(null);
             } else {
                 setAttendance(primaryResponse.data);
                 setOccupation(secondaryResponse.data);
+                setComparisonAttendance(comparisonPrimaryResponse.data);
                 setComparisonOccupation(comparisonSecondaryResponse.data);
                 setComparisonRetention(null);
                 setRetentionTrend(null);
@@ -848,6 +956,18 @@ export default function Dashboard() {
         current_members: retentionTrend?.current_month_members_by_month?.[month] || 0,
         not_renewed: retentionTrend?.not_renewed_members_by_month?.[month] || 0,
     }));
+    const weeklyAttendanceComparisonRows = weeklyComparisonRows(
+        activeDateRange,
+        attendance?.attended_by_date,
+        comparisonAttendance?.attended_by_date,
+        "total",
+    );
+    const weeklyOccupancyComparisonRows = weeklyComparisonRows(
+        activeDateRange,
+        occupation?.by_day,
+        comparisonOccupation?.by_day,
+        "occupation_rate",
+    );
 
     const handleDashboardModeChange = (_, value) => {
         if (!value) return;
@@ -1140,7 +1260,7 @@ export default function Dashboard() {
                                     delta={comparisonDelta(totals.attended_visits, comparisonTotals.attended_visits, { periodLabel })}
                                     caption="Completed visits for the selected week."
                                     details={[
-                                        { label: "Total reservations", value: formatNumber(totals.attendance_visits) },
+                                        { label: "Total bookings", value: formatNumber(totals.attendance_visits) },
                                         { label: "No-show rate", value: formatPercent(totals.no_show_rate) },
                                         { label: "Late cancel rate", value: formatPercent(totals.late_cancel_rate) },
                                     ]}
@@ -1173,8 +1293,8 @@ export default function Dashboard() {
                                 />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <BarChart title="Reservations Trend" rows={attendance?.by_date} />
-                                <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
+                                <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} />
+                                <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} />
                                 <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
                             </div>
                         </>
@@ -1196,7 +1316,7 @@ export default function Dashboard() {
                     {activeTab === "attendance" && (
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Total Reservations" value={formatNumber(totals.attendance_visits)} />
+                                <KpiCard label="Total Bookings" value={formatNumber(totals.attendance_visits)} />
                                 <KpiCard label="Completed Visits" value={formatNumber(totals.attended_visits)} />
                                 <KpiCard label="Avg Revenue / Visit" value={formatMoney(totals.average_revenue_per_attended_visit)} />
                                 <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
@@ -1204,11 +1324,12 @@ export default function Dashboard() {
                                 <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                                <BarChart title="Reservations by Date" rows={attendance?.by_date} />
-                                <BarChart title="Reservations by Hour" rows={attendance?.by_hour} labelKey="hour" limit={24} />
-                                <BreakdownTable title="Reservations by Studio" rows={attendance?.by_studio} />
-                                <BreakdownTable title="Reservations by Instructor" rows={attendance?.by_instructor} />
-                                <BreakdownTable title="Reservations by Service" rows={attendance?.by_service} />
+                                <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} />
+                                <BookingQualityChart rows={attendance?.booking_quality_by_date} />
+                                <BarChart title="Completed Visits by Hour" rows={attendance?.attended_by_hour} labelKey="hour" limit={24} />
+                                <BreakdownTable title="Completed Visits by Studio" rows={attendance?.attended_by_studio} />
+                                <BreakdownTable title="Completed Visits by Instructor" rows={attendance?.attended_by_instructor} />
+                                <BreakdownTable title="Completed Visits by Service" rows={attendance?.attended_by_service} />
                                 <InstructorQualityTable rows={attendance?.instructor_quality} />
                             </div>
                         </>
@@ -1285,6 +1406,7 @@ export default function Dashboard() {
                     {activeTab === "occupancy" && (
                         <>
                             <CapacityUsageCard occupation={occupation} />
+                            <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} />
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                                 <OccupationTable title="Occupancy by Room" rows={occupation?.by_room_capacity} />
