@@ -640,7 +640,7 @@ export default function Dashboard() {
                     {filters.studio && (
                         <Alert severity="info">
                             Studio filter applies to attendance, sales, occupancy, and monthly retention snapshots.
-                            Service purchase revenue remains site-level because Sales by Service does not include studio.
+                            Service-purchase metrics are hidden until they can be reliably attributed by studio.
                         </Alert>
                     )}
 
@@ -699,22 +699,14 @@ export default function Dashboard() {
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                                 <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
-                                <KpiCard label="Service Revenue" value={formatMoney(totals.service_revenue)} />
                                 <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
                                 <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
-                                <KpiCard label="Sales Count" value={formatNumber(totals.sales_count)} />
-                                <KpiCard label="Service Purchases" value={formatNumber(totals.service_purchases)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
                                 <BarChart title="Sales Revenue by Date" rows={revenue?.sales_by_date} money />
-                                <BarChart title="Sales Revenue by Weekday" rows={revenue?.sales_by_weekday} labelKey="weekday" money limit={7} />
-                                <BreakdownTable title="Revenue by Weekday" rows={revenue?.sales_by_weekday} nameKey="weekday" money />
-                                <BreakdownTable title="Services by Weekday" rows={revenue?.services_by_weekday} nameKey="weekday" money />
                                 <BreakdownTable title="Visit Revenue by Weekday" rows={revenue?.visits_by_weekday} nameKey="weekday" money />
                                 <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
-                                <BreakdownTable title="Revenue by Payment Method" rows={revenue?.by_payment_method} money />
                                 <BreakdownTable title="Revenue by Item" rows={revenue?.by_item} money />
-                                <BreakdownTable title="Revenue by Service" rows={revenue?.by_service} money />
                                 <BreakdownTable title="Discounts" rows={[
                                     { name: "Discounts", total: revenue?.discounts || 0 },
                                     { name: "Taxes", total: revenue?.taxes || 0 },
