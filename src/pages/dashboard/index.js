@@ -998,22 +998,43 @@ export default function Dashboard() {
 
                     {activeTab === "retention" && (
                         <>
-                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Previous Members" value={formatNumber(retention?.previous_month_members)} />
-                                <KpiCard label="Current Members" value={formatNumber(retention?.current_month_members)} />
-                                <KpiCard label="Retained Members" value={formatNumber(retention?.retained_members)} />
-                                <KpiCard label="New Members" value={formatNumber(retention?.new_members)} />
-                                <KpiCard label="Reactivated Members" value={formatNumber(retention?.reactivated_members)} />
-                                <KpiCard label="Not Renewed Members" value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)} />
-                                <KpiCard label="Not Renewed Inactive" value={formatNumber(retention?.not_renewed_inactive)} />
-                                <KpiCard label="Not Renewed Attending Unpaid" value={formatNumber(retention?.not_renewed_attending_unpaid)} />
-                                <KpiCard label="Not Renewed Attending Paid" value={formatNumber(retention?.not_renewed_attending_paid)} />
-                                <KpiCard label="Post-expiration Attendance" value={formatNumber(retention?.not_renewed_post_expiration_attendance)} />
-                                <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
-                                <KpiCard label="Churn Rate" value={`${formatNumber(retention?.churn_rate)}%`} />
-                                <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
-                                <KpiCard label="Tracked Products" value={formatNumber(retention?.tracked_pricing_options)} />
-                                <KpiCard label="Snapshot Rows" value={formatNumber(retention?.snapshot_rows)} />
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                                <InsightCard
+                                    title="Current Member Mix"
+                                    value={formatNumber(retention?.current_month_members)}
+                                    caption="How current members are entering the month."
+                                    details={[
+                                        { label: "Renewal rate", value: formatPercent(retention?.renewal_rate) },
+                                        { label: "Retained", value: formatNumber(retention?.retained_members) },
+                                        { label: "New", value: formatNumber(retention?.new_members) },
+                                        { label: "Reactivated", value: formatNumber(retention?.reactivated_members) },
+                                    ]}
+                                />
+                                <InsightCard
+                                    title="Not Renewed Follow-up"
+                                    value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)}
+                                    caption="Members who need attention after not renewing."
+                                    details={[
+                                        { label: "Inactive", value: formatNumber(retention?.not_renewed_inactive) },
+                                        { label: "Attending unpaid", value: formatNumber(retention?.not_renewed_attending_unpaid) },
+                                        { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
+                                    ]}
+                                    action={(
+                                        <Link href="/retention">
+                                            <Button variant="outlined" size="small">Open Follow-up List</Button>
+                                        </Link>
+                                    )}
+                                />
+                                <InsightCard
+                                    title="Value at Risk"
+                                    value={formatMoney(retention?.not_renewed_value)}
+                                    caption="Estimated membership value from not-renewed clients."
+                                    details={[
+                                        { label: "Post-expiration visits", value: formatNumber(retention?.not_renewed_post_expiration_attendance) },
+                                        { label: "Paid visits", value: formatNumber(retention?.not_renewed_post_expiration_paid_attendance) },
+                                        { label: "Unpaid visits", value: formatNumber(retention?.not_renewed_post_expiration_unpaid_attendance) },
+                                    ]}
+                                />
                             </div>
 
                             {retention?.tracked_pricing_options === 0 && (
