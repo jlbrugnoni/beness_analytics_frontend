@@ -183,8 +183,78 @@ const RevenueItemChart = ({ rows }) => {
 };
 
 
-const WeeklyAttendanceComparisonChart = ({ rows }) => (
-    <Paper style={{ padding: "16px" }}>
+const CompletedVisitsRankingChart = ({ title, rows, limit = 10 }) => {
+    const chartRows = (rows || []).slice(0, limit).map((row) => ({
+        label: row.name || "N/A",
+        total: Number(row.total || 0),
+    }));
+
+    return (
+        <Paper style={{ padding: "16px" }}>
+            <h2 style={{ marginTop: 0 }}>{title}</h2>
+            <div style={{ width: "100%", height: 340 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 8, bottom: 48, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis
+                            dataKey="label"
+                            interval={0}
+                            angle={-28}
+                            textAnchor="end"
+                            height={58}
+                            tick={{ fontSize: 11 }}
+                            tickFormatter={(value) => truncateLabel(value, 12)}
+                        />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <ChartTooltip
+                            formatter={(value) => [formatNumber(value), "Completed visits"]}
+                            labelFormatter={(value) => value}
+                        />
+                        <Bar dataKey="total" name="Completed visits" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const CompletedVisitsByHourChart = ({ rows, wide = false }) => {
+    const chartRows = (rows || []).map((row) => ({
+        hour: row.hour || "N/A",
+        total: Number(row.total || 0),
+    }));
+
+    return (
+        <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
+            <h2 style={{ marginTop: 0 }}>Completed Visits by Hour</h2>
+            <div style={{ width: "100%", height: 340 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 8, bottom: 28, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis
+                            dataKey="hour"
+                            interval={0}
+                            angle={-28}
+                            textAnchor="end"
+                            height={42}
+                            tick={{ fontSize: 11 }}
+                        />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <ChartTooltip formatter={(value) => [formatNumber(value), "Completed visits"]} />
+                        <Bar dataKey="total" name="Completed visits" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const WeeklyAttendanceComparisonChart = ({ rows, wide = false }) => (
+    <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
         <h2 style={{ marginTop: 0 }}>Completed Visits vs Previous Week</h2>
         <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
@@ -235,8 +305,8 @@ const BookingQualityChart = ({ rows }) => {
 };
 
 
-const WeeklyOccupancyComparisonChart = ({ rows }) => (
-    <Paper style={{ padding: "16px" }}>
+const WeeklyOccupancyComparisonChart = ({ rows, wide = false }) => (
+    <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
         <h2 style={{ marginTop: 0 }}>Occupancy vs Previous Week</h2>
         <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
@@ -1338,8 +1408,8 @@ export default function Dashboard() {
                                 />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} />
-                                <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} />
+                                <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} wide />
+                                <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} wide />
                                 <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
                             </div>
                         </>
@@ -1369,11 +1439,11 @@ export default function Dashboard() {
                                 <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                                <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} />
+                                <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} wide />
                                 <BookingQualityChart rows={attendance?.booking_quality_by_date} />
-                                <BarChart title="Completed Visits by Hour" rows={attendance?.attended_by_hour} labelKey="hour" limit={24} />
+                                <CompletedVisitsByHourChart rows={attendance?.attended_by_hour} wide />
+                                <CompletedVisitsRankingChart title="Completed Visits by Instructor" rows={attendance?.attended_by_instructor} />
                                 <BreakdownTable title="Completed Visits by Studio" rows={attendance?.attended_by_studio} />
-                                <BreakdownTable title="Completed Visits by Instructor" rows={attendance?.attended_by_instructor} />
                                 <BreakdownTable title="Completed Visits by Service" rows={attendance?.attended_by_service} />
                                 <InstructorQualityTable rows={attendance?.instructor_quality} />
                             </div>
