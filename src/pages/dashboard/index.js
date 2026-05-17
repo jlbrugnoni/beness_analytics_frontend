@@ -147,7 +147,7 @@ const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = 
                     return (
                         <div key={`${title}-${index}`} style={{ display: "grid", gridTemplateColumns: "120px 1fr 90px", alignItems: "center", gap: "10px" }}>
                             <div style={{ fontSize: "13px", color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {row[labelKey] || "N/A"}
+                                {labelKey === "date" ? formatShortWeekdayDate(row[labelKey]) : row[labelKey] || "N/A"}
                             </div>
                             <div style={{ height: "12px", background: "#eef1f4", borderRadius: "6px", overflow: "hidden" }}>
                                 <div style={{ width: `${width}%`, height: "100%", background: "#2f6f73" }} />
@@ -234,7 +234,7 @@ const OccupationTable = ({ title, rows, labelKey = "name" }) => (
                 <TableBody>
                     {(rows || []).map((row, index) => (
                         <TableRow key={`${title}-${index}`}>
-                            <TableCell>{row[labelKey] || "N/A"}</TableCell>
+                            <TableCell>{labelKey === "date" ? formatShortWeekdayDate(row[labelKey]) : row[labelKey] || "N/A"}</TableCell>
                             <TableCell align="right">{formatNumber(row.capacity)}</TableCell>
                             <TableCell align="right">{formatNumber(row.attended)}</TableCell>
                             <TableCell align="right">{formatNumber(row.occupation_rate)}%</TableCell>
@@ -270,7 +270,7 @@ const OccupancySlotTable = ({ title, rows }) => (
                     {(rows || []).map((row, index) => (
                         <TableRow key={`${title}-${row.date}-${row.start_time}-${row.studio}-${index}`}>
                             <TableCell>
-                                <div>{formatDisplayDate(row.date)}</div>
+                                <div>{formatShortWeekdayDate(row.date)}</div>
                                 <div style={{ color: "#666", fontSize: "12px" }}>{row.start_time || "N/A"}</div>
                             </TableCell>
                             <TableCell>{row.studio || "N/A"}</TableCell>
@@ -473,6 +473,16 @@ const formatDisplayDate = (value) => {
         day: "numeric",
         year: "numeric",
     });
+};
+
+
+const formatShortWeekdayDate = (value) => {
+    if (!value) return "N/A";
+    const dateValue = parseDateValue(value);
+    const weekday = dateValue.toLocaleDateString(undefined, { weekday: "short" });
+    const day = String(dateValue.getDate()).padStart(2, "0");
+    const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+    return `${weekday} ${day}-${month}`;
 };
 
 
@@ -924,7 +934,7 @@ export default function Dashboard() {
                                 <InsightCard
                                     title="Attendance Health"
                                     value={formatNumber(totals.attended_visits)}
-                                    caption="Attended visits for the selected week."
+                                    caption="Completed visits for the selected week."
                                     details={[
                                         { label: "Total reservations", value: formatNumber(totals.attendance_visits) },
                                         { label: "No-show rate", value: formatPercent(totals.no_show_rate) },
@@ -934,20 +944,20 @@ export default function Dashboard() {
                                 <InsightCard
                                     title="Occupancy Health"
                                     value={formatPercent(occupation?.occupation_rate)}
-                                    caption="Matched attendance divided by scheduled capacity."
+                                    caption="How much scheduled capacity was used."
                                     details={[
-                                        { label: "Matched attendance", value: formatNumber(occupation?.matched_attended_visits) },
+                                        { label: "Attendance used", value: formatNumber(occupation?.matched_attended_visits) },
                                         { label: "Scheduled capacity", value: formatNumber(occupation?.scheduled_capacity) },
                                         { label: "Scheduled classes", value: formatNumber(occupation?.available_classes) },
                                     ]}
                                 />
                                 <InsightCard
-                                    title="Schedule Watch"
-                                    value={formatNumber(occupation?.unscheduled_attended_visits)}
-                                    caption="Attended visits not matched to a scheduled class."
+                                    title="Studio Activity"
+                                    value={formatNumber(totals.active_clients)}
+                                    caption="Clients with activity during the selected week."
                                     details={[
+                                        { label: "Scheduled classes", value: formatNumber(occupation?.available_classes) },
                                         { label: "Closed / unavailable", value: formatNumber(occupation?.closed_or_unavailable_classes) },
-                                        { label: "Active clients", value: formatNumber(totals.active_clients) },
                                         { label: "Tracked time slots", value: formatNumber(occupancySlots.length) },
                                     ]}
                                 />
