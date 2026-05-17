@@ -335,8 +335,8 @@ const InstructorQualityTable = ({ rows }) => (
                 <TableHead>
                     <TableRow>
                         <TableCell>Instructor</TableCell>
-                        <TableCell align="right">Visits</TableCell>
-                        <TableCell align="right">Attended</TableCell>
+                        <TableCell align="right">Reservations</TableCell>
+                        <TableCell align="right">Completed</TableCell>
                         <TableCell align="right">No-show</TableCell>
                         <TableCell align="right">Late Cancel</TableCell>
                         <TableCell align="right">Revenue</TableCell>
@@ -999,7 +999,7 @@ export default function Dashboard() {
                                 />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <BarChart title="Attendance Trend" rows={attendance?.by_date} />
+                                <BarChart title="Reservations Trend" rows={attendance?.by_date} />
                                 <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
                                 <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
                             </div>
@@ -1022,19 +1022,19 @@ export default function Dashboard() {
                     {activeTab === "attendance" && (
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
-                                <KpiCard label="Attended Visits" value={formatNumber(totals.attended_visits)} />
+                                <KpiCard label="Total Reservations" value={formatNumber(totals.attendance_visits)} />
+                                <KpiCard label="Completed Visits" value={formatNumber(totals.attended_visits)} />
                                 <KpiCard label="Avg Revenue / Visit" value={formatMoney(totals.average_revenue_per_attended_visit)} />
                                 <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
                                 <KpiCard label="Late Cancel Rate" value={`${formatNumber(totals.late_cancel_rate)}%`} />
                                 <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                                <BarChart title="Attendance by Date" rows={attendance?.by_date} />
-                                <BarChart title="Attendance by Hour" rows={attendance?.by_hour} labelKey="hour" limit={24} />
-                                <BreakdownTable title="Attendance by Studio" rows={attendance?.by_studio} />
-                                <BreakdownTable title="Attendance by Instructor" rows={attendance?.by_instructor} />
-                                <BreakdownTable title="Attendance by Service" rows={attendance?.by_service} />
+                                <BarChart title="Reservations by Date" rows={attendance?.by_date} />
+                                <BarChart title="Reservations by Hour" rows={attendance?.by_hour} labelKey="hour" limit={24} />
+                                <BreakdownTable title="Reservations by Studio" rows={attendance?.by_studio} />
+                                <BreakdownTable title="Reservations by Instructor" rows={attendance?.by_instructor} />
+                                <BreakdownTable title="Reservations by Service" rows={attendance?.by_service} />
                                 <InstructorQualityTable rows={attendance?.instructor_quality} />
                             </div>
                         </>
