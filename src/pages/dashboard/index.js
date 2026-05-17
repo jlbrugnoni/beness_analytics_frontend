@@ -9,6 +9,7 @@ import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import LinearProgress from "@mui/material/LinearProgress";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Tab from "@mui/material/Tab";
@@ -516,18 +517,35 @@ export default function Dashboard() {
                 if (value) params.set(key, value);
             });
             const queryString = params.toString();
-            const [summaryResponse, revenueResponse, attendanceResponse, retentionResponse, occupationResponse] = await Promise.all([
+            const requests = [
                 axios.get(`${backendUrl}/api/data/analytics/summary/?${queryString}`, authHeaders),
-                axios.get(`${backendUrl}/api/data/analytics/revenue/?${queryString}`, authHeaders),
-                axios.get(`${backendUrl}/api/data/analytics/attendance/?${queryString}`, authHeaders),
-                axios.get(`${backendUrl}/api/data/analytics/retention/?${queryString}`, authHeaders),
-                axios.get(`${backendUrl}/api/data/analytics/occupation/?${queryString}`, authHeaders),
-            ]);
+            ];
+
+            if (dashboardMode === "monthly") {
+                requests.push(
+                    axios.get(`${backendUrl}/api/data/analytics/revenue/?${queryString}`, authHeaders),
+                    axios.get(`${backendUrl}/api/data/analytics/retention/?${queryString}`, authHeaders),
+                );
+            } else {
+                requests.push(
+                    axios.get(`${backendUrl}/api/data/analytics/attendance/?${queryString}`, authHeaders),
+                    axios.get(`${backendUrl}/api/data/analytics/occupation/?${queryString}`, authHeaders),
+                );
+            }
+
+            const [summaryResponse, primaryResponse, secondaryResponse] = await Promise.all(requests);
             setSummary(summaryResponse.data);
-            setRevenue(revenueResponse.data);
-            setAttendance(attendanceResponse.data);
-            setRetention(retentionResponse.data);
-            setOccupation(occupationResponse.data);
+            if (dashboardMode === "monthly") {
+                setRevenue(primaryResponse.data);
+                setRetention(secondaryResponse.data);
+                setAttendance(null);
+                setOccupation(null);
+            } else {
+                setAttendance(primaryResponse.data);
+                setOccupation(secondaryResponse.data);
+                setRevenue(null);
+                setRetention(null);
+            }
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading dashboard.");
         } finally {
@@ -706,13 +724,15 @@ export default function Dashboard() {
                             )}
                         </div>
                         <div style={{ color: "#666", fontSize: "14px" }}>
-                            Showing: {formatDisplayDate(activeDateRange.date_from)} - {formatDisplayDate(activeDateRange.date_to)}
+                            Showing {dashboardMode === "monthly" ? "monthly performance" : "weekly operations"}:
+                            {" "}{formatDisplayDate(activeDateRange.date_from)} - {formatDisplayDate(activeDateRange.date_to)}
                         </div>
                         <div>
                             <Button variant="contained" onClick={fetchDashboard} disabled={loading}>
                                 {loading ? "Loading..." : "Apply Filters"}
                             </Button>
                         </div>
+                        {loading && <LinearProgress />}
                     </Paper>
 
                     {filters.studio && (
@@ -811,7 +831,7 @@ export default function Dashboard() {
                                     details={[
                                         { label: "Closed / unavailable", value: formatNumber(occupation?.closed_or_unavailable_classes) },
                                         { label: "Active clients", value: formatNumber(totals.active_clients) },
-                                        { label: "Slot rows", value: formatNumber(occupancySlots.length) },
+                                        { label: "Tracked time slots", value: formatNumber(occupancySlots.length) },
                                     ]}
                                 />
                             </div>
