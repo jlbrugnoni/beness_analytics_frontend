@@ -256,6 +256,51 @@ const WeeklyOccupancyComparisonChart = ({ rows }) => (
 );
 
 
+const OccupancyCapacityByDayChart = ({ rows }) => {
+    const chartRows = (rows || []).map((row) => {
+        const capacity = Number(row.capacity || 0);
+        const attended = Number(row.attended || 0);
+        return {
+            label: formatShortWeekdayDate(row.date),
+            attended,
+            unused_capacity: Math.max(0, capacity - attended),
+            capacity,
+            occupation_rate: Number(row.occupation_rate || 0),
+        };
+    });
+
+    return (
+        <Paper style={{ padding: "16px" }}>
+            <h2 style={{ marginTop: 0 }}>Capacity Used by Day</h2>
+            <div style={{ width: "100%", height: 320 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <ChartTooltip
+                            formatter={(value, name, item) => {
+                                if (name === "attended") return [formatNumber(value), "Attendance used"];
+                                if (name === "unused_capacity") return [formatNumber(value), "Unused capacity"];
+                                return [formatNumber(value), name];
+                            }}
+                            labelFormatter={(label, payload) => {
+                                const row = payload?.[0]?.payload;
+                                return row ? `${label} - ${formatPercent(row.occupation_rate)}` : label;
+                            }}
+                        />
+                        <Legend />
+                        <Bar dataKey="attended" name="Attendance used" stackId="capacity" fill="#2f6f73" />
+                        <Bar dataKey="unused_capacity" name="Unused capacity" stackId="capacity" fill="#d8dee4" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
 const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = false, limit = 31 }) => {
     const chartRows = (rows || []).slice(-limit);
     const maxValue = Math.max(...chartRows.map((row) => Number(row[valueKey] || 0)), 0);
@@ -1406,7 +1451,10 @@ export default function Dashboard() {
                     {activeTab === "occupancy" && (
                         <>
                             <CapacityUsageCard occupation={occupation} />
-                            <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} />
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+                                <OccupancyCapacityByDayChart rows={occupation?.by_day} />
+                                <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} />
+                            </div>
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                                 <OccupationTable title="Occupancy by Room" rows={occupation?.by_room_capacity} />
