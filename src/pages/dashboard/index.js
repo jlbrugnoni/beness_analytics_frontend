@@ -212,6 +212,45 @@ const OccupationTable = ({ title, rows, labelKey = "name" }) => (
 );
 
 
+const OccupancySlotTable = ({ title, rows }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>{title}</h2>
+        <TableContainer style={{ maxHeight: 360 }}>
+            <Table size="small" stickyHeader>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Slot</TableCell>
+                        <TableCell>Studio</TableCell>
+                        <TableCell align="right">Capacity</TableCell>
+                        <TableCell align="right">Attendance</TableCell>
+                        <TableCell align="right">Occupancy</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {(rows || []).map((row, index) => (
+                        <TableRow key={`${title}-${row.date}-${row.start_time}-${row.studio}-${index}`}>
+                            <TableCell>
+                                <div>{formatDisplayDate(row.date)}</div>
+                                <div style={{ color: "#666", fontSize: "12px" }}>{row.start_time || "N/A"}</div>
+                            </TableCell>
+                            <TableCell>{row.studio || "N/A"}</TableCell>
+                            <TableCell align="right">{formatNumber(row.capacity)}</TableCell>
+                            <TableCell align="right">{formatNumber(row.attended)}</TableCell>
+                            <TableCell align="right">{formatNumber(row.occupation_rate)}%</TableCell>
+                        </TableRow>
+                    ))}
+                    {!rows?.length && (
+                        <TableRow>
+                            <TableCell colSpan={5}>No data</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    </Paper>
+);
+
+
 const InstructorQualityTable = ({ rows }) => (
     <Paper style={{ padding: "16px" }}>
         <h2 style={{ marginTop: 0 }}>Instructor Quality</h2>
@@ -502,7 +541,7 @@ export default function Dashboard() {
 
     useEffect(() => {
         fetchDashboard();
-    }, [token]);
+    }, [token, dashboardMode]);
 
     const totals = summary?.totals || {};
     const visibleStudios = filters.site
@@ -512,6 +551,15 @@ export default function Dashboard() {
     const activeDateRange = selectedDateRange(dashboardMode, periodModes, filters);
     const selectedMonthParts = monthParts(filters.month);
     const activeDashboardTabs = dashboardTabs[dashboardMode];
+    const occupancySlots = occupation?.by_slot || [];
+    const lowOccupancySlots = [...occupancySlots]
+        .filter((row) => Number(row.capacity || 0) > 0)
+        .sort((a, b) => Number(a.occupation_rate || 0) - Number(b.occupation_rate || 0))
+        .slice(0, 10);
+    const highOccupancySlots = [...occupancySlots]
+        .filter((row) => Number(row.capacity || 0) > 0)
+        .sort((a, b) => Number(b.occupation_rate || 0) - Number(a.occupation_rate || 0))
+        .slice(0, 10);
 
     const handleDashboardModeChange = (_, value) => {
         if (!value) return;
@@ -735,19 +783,42 @@ export default function Dashboard() {
 
                     {activeTab === "weekly_overview" && (
                         <>
-                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
-                                <KpiCard label="Attended Visits" value={formatNumber(totals.attended_visits)} />
-                                <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
-                                <KpiCard label="Late Cancel Rate" value={`${formatNumber(totals.late_cancel_rate)}%`} />
-                                <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
-                                <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
-                                <KpiCard label="Scheduled Classes" value={formatNumber(occupation?.available_classes)} />
-                                <KpiCard label="Unscheduled Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                                <InsightCard
+                                    title="Attendance Health"
+                                    value={formatNumber(totals.attended_visits)}
+                                    caption="Attended visits for the selected week."
+                                    details={[
+                                        { label: "Total reservations", value: formatNumber(totals.attendance_visits) },
+                                        { label: "No-show rate", value: formatPercent(totals.no_show_rate) },
+                                        { label: "Late cancel rate", value: formatPercent(totals.late_cancel_rate) },
+                                    ]}
+                                />
+                                <InsightCard
+                                    title="Occupancy Health"
+                                    value={formatPercent(occupation?.occupation_rate)}
+                                    caption="Matched attendance divided by scheduled capacity."
+                                    details={[
+                                        { label: "Matched attendance", value: formatNumber(occupation?.matched_attended_visits) },
+                                        { label: "Scheduled capacity", value: formatNumber(occupation?.scheduled_capacity) },
+                                        { label: "Scheduled classes", value: formatNumber(occupation?.available_classes) },
+                                    ]}
+                                />
+                                <InsightCard
+                                    title="Schedule Watch"
+                                    value={formatNumber(occupation?.unscheduled_attended_visits)}
+                                    caption="Attended visits not matched to a scheduled class."
+                                    details={[
+                                        { label: "Closed / unavailable", value: formatNumber(occupation?.closed_or_unavailable_classes) },
+                                        { label: "Active clients", value: formatNumber(totals.active_clients) },
+                                        { label: "Slot rows", value: formatNumber(occupancySlots.length) },
+                                    ]}
+                                />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                                 <BarChart title="Attendance Trend" rows={attendance?.by_date} />
                                 <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
+                                <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
                             </div>
                         </>
                     )}
@@ -860,6 +931,9 @@ export default function Dashboard() {
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                                 <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
                                 <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
+                                <OccupationTable title="Occupancy by Room" rows={occupation?.by_room_capacity} />
+                                <OccupancySlotTable title="Lowest Occupancy Slots" rows={lowOccupancySlots} />
+                                <OccupancySlotTable title="Highest Occupancy Slots" rows={highOccupancySlots} />
                             </div>
 
                             <Alert severity="info">
