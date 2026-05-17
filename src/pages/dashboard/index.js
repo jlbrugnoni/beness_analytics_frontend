@@ -4,6 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import {
+    Bar,
+    BarChart as RechartsBarChart,
+    CartesianGrid,
+    ComposedChart,
+    Legend,
+    Line,
+    ResponsiveContainer,
+    Tooltip as ChartTooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
@@ -104,35 +116,68 @@ const BreakdownTable = ({ title, rows, nameKey = "name", valueKey = "total", mon
 );
 
 
-const RankedBarTable = ({ title, rows, nameKey = "name", valueKey = "total", money = false, limit = 12 }) => {
-    const tableRows = (rows || []).slice(0, limit);
-    const maxValue = Math.max(...tableRows.map((row) => Number(row[valueKey] || 0)), 0);
+const MemberTrendChart = ({ rows }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>Member Trend</h2>
+        <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer>
+                <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                    <CartesianGrid stroke="#eef1f4" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <ChartTooltip formatter={(value) => formatNumber(value)} />
+                    <Legend />
+                    <Bar dataKey="not_renewed" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
+                    <Line
+                        type="monotone"
+                        dataKey="current_members"
+                        name="Current members"
+                        stroke="#2f6f73"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                    />
+                </ComposedChart>
+            </ResponsiveContainer>
+        </div>
+        {!rows.length && <div>No data</div>}
+    </Paper>
+);
+
+
+const RevenueItemChart = ({ rows }) => {
+    const chartRows = (rows || []).slice(0, 10).map((row) => ({
+        label: row.name || "N/A",
+        total: Number(row.total || 0),
+        count: Number(row.count || 0),
+    }));
+    const chartHeight = Math.max(320, chartRows.length * 44 + 80);
 
     return (
         <Paper style={{ padding: "16px" }}>
-            <h2 style={{ marginTop: 0 }}>{title}</h2>
-            <div style={{ display: "grid", gap: "12px" }}>
-                {tableRows.map((row, index) => {
-                    const value = Number(row[valueKey] || 0);
-                    const width = maxValue ? Math.max(4, (value / maxValue) * 100) : 0;
-                    return (
-                        <div key={`${title}-${index}`} style={{ display: "grid", gap: "6px" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-                                <span style={{ color: "#444", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {row[nameKey] ?? "N/A"}
-                                </span>
-                                <strong style={{ fontSize: "14px", textAlign: "right", whiteSpace: "nowrap" }}>
-                                    {money ? formatMoney(value) : formatNumber(value)}
-                                </strong>
-                            </div>
-                            <div style={{ height: "10px", background: "#eef1f4", borderRadius: "5px", overflow: "hidden" }}>
-                                <div style={{ width: `${width}%`, height: "100%", background: "#2f6f73" }} />
-                            </div>
-                        </div>
-                    );
-                })}
-                {!tableRows.length && <div>No data</div>}
+            <h2 style={{ marginTop: 0 }}>Revenue by Item</h2>
+            <div style={{ width: "100%", height: chartHeight }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 12 }}>
+                        <CartesianGrid stroke="#eef1f4" horizontal={false} />
+                        <XAxis type="number" tickFormatter={formatCompactMoney} tick={{ fontSize: 12 }} />
+                        <YAxis
+                            type="category"
+                            dataKey="label"
+                            width={180}
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(value) => truncateLabel(value, 26)}
+                        />
+                        <ChartTooltip
+                            formatter={(value) => [formatMoney(value), "Revenue"]}
+                            labelFormatter={(value) => value}
+                            contentStyle={{ borderRadius: 6, borderColor: "#d8dee4" }}
+                        />
+                        <Bar dataKey="total" name="Revenue" fill="#2f6f73" radius={[0, 4, 4, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
             </div>
+            {!chartRows.length && <div>No data</div>}
         </Paper>
     );
 };
@@ -376,6 +421,16 @@ const InstructorQualityTable = ({ rows }) => (
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatCompactMoney = (value) => {
+    const numberValue = Number(value || 0);
+    if (Math.abs(numberValue) >= 1000000) return `${(numberValue / 1000000).toFixed(1)}M`;
+    if (Math.abs(numberValue) >= 1000) return `${(numberValue / 1000).toFixed(0)}K`;
+    return formatMoney(numberValue);
+};
+const truncateLabel = (value, maxLength = 24) => {
+    const text = String(value || "N/A");
+    return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text;
+};
 const formatPercent = (value) => `${formatNumber(value)}%`;
 const numericValue = (value) => Number(value || 0);
 const comparisonDelta = (current, previous, options = {}) => {
@@ -541,6 +596,17 @@ const comparisonDateRange = (dashboardMode, dateRange) => {
 };
 
 
+const retentionTrendRange = (dateRange, months = 6) => {
+    if (!dateRange?.date_from) return null;
+    const endMonth = dateRange.date_from.slice(0, 7);
+    const startMonth = addMonths(endMonth, -(months - 1));
+    return {
+        date_from: monthRange(startMonth).date_from,
+        date_to: monthRange(endMonth).date_to,
+    };
+};
+
+
 const formatDisplayDate = (value) => {
     if (!value) return "N/A";
     return parseDateValue(value).toLocaleDateString(undefined, {
@@ -569,6 +635,12 @@ const formatPeriodTitle = (dashboardMode, dateRange) => {
         return start.toLocaleDateString(undefined, { month: "long", year: "numeric" });
     }
     return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+};
+
+
+const formatMonthLabel = (monthValue) => {
+    if (!monthValue) return "N/A";
+    return parseDateValue(monthValue).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 };
 
 
@@ -628,6 +700,7 @@ export default function Dashboard() {
     const [comparisonSummary, setComparisonSummary] = useState(null);
     const [comparisonRetention, setComparisonRetention] = useState(null);
     const [comparisonOccupation, setComparisonOccupation] = useState(null);
+    const [retentionTrend, setRetentionTrend] = useState(null);
     const [dashboardMode, setDashboardMode] = useState("monthly");
     const [activeTab, setActiveTab] = useState("monthly_overview");
     const [error, setError] = useState("");
@@ -695,6 +768,10 @@ export default function Dashboard() {
                 comparisonRequests.push(
                     axios.get(`${backendUrl}/api/data/analytics/retention/?${comparisonQueryString}`, authHeaders),
                 );
+                const trendQueryString = queryStringFor(retentionTrendRange(dateFilters));
+                comparisonRequests.push(
+                    axios.get(`${backendUrl}/api/data/analytics/retention/?${trendQueryString}`, authHeaders),
+                );
             } else {
                 requests.push(
                     axios.get(`${backendUrl}/api/data/analytics/attendance/?${queryString}`, authHeaders),
@@ -707,7 +784,7 @@ export default function Dashboard() {
 
             const [
                 [summaryResponse, primaryResponse, secondaryResponse],
-                [comparisonSummaryResponse, comparisonSecondaryResponse],
+                [comparisonSummaryResponse, comparisonSecondaryResponse, trendResponse],
             ] = await Promise.all([
                 Promise.all(requests),
                 Promise.all(comparisonRequests),
@@ -718,6 +795,7 @@ export default function Dashboard() {
                 setRevenue(primaryResponse.data);
                 setRetention(secondaryResponse.data);
                 setComparisonRetention(comparisonSecondaryResponse.data);
+                setRetentionTrend(trendResponse.data);
                 setComparisonOccupation(null);
                 setAttendance(null);
                 setOccupation(null);
@@ -726,6 +804,7 @@ export default function Dashboard() {
                 setOccupation(secondaryResponse.data);
                 setComparisonOccupation(comparisonSecondaryResponse.data);
                 setComparisonRetention(null);
+                setRetentionTrend(null);
                 setRevenue(null);
                 setRetention(null);
             }
@@ -764,6 +843,11 @@ export default function Dashboard() {
         .filter((row) => Number(row.capacity || 0) > 0)
         .sort((a, b) => Number(b.occupation_rate || 0) - Number(a.occupation_rate || 0))
         .slice(0, 10);
+    const retentionTrendRows = (retentionTrend?.months || []).map((month) => ({
+        label: formatMonthLabel(month),
+        current_members: retentionTrend?.current_month_members_by_month?.[month] || 0,
+        not_renewed: retentionTrend?.not_renewed_members_by_month?.[month] || 0,
+    }));
 
     const handleDashboardModeChange = (_, value) => {
         if (!value) return;
@@ -1104,7 +1188,7 @@ export default function Dashboard() {
                                 <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                                <RankedBarTable title="Revenue by Item" rows={revenue?.by_item} money />
+                                <RevenueItemChart rows={revenue?.by_item} />
                             </div>
                         </>
                     )}
@@ -1170,6 +1254,7 @@ export default function Dashboard() {
                                     ]}
                                 />
                             </div>
+                            <MemberTrendChart rows={retentionTrendRows} />
 
                             {retention?.tracked_pricing_options === 0 && (
                                 <Alert severity="warning">
