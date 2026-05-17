@@ -30,6 +30,35 @@ const KpiCard = ({ label, value }) => (
 );
 
 
+const InsightCard = ({ title, value, caption, details = [], action }) => (
+    <Paper style={{ padding: "18px", display: "grid", gap: "14px", minHeight: "220px" }}>
+        <div>
+            <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>{title}</div>
+            <div style={{ fontSize: "34px", fontWeight: 800, marginTop: "4px" }}>{value}</div>
+            {caption && <div style={{ color: "#666", fontSize: "14px", marginTop: "4px" }}>{caption}</div>}
+        </div>
+        <div style={{ display: "grid", gap: "8px" }}>
+            {details.map((detail) => (
+                <div
+                    key={detail.label}
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "12px",
+                        borderTop: "1px solid #eef1f4",
+                        paddingTop: "8px",
+                    }}
+                >
+                    <span style={{ color: "#666", fontSize: "14px" }}>{detail.label}</span>
+                    <strong style={{ fontSize: "14px", textAlign: "right" }}>{detail.value}</strong>
+                </div>
+            ))}
+        </div>
+        {action && <div>{action}</div>}
+    </Paper>
+);
+
+
 const BreakdownTable = ({ title, rows, nameKey = "name", valueKey = "total", money = false }) => (
     <Paper style={{ padding: "16px" }}>
         <h2 style={{ marginTop: 0 }}>{title}</h2>
@@ -223,6 +252,7 @@ const InstructorQualityTable = ({ rows }) => (
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatPercent = (value) => `${formatNumber(value)}%`;
 const formatActivityStatus = (value) => ({
     inactive: "Inactive",
     attending_unpaid: "Attending Unpaid",
@@ -659,15 +689,42 @@ export default function Dashboard() {
 
                     {activeTab === "monthly_overview" && (
                         <>
-                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
-                                <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
-                                <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
-                                <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
-                                <KpiCard label="Churn Rate" value={`${formatNumber(retention?.churn_rate)}%`} />
-                                <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
-                                <KpiCard label="New Members" value={formatNumber(retention?.new_members)} />
-                                <KpiCard label="Reactivated Members" value={formatNumber(retention?.reactivated_members)} />
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                                <InsightCard
+                                    title="Revenue Health"
+                                    value={formatMoney(totals.sales_revenue)}
+                                    caption="Sales revenue for the selected month."
+                                    details={[
+                                        { label: "Visit revenue", value: formatMoney(totals.visit_revenue) },
+                                        { label: "Average ticket", value: formatMoney(totals.average_ticket) },
+                                        { label: "Sales by studio", value: formatNumber(revenue?.by_studio?.length) },
+                                    ]}
+                                />
+                                <InsightCard
+                                    title="Retention Health"
+                                    value={formatPercent(retention?.renewal_rate)}
+                                    caption="Renewal rate from monthly membership snapshots."
+                                    details={[
+                                        { label: "Churn rate", value: formatPercent(retention?.churn_rate) },
+                                        { label: "Retained members", value: formatNumber(retention?.retained_members) },
+                                        { label: "Current members", value: formatNumber(retention?.current_month_members) },
+                                    ]}
+                                    action={(
+                                        <Link href="/retention">
+                                            <Button variant="outlined" size="small">Open Retention Follow-up</Button>
+                                        </Link>
+                                    )}
+                                />
+                                <InsightCard
+                                    title="Follow-up Focus"
+                                    value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)}
+                                    caption="Members who did not renew in the selected month."
+                                    details={[
+                                        { label: "Value at risk", value: formatMoney(retention?.not_renewed_value) },
+                                        { label: "Attending unpaid", value: formatNumber(retention?.not_renewed_attending_unpaid) },
+                                        { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
+                                    ]}
+                                />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                                 <BarChart title="Sales Revenue Trend" rows={revenue?.sales_by_date} money />
