@@ -227,6 +227,104 @@ const RevenueHealthTrendChart = ({ rows }) => (
 );
 
 
+const RetentionHealthTrendChart = ({ rows }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis yAxisId="rate" tick={chartText} tickFormatter={(value) => `${value}%`} />
+                <YAxis yAxisId="members" orientation="right" allowDecimals={false} tick={chartText} />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "renewal_rate") return [`${formatNumber(value)}%`, "Renewal rate"];
+                        if (name === "not_renewed_members") return [formatNumber(value), "Not renewed"];
+                        if (name === "not_renewed_unassigned_studio") return [formatNumber(value), "Unassigned studio"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                <Bar yAxisId="members" dataKey="not_renewed_members" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="members" dataKey="not_renewed_unassigned_studio" name="Unassigned studio" fill="#d97706" radius={[4, 4, 0, 0]} />
+                <Line
+                    yAxisId="rate"
+                    type="monotone"
+                    dataKey="renewal_rate"
+                    name="Renewal rate"
+                    stroke="#2f6f73"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                />
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const MemberMixHistoryChart = ({ rows, view }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                {view === "renewal" ? (
+                    <YAxis tick={chartText} tickFormatter={(value) => `${value}%`} />
+                ) : (
+                    <YAxis allowDecimals={false} tick={chartText} />
+                )}
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "renewal_rate") return [`${formatNumber(value)}%`, "Renewal rate"];
+                        if (name === "current_members") return [formatNumber(value), "Current members"];
+                        if (name === "retained_members") return [formatNumber(value), "Retained"];
+                        if (name === "new_members") return [formatNumber(value), "New"];
+                        if (name === "reactivated_members") return [formatNumber(value), "Reactivated"];
+                        if (name === "not_renewed_members") return [formatNumber(value), "Not renewed"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                {view === "members" && (
+                    <>
+                        <Bar dataKey="retained_members" name="Retained" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="current_members"
+                            name="Current members"
+                            stroke="#215b63"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                )}
+                {view === "renewal" && (
+                    <Line
+                        type="monotone"
+                        dataKey="renewal_rate"
+                        name="Renewal rate"
+                        stroke="#2f6f73"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                    />
+                )}
+                {view === "movement" && (
+                    <>
+                        <Bar dataKey="new_members" name="New" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="reactivated_members" name="Reactivated" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="not_renewed_members" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
+                    </>
+                )}
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
 const CompletedVisitsRankingChart = ({ title, rows, limit = 10, wide = false }) => {
     const chartRows = (rows || []).slice(0, limit).map((row) => ({
         label: row.name || "N/A",
@@ -954,6 +1052,7 @@ export default function Dashboard() {
     const [dashboardMode, setDashboardMode] = useState("monthly");
     const [activeTab, setActiveTab] = useState("monthly_overview");
     const [expandedInsight, setExpandedInsight] = useState(null);
+    const [memberMixTrendView, setMemberMixTrendView] = useState("members");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -1077,6 +1176,21 @@ export default function Dashboard() {
         label: formatMonthLabel(row.month),
         sales_revenue: row.sales_revenue || 0,
         average_ticket: row.average_ticket || 0,
+    }));
+    const retentionHealthTrendRows = (retentionTrend?.months || []).map((row) => ({
+        label: formatMonthLabel(row.month),
+        renewal_rate: row.renewal_rate || 0,
+        not_renewed_members: row.not_renewed_members || 0,
+        not_renewed_unassigned_studio: row.not_renewed_unassigned_studio || 0,
+    }));
+    const memberMixTrendRows = (retentionTrend?.months || []).map((row) => ({
+        label: formatMonthLabel(row.month),
+        current_members: row.current_members || 0,
+        retained_members: row.retained_members || 0,
+        new_members: row.new_members || 0,
+        reactivated_members: row.reactivated_members || 0,
+        not_renewed_members: row.not_renewed_members || 0,
+        renewal_rate: row.renewal_rate || 0,
     }));
     const weeklyAttendanceComparisonRows = weeklyComparisonRows(
         activeDateRange,
@@ -1353,11 +1467,17 @@ export default function Dashboard() {
                                         { label: "Churn rate", value: formatPercent(retention?.churn_rate) },
                                         { label: "Retained members", value: formatNumber(retention?.retained_members) },
                                         { label: "Current members", value: formatNumber(retention?.current_month_members) },
+                                        { label: "Unassigned not renewed", value: formatNumber(retention?.not_renewed_unassigned_studio) },
                                     ]}
                                     action={(
-                                        <Link href="/retention">
-                                            <Button variant="outlined" size="small">Open Retention Follow-up</Button>
-                                        </Link>
+                                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                            <Button variant="outlined" size="small" onClick={() => setExpandedInsight("retention_health")}>
+                                                View Trend
+                                            </Button>
+                                            <Link href="/retention">
+                                                <Button variant="outlined" size="small">Open Follow-up</Button>
+                                            </Link>
+                                        </Stack>
                                     )}
                                 />
                                 <InsightCard
@@ -1476,6 +1596,11 @@ export default function Dashboard() {
                                         { label: "New", value: formatNumber(retention?.new_members) },
                                         { label: "Reactivated", value: formatNumber(retention?.reactivated_members) },
                                     ]}
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => setExpandedInsight("member_mix")}>
+                                            View History
+                                        </Button>
+                                    )}
                                 />
                                 <InsightCard
                                     title="Not Renewed Follow-up"
@@ -1564,6 +1689,53 @@ export default function Dashboard() {
                 </DialogTitle>
                 <DialogContent>
                     <RevenueHealthTrendChart rows={revenueTrendRows} />
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "retention_health"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Retention Health Trend</span>
+                        <IconButton aria-label="Close retention trend" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <RetentionHealthTrendChart rows={retentionHealthTrendRows} />
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "member_mix"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Current Member Mix History</span>
+                        <IconButton aria-label="Close member mix history" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={memberMixTrendView}
+                        onChange={(_, value) => setMemberMixTrendView(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label="Members" value="members" />
+                        <Tab label="Renewal Rate" value="renewal" />
+                        <Tab label="Movement" value="movement" />
+                    </Tabs>
+                    <MemberMixHistoryChart rows={memberMixTrendRows} view={memberMixTrendView} />
                 </DialogContent>
             </Dialog>
         </MainPage>
