@@ -40,25 +40,30 @@ import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 
 
+const chartText = { fontSize: 15 };
+const chartTooltipStyle = { fontSize: 14, borderRadius: 6, borderColor: "#d8dee4" };
+const chartLegendStyle = { fontSize: 15, paddingTop: 8 };
+
+
 const KpiCard = ({ label, value }) => (
-    <Paper style={{ padding: "16px", minHeight: "86px" }}>
-        <div style={{ color: "#666", fontSize: "13px" }}>{label}</div>
-        <div style={{ fontSize: "28px", fontWeight: 700 }}>{value}</div>
+    <Paper style={{ padding: "18px", minHeight: "96px" }}>
+        <div style={{ color: "#555", fontSize: "15px", fontWeight: 700 }}>{label}</div>
+        <div style={{ fontSize: "32px", fontWeight: 800, marginTop: "4px" }}>{value}</div>
     </Paper>
 );
 
 
 const InsightCard = ({ title, value, caption, delta, details = [], action }) => (
-    <Paper style={{ padding: "18px", display: "grid", gap: "14px", minHeight: "220px" }}>
+    <Paper style={{ padding: "20px", display: "grid", gap: "16px", minHeight: "230px" }}>
         <div>
-            <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>{title}</div>
+            <div style={{ color: "#555", fontSize: "15px", fontWeight: 800, textTransform: "uppercase" }}>{title}</div>
             <div style={{ fontSize: "34px", fontWeight: 800, marginTop: "4px" }}>{value}</div>
             {delta && (
-                <div style={{ color: delta.tone === "down" ? "#b42318" : delta.tone === "flat" ? "#666" : "#1f7a4d", fontSize: "14px", fontWeight: 700, marginTop: "2px" }}>
+                <div style={{ color: delta.tone === "down" ? "#b42318" : delta.tone === "flat" ? "#555" : "#1f7a4d", fontSize: "16px", fontWeight: 800, marginTop: "4px" }}>
                     {delta.label}
                 </div>
             )}
-            {caption && <div style={{ color: "#666", fontSize: "14px", marginTop: "4px" }}>{caption}</div>}
+            {caption && <div style={{ color: "#555", fontSize: "16px", lineHeight: 1.35, marginTop: "6px" }}>{caption}</div>}
         </div>
         <div style={{ display: "grid", gap: "8px" }}>
             {details.map((detail) => (
@@ -72,8 +77,8 @@ const InsightCard = ({ title, value, caption, delta, details = [], action }) => 
                         paddingTop: "8px",
                     }}
                 >
-                    <span style={{ color: "#666", fontSize: "14px" }}>{detail.label}</span>
-                    <strong style={{ fontSize: "14px", textAlign: "right" }}>{detail.value}</strong>
+                    <span style={{ color: "#555", fontSize: "16px" }}>{detail.label}</span>
+                    <strong style={{ fontSize: "16px", textAlign: "right" }}>{detail.value}</strong>
                 </div>
             ))}
         </div>
@@ -121,12 +126,12 @@ const MemberTrendChart = ({ rows }) => (
         <h2 style={{ marginTop: 0 }}>Member Trend</h2>
         <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
-                <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                <ComposedChart data={rows} margin={{ top: 16, right: 20, bottom: 8, left: 8 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <ChartTooltip formatter={(value) => formatNumber(value)} />
-                    <Legend />
+                    <XAxis dataKey="label" tick={chartText} />
+                    <YAxis allowDecimals={false} tick={chartText} />
+                    <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={chartTooltipStyle} />
+                    <Legend wrapperStyle={chartLegendStyle} />
                     <Bar dataKey="not_renewed" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
                     <Line
                         type="monotone"
@@ -151,27 +156,27 @@ const RevenueItemChart = ({ rows }) => {
         total: Number(row.total || 0),
         count: Number(row.count || 0),
     }));
-    const chartHeight = Math.max(320, chartRows.length * 44 + 80);
+    const chartHeight = Math.max(360, chartRows.length * 54 + 90);
 
     return (
         <Paper style={{ padding: "16px" }}>
             <h2 style={{ marginTop: 0 }}>Revenue by Item</h2>
             <div style={{ width: "100%", height: chartHeight }}>
                 <ResponsiveContainer>
-                    <RechartsBarChart data={chartRows} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 12 }}>
+                    <RechartsBarChart data={chartRows} layout="vertical" margin={{ top: 8, right: 32, bottom: 16, left: 12 }}>
                         <CartesianGrid stroke="#eef1f4" horizontal={false} />
-                        <XAxis type="number" tickFormatter={formatCompactMoney} tick={{ fontSize: 12 }} />
+                        <XAxis type="number" tickFormatter={formatCompactMoney} tick={chartText} />
                         <YAxis
                             type="category"
                             dataKey="label"
-                            width={180}
-                            tick={{ fontSize: 12 }}
-                            tickFormatter={(value) => truncateLabel(value, 26)}
+                            width={240}
+                            tick={chartText}
+                            tickFormatter={(value) => truncateLabel(value, 32)}
                         />
                         <ChartTooltip
                             formatter={(value) => [formatMoney(value), "Revenue"]}
                             labelFormatter={(value) => value}
-                            contentStyle={{ borderRadius: 6, borderColor: "#d8dee4" }}
+                            contentStyle={chartTooltipStyle}
                         />
                         <Bar dataKey="total" name="Revenue" fill="#2f6f73" radius={[0, 4, 4, 0]} />
                     </RechartsBarChart>
@@ -202,13 +207,14 @@ const CompletedVisitsRankingChart = ({ title, rows, limit = 10, wide = false }) 
                             angle={-28}
                             textAnchor="end"
                             height={58}
-                            tick={{ fontSize: 11 }}
+                            tick={chartText}
                             tickFormatter={(value) => truncateLabel(value, 12)}
                         />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <YAxis allowDecimals={false} tick={chartText} />
                         <ChartTooltip
                             formatter={(value) => [formatNumber(value), "Completed visits"]}
                             labelFormatter={(value) => value}
+                            contentStyle={chartTooltipStyle}
                         />
                         <Bar dataKey="total" name="Completed visits" fill="#2f6f73" radius={[4, 4, 0, 0]} />
                     </RechartsBarChart>
@@ -239,10 +245,10 @@ const CompletedVisitsByHourChart = ({ rows, wide = false }) => {
                             angle={-28}
                             textAnchor="end"
                             height={42}
-                            tick={{ fontSize: 11 }}
+                            tick={chartText}
                         />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                        <ChartTooltip formatter={(value) => [formatNumber(value), "Completed visits"]} />
+                        <YAxis allowDecimals={false} tick={chartText} />
+                        <ChartTooltip formatter={(value) => [formatNumber(value), "Completed visits"]} contentStyle={chartTooltipStyle} />
                         <Bar dataKey="total" name="Completed visits" fill="#2f6f73" radius={[4, 4, 0, 0]} />
                     </RechartsBarChart>
                 </ResponsiveContainer>
@@ -260,10 +266,10 @@ const WeeklyAttendanceComparisonChart = ({ rows, wide = false }) => (
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <ChartTooltip formatter={(value) => formatNumber(value)} />
-                    <Legend />
+                    <XAxis dataKey="label" tick={chartText} />
+                    <YAxis allowDecimals={false} tick={chartText} />
+                    <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={chartTooltipStyle} />
+                    <Legend wrapperStyle={chartLegendStyle} />
                     <Bar dataKey="previous" name="Previous week" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="current" name="Selected week" fill="#2f6f73" radius={[4, 4, 0, 0]} />
                 </ComposedChart>
@@ -274,7 +280,7 @@ const WeeklyAttendanceComparisonChart = ({ rows, wide = false }) => (
 );
 
 
-const BookingQualityChart = ({ rows }) => {
+const BookingQualityChart = ({ rows, wide = false }) => {
     const chartRows = (rows || []).map((row) => ({
         label: formatShortWeekdayDate(row.date),
         attended: Number(row.attended || 0),
@@ -283,16 +289,16 @@ const BookingQualityChart = ({ rows }) => {
     }));
 
     return (
-        <Paper style={{ padding: "16px" }}>
+        <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
             <h2 style={{ marginTop: 0 }}>Booking Quality by Day</h2>
             <div style={{ width: "100%", height: 320 }}>
                 <ResponsiveContainer>
                     <RechartsBarChart data={chartRows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
                         <CartesianGrid stroke="#eef1f4" vertical={false} />
-                        <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                        <ChartTooltip formatter={(value) => formatNumber(value)} />
-                        <Legend />
+                        <XAxis dataKey="label" tick={chartText} />
+                        <YAxis allowDecimals={false} tick={chartText} />
+                        <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={chartTooltipStyle} />
+                        <Legend wrapperStyle={chartLegendStyle} />
                         <Bar dataKey="attended" name="Completed visits" stackId="bookings" fill="#2f6f73" />
                         <Bar dataKey="late_cancels" name="Late cancels" stackId="bookings" fill="#d97706" />
                         <Bar dataKey="no_shows" name="No-shows" stackId="bookings" fill="#b42318" radius={[4, 4, 0, 0]} />
@@ -312,10 +318,10 @@ const WeeklyOccupancyComparisonChart = ({ rows, wide = false }) => (
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `${value}%`} />
-                    <ChartTooltip formatter={(value) => `${formatNumber(value)}%`} />
-                    <Legend />
+                    <XAxis dataKey="label" tick={chartText} />
+                    <YAxis tick={chartText} tickFormatter={(value) => `${value}%`} />
+                    <ChartTooltip formatter={(value) => `${formatNumber(value)}%`} contentStyle={chartTooltipStyle} />
+                    <Legend wrapperStyle={chartLegendStyle} />
                     <Bar dataKey="previous" name="Previous week" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="current" name="Selected week" fill="#2f6f73" radius={[4, 4, 0, 0]} />
                 </ComposedChart>
@@ -346,8 +352,8 @@ const OccupancyCapacityByDayChart = ({ rows }) => {
                 <ResponsiveContainer>
                     <RechartsBarChart data={chartRows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
                         <CartesianGrid stroke="#eef1f4" vertical={false} />
-                        <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <XAxis dataKey="label" tick={chartText} />
+                        <YAxis allowDecimals={false} tick={chartText} />
                         <ChartTooltip
                             formatter={(value, name, item) => {
                                 if (name === "attended") return [formatNumber(value), "Attendance used"];
@@ -358,8 +364,9 @@ const OccupancyCapacityByDayChart = ({ rows }) => {
                                 const row = payload?.[0]?.payload;
                                 return row ? `${label} - ${formatPercent(row.occupation_rate)}` : label;
                             }}
+                            contentStyle={chartTooltipStyle}
                         />
-                        <Legend />
+                        <Legend wrapperStyle={chartLegendStyle} />
                         <Bar dataKey="attended" name="Attendance used" stackId="capacity" fill="#2f6f73" />
                         <Bar dataKey="unused_capacity" name="Unused capacity" stackId="capacity" fill="#d8dee4" radius={[4, 4, 0, 0]} />
                     </RechartsBarChart>
@@ -608,7 +615,7 @@ const InstructorQualityTable = ({ rows }) => (
 
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
-const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatCompactMoney = (value) => {
     const numberValue = Number(value || 0);
     if (Math.abs(numberValue) >= 1000000) return `${(numberValue / 1000000).toFixed(1)}M`;
@@ -630,12 +637,16 @@ const comparisonDelta = (current, previous, options = {}) => {
         : difference < 0
             ? (options.invertTone ? "up" : "down")
             : "flat";
-    const labelValue = Math.abs(difference) < 0.005
-        ? `0${suffix}`
-        : `${difference > 0 ? "+" : ""}${difference.toLocaleString(undefined, {
+    const formattedDifference = options.money
+        ? formatMoney(Math.abs(difference))
+        : Math.abs(difference).toLocaleString(undefined, {
             minimumFractionDigits: decimals,
             maximumFractionDigits: decimals,
-        })}${suffix}`;
+        });
+    const sign = difference > 0 ? "+" : difference < 0 ? "-" : "";
+    const labelValue = Math.abs(difference) < 0.005
+        ? (options.money ? formatMoney(0) : `0${suffix}`)
+        : `${sign}${options.money ? formattedDifference : `${formattedDifference}${suffix}`}`;
     return {
         tone,
         label: `${labelValue} vs previous ${options.periodLabel || "period"}`,
@@ -1319,6 +1330,7 @@ export default function Dashboard() {
                                     delta={comparisonDelta(totals.sales_revenue, comparisonTotals.sales_revenue, {
                                         periodLabel,
                                         decimals: 2,
+                                        money: true,
                                     })}
                                     caption="Sales revenue for the selected month."
                                     details={[
@@ -1440,7 +1452,7 @@ export default function Dashboard() {
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
                                 <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} wide />
-                                <BookingQualityChart rows={attendance?.booking_quality_by_date} />
+                                <BookingQualityChart rows={attendance?.booking_quality_by_date} wide />
                                 <CompletedVisitsByHourChart rows={attendance?.attended_by_hour} wide />
                                 <CompletedVisitsRankingChart title="Completed Visits by Instructor" rows={attendance?.attended_by_instructor} />
                                 <BreakdownTable title="Completed Visits by Studio" rows={attendance?.attended_by_studio} />
