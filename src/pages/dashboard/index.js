@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -10,6 +11,7 @@ import {
     BarChart as RechartsBarChart,
     CartesianGrid,
     ComposedChart,
+    LabelList,
     Legend,
     Line,
     ResponsiveContainer,
@@ -47,7 +49,11 @@ import Tooltip from "@mui/material/Tooltip";
 const chartText = { fontSize: 15 };
 const chartTooltipStyle = { fontSize: 14, borderRadius: 6, borderColor: "#d8dee4" };
 const expandedChartTooltipStyle = { fontSize: 17, borderRadius: 8, borderColor: "#d8dee4", padding: "12px 14px" };
-const chartLegendStyle = { fontSize: 15, paddingTop: 8 };
+const chartLegendStyle = { fontSize: 15, paddingTop: 8, color: "#2f3a45" };
+const completedColor = "#2f6f73";
+const attentionColor = "#d97706";
+const unusedCapacityColor = "#d8dee4";
+const chartLabelStyle = { fill: "#2f3a45", fontSize: 14, fontWeight: 700 };
 
 
 const KpiCard = ({ label, value, action }) => (
@@ -445,8 +451,8 @@ const BookingQualityChart = ({ rows, wide = false, action }) => {
                         <YAxis allowDecimals={false} tick={chartText} />
                         <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={chartTooltipStyle} />
                         <Legend wrapperStyle={chartLegendStyle} />
-                        <Bar dataKey="attended" name="Completed visits" stackId="bookings" fill="#2f6f73" />
-                        <Bar dataKey="late_cancels" name="Late cancels" stackId="bookings" fill="#d97706" />
+                        <Bar dataKey="attended" name="Completed visits" stackId="bookings" fill={completedColor} />
+                        <Bar dataKey="late_cancels" name="Late cancels" stackId="bookings" fill={attentionColor} />
                         <Bar dataKey="no_shows" name="No-shows" stackId="bookings" fill="#b42318" radius={[4, 4, 0, 0]} />
                     </RechartsBarChart>
                 </ResponsiveContainer>
@@ -494,8 +500,8 @@ const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
                 <Legend wrapperStyle={chartLegendStyle} />
                 {view === "visits" ? (
                     <>
-                        <Bar dataKey="completed_visits" name="Completed visits" stackId="bookings" fill="#2f6f73" />
-                        <Bar dataKey="not_completed_bookings" name="Booked but not completed" stackId="bookings" fill="#f2c94c" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="completed_visits" name="Completed visits" stackId="bookings" fill={completedColor} />
+                        <Bar dataKey="not_completed_bookings" name="Booked but not completed" stackId="bookings" fill={attentionColor} radius={[4, 4, 0, 0]} />
                     </>
                 ) : view === "rates" ? (
                     <>
@@ -538,7 +544,14 @@ const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
 const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
     <div style={{ width: "100%", height: 420 }}>
         <ResponsiveContainer>
-            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+            <ComposedChart
+                data={rows.map((row) => ({
+                    ...row,
+                    unused_capacity: Math.max(0, Number(row.scheduled_capacity || 0) - Number(row.attendance_used || 0)),
+                    occupation_label: formatPercent(row.occupation_rate),
+                }))}
+                margin={{ top: 28, right: 24, bottom: 8, left: 8 }}
+            >
                 <CartesianGrid stroke="#eef1f4" vertical={false} />
                 <XAxis dataKey="label" tick={chartText} />
                 <YAxis tick={chartText} tickFormatter={view === "rate" ? (value) => `${value}%` : undefined} />
@@ -547,6 +560,7 @@ const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
                         if (name === "occupation_rate") return [`${formatNumber(value)}%`, "Occupancy rate"];
                         if (name === "scheduled_capacity") return [formatNumber(value), "Scheduled capacity"];
                         if (name === "attendance_used") return [formatNumber(value), "Attendance used"];
+                        if (name === "unused_capacity") return [formatNumber(value), "Unused capacity"];
                         if (name === "scheduled_classes") return [formatNumber(value), "Scheduled classes"];
                         return [formatNumber(value), name];
                     }}
@@ -555,16 +569,10 @@ const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
                 <Legend wrapperStyle={chartLegendStyle} />
                 {view === "capacity" ? (
                     <>
-                        <Bar dataKey="scheduled_capacity" name="Scheduled capacity" fill="#d8dee4" radius={[4, 4, 0, 0]} />
-                        <Line
-                            type="monotone"
-                            dataKey="attendance_used"
-                            name="Attendance used"
-                            stroke="#2f6f73"
-                            strokeWidth={3}
-                            dot={{ r: 4 }}
-                            activeDot={{ r: 6 }}
-                        />
+                        <Bar dataKey="attendance_used" name="Attendance used" stackId="capacity" fill={completedColor} />
+                        <Bar dataKey="unused_capacity" name="Unused capacity" stackId="capacity" fill={unusedCapacityColor} radius={[4, 4, 0, 0]}>
+                            <LabelList dataKey="occupation_label" position="top" style={chartLabelStyle} />
+                        </Bar>
                     </>
                 ) : view === "classes" ? (
                     <Bar dataKey="scheduled_classes" name="Scheduled classes" fill="#2f6f73" radius={[4, 4, 0, 0]} />
@@ -588,16 +596,27 @@ const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
 const WeeklyWeekdayDrilldownChart = ({ rows, metric }) => (
     <div style={{ width: "100%", height: 420 }}>
         <ResponsiveContainer>
-            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+            <ComposedChart
+                data={rows.map((row) => ({
+                    ...row,
+                    not_completed_bookings: Math.max(0, Number(row.total_bookings || 0) - Number(row.completed_visits || 0)),
+                    unused_capacity: Math.max(0, Number(row.scheduled_capacity || 0) - Number(row.attendance_used || 0)),
+                    occupation_label: formatPercent(row.occupation_rate),
+                }))}
+                margin={{ top: metric === "occupancy" ? 28 : 16, right: 24, bottom: 8, left: 8 }}
+            >
                 <CartesianGrid stroke="#eef1f4" vertical={false} />
                 <XAxis dataKey="label" tick={chartText} />
-                <YAxis tick={chartText} tickFormatter={metric === "occupancy" ? (value) => `${value}%` : undefined} />
+                <YAxis tick={chartText} />
                 <ChartTooltip
                     formatter={(value, name) => {
                         if (name === "completed_visits") return [formatNumber(value), "Completed visits"];
+                        if (name === "not_completed_bookings") return [formatNumber(value), "Booked but not completed"];
                         if (name === "total_bookings") return [formatNumber(value), "Total bookings"];
+                        if (name === "scheduled_capacity") return [formatNumber(value), "Scheduled capacity"];
                         if (name === "occupation_rate") return [`${formatNumber(value)}%`, "Occupancy rate"];
                         if (name === "attendance_used") return [formatNumber(value), "Attendance used"];
+                        if (name === "unused_capacity") return [formatNumber(value), "Unused capacity"];
                         return [formatNumber(value), name];
                     }}
                     contentStyle={expandedChartTooltipStyle}
@@ -605,29 +624,15 @@ const WeeklyWeekdayDrilldownChart = ({ rows, metric }) => (
                 <Legend wrapperStyle={chartLegendStyle} />
                 {metric === "attendance" ? (
                     <>
-                        <Bar dataKey="total_bookings" name="Total bookings" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
-                        <Line
-                            type="monotone"
-                            dataKey="completed_visits"
-                            name="Completed visits"
-                            stroke="#2f6f73"
-                            strokeWidth={3}
-                            dot={{ r: 4 }}
-                            activeDot={{ r: 6 }}
-                        />
+                        <Bar dataKey="completed_visits" name="Completed visits" stackId="bookings" fill={completedColor} />
+                        <Bar dataKey="not_completed_bookings" name="Booked but not completed" stackId="bookings" fill={attentionColor} radius={[4, 4, 0, 0]} />
                     </>
                 ) : (
                     <>
-                        <Bar dataKey="attendance_used" name="Attendance used" fill="#2f6f73" radius={[4, 4, 0, 0]} />
-                        <Line
-                            type="monotone"
-                            dataKey="occupation_rate"
-                            name="Occupancy rate"
-                            stroke="#8a5cf6"
-                            strokeWidth={3}
-                            dot={{ r: 4 }}
-                            activeDot={{ r: 6 }}
-                        />
+                        <Bar dataKey="attendance_used" name="Attendance used" stackId="capacity" fill={completedColor} />
+                        <Bar dataKey="unused_capacity" name="Unused capacity" stackId="capacity" fill={unusedCapacityColor} radius={[4, 4, 0, 0]}>
+                            <LabelList dataKey="occupation_label" position="top" style={chartLabelStyle} />
+                        </Bar>
                     </>
                 )}
             </ComposedChart>
@@ -645,8 +650,8 @@ const BookingQualityWeekdayHistoryChart = ({ rows }) => (
                 <YAxis allowDecimals={false} tick={chartText} />
                 <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={expandedChartTooltipStyle} />
                 <Legend wrapperStyle={chartLegendStyle} />
-                <Bar dataKey="completed_visits" name="Completed visits" stackId="bookings" fill="#2f6f73" />
-                <Bar dataKey="late_cancels" name="Late cancels" stackId="bookings" fill="#d97706" />
+                <Bar dataKey="completed_visits" name="Completed visits" stackId="bookings" fill={completedColor} />
+                <Bar dataKey="late_cancels" name="Late cancels" stackId="bookings" fill={attentionColor} />
                 <Bar dataKey="no_shows" name="No-shows" stackId="bookings" fill="#b42318" radius={[4, 4, 0, 0]} />
             </RechartsBarChart>
         </ResponsiveContainer>
@@ -688,6 +693,7 @@ const OccupancyCapacityByDayChart = ({ rows, action }) => {
             unused_capacity: Math.max(0, capacity - attended),
             capacity,
             occupation_rate: Number(row.occupation_rate || 0),
+            occupation_label: formatPercent(row.occupation_rate),
         };
     });
 
@@ -716,8 +722,8 @@ const OccupancyCapacityByDayChart = ({ rows, action }) => {
                             contentStyle={chartTooltipStyle}
                         />
                         <Legend wrapperStyle={chartLegendStyle} />
-                        <Bar dataKey="attended" name="Attendance used" stackId="capacity" fill="#2f6f73" />
-                        <Bar dataKey="unused_capacity" name="Unused capacity" stackId="capacity" fill="#d8dee4" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="attended" name="Attendance used" stackId="capacity" fill={completedColor} />
+                        <Bar dataKey="unused_capacity" name="Unused capacity" stackId="capacity" fill={unusedCapacityColor} radius={[4, 4, 0, 0]} />
                     </RechartsBarChart>
                 </ResponsiveContainer>
             </div>
@@ -1324,28 +1330,118 @@ const dashboardTabs = {
 };
 
 
-export default function Dashboard() {
-    const token = useFetchToken();
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+const dashboardStorageKey = "beness.dashboard.filters";
+
+
+const dashboardDefaultState = () => {
     const defaultMonth = lastCompletedMonthValue();
     const defaultWeek = weekRange();
+    return {
+        dashboardMode: "monthly",
+        activeTab: "monthly_overview",
+        periodModes: {
+            monthly: "last_completed_month",
+            weekly: "current_week",
+        },
+        filters: {
+            site: "",
+            studio: "",
+            month: defaultMonth,
+            week_date: defaultWeek.date_from,
+            date_from: defaultWeek.date_from,
+            date_to: defaultWeek.date_to,
+        },
+    };
+};
+
+
+const firstQueryValue = (value) => Array.isArray(value) ? value[0] : value;
+
+
+const hasDashboardQuery = (query) => [
+    "mode",
+    "tab",
+    "site",
+    "studio",
+    "monthly_period",
+    "weekly_period",
+    "month",
+    "week_date",
+    "date_from",
+    "date_to",
+].some((key) => firstQueryValue(query?.[key]));
+
+
+const dashboardStateFromQuery = (query, fallbackState) => {
+    const mode = firstQueryValue(query.mode);
+    const nextMode = dashboardModes[mode] ? mode : fallbackState.dashboardMode;
+    const tab = firstQueryValue(query.tab);
+    const validTabs = dashboardTabs[nextMode].map((item) => item.value);
+    const monthlyPeriod = firstQueryValue(query.monthly_period);
+    const weeklyPeriod = firstQueryValue(query.weekly_period);
+    const nextPeriodModes = {
+        ...fallbackState.periodModes,
+        ...(monthlyPeriod ? { monthly: monthlyPeriod } : {}),
+        ...(weeklyPeriod ? { weekly: weeklyPeriod } : {}),
+    };
+    return {
+        dashboardMode: nextMode,
+        activeTab: validTabs.includes(tab) ? tab : dashboardModes[nextMode].defaultTab,
+        periodModes: nextPeriodModes,
+        filters: {
+            ...fallbackState.filters,
+            site: firstQueryValue(query.site) || "",
+            studio: firstQueryValue(query.studio) || "",
+            month: firstQueryValue(query.month) || fallbackState.filters.month,
+            week_date: firstQueryValue(query.week_date) || fallbackState.filters.week_date,
+            date_from: firstQueryValue(query.date_from) || fallbackState.filters.date_from,
+            date_to: firstQueryValue(query.date_to) || fallbackState.filters.date_to,
+        },
+    };
+};
+
+
+const dashboardQueryFromState = (dashboardMode, activeTab, periodModes, filters) => {
+    const query = {
+        mode: dashboardMode,
+        tab: activeTab,
+        monthly_period: periodModes.monthly,
+        weekly_period: periodModes.weekly,
+        month: filters.month,
+        week_date: filters.week_date,
+        date_from: filters.date_from,
+        date_to: filters.date_to,
+    };
+    if (filters.site) query.site = filters.site;
+    if (filters.studio) query.studio = filters.studio;
+    return query;
+};
+
+
+const sameQuery = (currentQuery, nextQuery) => {
+    const current = Object.fromEntries(
+        Object.entries(currentQuery || {}).map(([key, value]) => [key, firstQueryValue(value)]),
+    );
+    const currentKeys = Object.keys(current).filter((key) => current[key] !== undefined && current[key] !== "");
+    const nextKeys = Object.keys(nextQuery).filter((key) => nextQuery[key] !== undefined && nextQuery[key] !== "");
+    if (currentKeys.length !== nextKeys.length) return false;
+    return nextKeys.every((key) => String(current[key] || "") === String(nextQuery[key] || ""));
+};
+
+
+export default function Dashboard() {
+    const token = useFetchToken();
+    const router = useRouter();
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const initialDashboardState = useMemo(() => dashboardDefaultState(), []);
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
-    const [periodModes, setPeriodModes] = useState({
-        monthly: "last_completed_month",
-        weekly: "current_week",
-    });
+    const [periodModes, setPeriodModes] = useState(initialDashboardState.periodModes);
     const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+    const [filtersHydrated, setFiltersHydrated] = useState(false);
     const [periodNavigationVersion, setPeriodNavigationVersion] = useState(0);
-    const [filters, setFilters] = useState({
-        site: "",
-        studio: "",
-        month: defaultMonth,
-        week_date: defaultWeek.date_from,
-        date_from: defaultWeek.date_from,
-        date_to: defaultWeek.date_to,
-    });
+    const [filters, setFilters] = useState(initialDashboardState.filters);
     const [summary, setSummary] = useState(null);
     const [revenue, setRevenue] = useState(null);
     const [attendance, setAttendance] = useState(null);
@@ -1356,8 +1452,8 @@ export default function Dashboard() {
     const [comparisonAttendance, setComparisonAttendance] = useState(null);
     const [comparisonOccupation, setComparisonOccupation] = useState(null);
     const [retentionTrend, setRetentionTrend] = useState(null);
-    const [dashboardMode, setDashboardMode] = useState("monthly");
-    const [activeTab, setActiveTab] = useState("monthly_overview");
+    const [dashboardMode, setDashboardMode] = useState(initialDashboardState.dashboardMode);
+    const [activeTab, setActiveTab] = useState(initialDashboardState.activeTab);
     const [expandedInsight, setExpandedInsight] = useState(null);
     const [memberMixTrendView, setMemberMixTrendView] = useState("members");
     const [retentionTables, setRetentionTables] = useState(null);
@@ -1463,8 +1559,52 @@ export default function Dashboard() {
     }, [token]);
 
     useEffect(() => {
+        if (!router.isReady) return;
+        let nextState = initialDashboardState;
+        if (hasDashboardQuery(router.query)) {
+            nextState = dashboardStateFromQuery(router.query, initialDashboardState);
+        } else if (typeof window !== "undefined") {
+            try {
+                const storedState = JSON.parse(window.localStorage.getItem(dashboardStorageKey) || "null");
+                if (storedState) {
+                    nextState = {
+                        dashboardMode: storedState.dashboardMode || initialDashboardState.dashboardMode,
+                        activeTab: storedState.activeTab || initialDashboardState.activeTab,
+                        periodModes: { ...initialDashboardState.periodModes, ...(storedState.periodModes || {}) },
+                        filters: { ...initialDashboardState.filters, ...(storedState.filters || {}) },
+                    };
+                    const validTabs = dashboardTabs[nextState.dashboardMode]?.map((item) => item.value) || [];
+                    if (!validTabs.includes(nextState.activeTab)) {
+                        nextState.activeTab = dashboardModes[nextState.dashboardMode]?.defaultTab || initialDashboardState.activeTab;
+                    }
+                }
+            } catch {
+                nextState = initialDashboardState;
+            }
+        }
+        setDashboardMode(nextState.dashboardMode);
+        setActiveTab(nextState.activeTab);
+        setPeriodModes(nextState.periodModes);
+        setFilters(nextState.filters);
+        setFiltersHydrated(true);
+    }, [router.isReady]);
+
+    useEffect(() => {
+        if (!filtersHydrated || !router.isReady) return;
+        const state = { dashboardMode, activeTab, periodModes, filters };
+        if (typeof window !== "undefined") {
+            window.localStorage.setItem(dashboardStorageKey, JSON.stringify(state));
+        }
+        const nextQuery = dashboardQueryFromState(dashboardMode, activeTab, periodModes, filters);
+        if (!sameQuery(router.query, nextQuery)) {
+            router.replace({ pathname: router.pathname, query: nextQuery }, undefined, { shallow: true });
+        }
+    }, [filtersHydrated, router.isReady, dashboardMode, activeTab, periodModes, filters]);
+
+    useEffect(() => {
+        if (!filtersHydrated) return;
         fetchDashboard();
-    }, [token, dashboardMode, periodNavigationVersion]);
+    }, [token, dashboardMode, periodNavigationVersion, filtersHydrated]);
 
     const totals = summary?.totals || {};
     const comparisonTotals = comparisonSummary?.totals || {};
@@ -1475,6 +1615,17 @@ export default function Dashboard() {
     const activePeriodMode = periodModes[dashboardMode];
     const activeDateRange = selectedDateRange(dashboardMode, periodModes, filters);
     const activePeriodTitle = formatPeriodTitle(dashboardMode, activeDateRange);
+    const retentionFollowUpHref = {
+        pathname: "/retention",
+        query: {
+            period: "range",
+            date_from: activeDateRange.date_from,
+            date_to: activeDateRange.date_to,
+            status: "not_renewed",
+            ...(filters.site ? { site: filters.site } : {}),
+            ...(filters.studio ? { studio: filters.studio } : {}),
+        },
+    };
     const selectedMonthParts = monthParts(filters.month);
     const activeDashboardTabs = dashboardTabs[dashboardMode];
     const occupancySlots = occupation?.by_slot || [];
@@ -1521,6 +1672,7 @@ export default function Dashboard() {
         occupation_rate: row.occupation_rate || 0,
         scheduled_capacity: row.scheduled_capacity || 0,
         attendance_used: row.attendance_used || 0,
+        unused_capacity: Math.max(0, Number(row.scheduled_capacity || 0) - Number(row.attendance_used || 0)),
         scheduled_classes: row.scheduled_classes || 0,
     }));
     const weeklyWeekdayDrilldownRows = (weeklyTrends?.weekday_rows || [])
@@ -1531,7 +1683,9 @@ export default function Dashboard() {
             completed_visits: row.completed_visits || 0,
             no_shows: row.no_shows || 0,
             late_cancels: row.late_cancels || 0,
+            scheduled_capacity: row.scheduled_capacity || 0,
             attendance_used: row.attendance_used || 0,
+            unused_capacity: Math.max(0, Number(row.scheduled_capacity || 0) - Number(row.attendance_used || 0)),
             occupation_rate: row.occupation_rate || 0,
         }));
     const weeklyAttendanceComparisonRows = weeklyComparisonRows(
@@ -2015,7 +2169,15 @@ export default function Dashboard() {
                                 <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                                <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} wide />
+                                <WeeklyAttendanceComparisonChart
+                                    rows={weeklyAttendanceComparisonRows}
+                                    wide
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_attendance_weekday")}>
+                                            Weekday Detail
+                                        </Button>
+                                    )}
+                                />
                                 <BookingQualityChart
                                     rows={attendance?.booking_quality_by_date}
                                     wide
@@ -2063,7 +2225,7 @@ export default function Dashboard() {
                                         { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
                                     ]}
                                     action={(
-                                        <Link href="/retention">
+                                        <Link href={retentionFollowUpHref}>
                                             <Button variant="outlined" size="small">Open Follow-up List</Button>
                                         </Link>
                                     )}
@@ -2120,7 +2282,7 @@ export default function Dashboard() {
                             </div>
 
                             <div>
-                                <Link href="/retention">
+                                <Link href={retentionFollowUpHref}>
                                     <Button variant="outlined">Open Retention Follow-up</Button>
                                 </Link>
                             </div>

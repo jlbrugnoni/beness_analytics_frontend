@@ -1,4 +1,5 @@
 import Head from "next/head";
+import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
@@ -94,6 +95,83 @@ const selectedDateRange = (periodMode, filters) => {
 };
 
 
+const retentionStorageKey = "beness.retention.filters";
+
+
+const retentionDefaultState = () => {
+    const defaultMonth = lastCompletedMonthValue();
+    return {
+        periodMode: "last_completed_month",
+        filters: {
+            site: "",
+            studio: "",
+            month: defaultMonth,
+            date_from: monthRange(defaultMonth).date_from,
+            date_to: monthRange(defaultMonth).date_to,
+            status: "not_renewed",
+            search: "",
+        },
+    };
+};
+
+
+const firstQueryValue = (value) => Array.isArray(value) ? value[0] : value;
+
+
+const hasRetentionQuery = (query) => [
+    "site",
+    "studio",
+    "period",
+    "periodMode",
+    "month",
+    "date_from",
+    "date_to",
+    "status",
+    "search",
+].some((key) => firstQueryValue(query?.[key]));
+
+
+const retentionStateFromQuery = (query, fallbackState) => ({
+    periodMode: firstQueryValue(query.period) || firstQueryValue(query.periodMode) || fallbackState.periodMode,
+    filters: {
+        ...fallbackState.filters,
+        site: firstQueryValue(query.site) || "",
+        studio: firstQueryValue(query.studio) || "",
+        month: firstQueryValue(query.month) || fallbackState.filters.month,
+        date_from: firstQueryValue(query.date_from) || fallbackState.filters.date_from,
+        date_to: firstQueryValue(query.date_to) || fallbackState.filters.date_to,
+        status: firstQueryValue(query.status) || fallbackState.filters.status,
+        search: firstQueryValue(query.search) || "",
+    },
+});
+
+
+const retentionQueryFromState = (periodMode, filters) => {
+    const query = {
+        period: periodMode,
+        month: filters.month,
+        date_from: filters.date_from,
+        date_to: filters.date_to,
+        status: filters.status,
+    };
+    if (filters.site) query.site = filters.site;
+    if (filters.studio) query.studio = filters.studio;
+    if (filters.search) query.search = filters.search;
+    return query;
+};
+
+
+const sameQuery = (currentQuery, nextQuery) => {
+    const current = Object.fromEntries(
+        Object.entries(currentQuery || {}).map(([key, value]) => [key, firstQueryValue(value)]),
+    );
+    const currentKeys = Object.keys(current).filter((key) => current[key] !== undefined && current[key] !== "");
+    const nextKeys = Object.keys(nextQuery).filter((key) => nextQuery[key] !== undefined && nextQuery[key] !== "");
+    if (currentKeys.length !== nextKeys.length) return false;
+    return nextKeys.every((key) => String(current[key] || "") === String(nextQuery[key] || ""));
+};
+
+
 const formatDisplayDate = (value) => {
     if (!value) return "N/A";
     const [year, month, day] = value.split("-").map(Number);
@@ -107,21 +185,15 @@ const formatDisplayDate = (value) => {
 
 export default function RetentionFollowUp() {
     const token = useFetchToken();
+    const router = useRouter();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const defaultMonth = lastCompletedMonthValue();
+    const initialRetentionState = useMemo(() => retentionDefaultState(), []);
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
-    const [periodMode, setPeriodMode] = useState("last_completed_month");
-    const [filters, setFilters] = useState({
-        site: "",
-        studio: "",
-        month: defaultMonth,
-        date_from: monthRange(defaultMonth).date_from,
-        date_to: monthRange(defaultMonth).date_to,
-        status: "not_renewed",
-        search: "",
-    });
+    const [periodMode, setPeriodMode] = useState(initialRetentionState.periodMode);
+    const [filtersHydrated, setFiltersHydrated] = useState(false);
+    const [filters, setFilters] = useState(initialRetentionState.filters);
     const [rows, setRows] = useState([]);
     const [count, setCount] = useState(0);
     const [error, setError] = useState("");
@@ -274,8 +346,44 @@ export default function RetentionFollowUp() {
     }, [token]);
 
     useEffect(() => {
+        if (!router.isReady) return;
+        let nextState = initialRetentionState;
+        if (hasRetentionQuery(router.query)) {
+            nextState = retentionStateFromQuery(router.query, initialRetentionState);
+        } else if (typeof window !== "undefined") {
+            try {
+                const storedState = JSON.parse(window.localStorage.getItem(retentionStorageKey) || "null");
+                if (storedState) {
+                    nextState = {
+                        periodMode: storedState.periodMode || initialRetentionState.periodMode,
+                        filters: { ...initialRetentionState.filters, ...(storedState.filters || {}) },
+                    };
+                }
+            } catch {
+                nextState = initialRetentionState;
+            }
+        }
+        setPeriodMode(nextState.periodMode);
+        setFilters(nextState.filters);
+        setFiltersHydrated(true);
+    }, [router.isReady]);
+
+    useEffect(() => {
+        if (!filtersHydrated || !router.isReady) return;
+        const state = { periodMode, filters };
+        if (typeof window !== "undefined") {
+            window.localStorage.setItem(retentionStorageKey, JSON.stringify(state));
+        }
+        const nextQuery = retentionQueryFromState(periodMode, filters);
+        if (!sameQuery(router.query, nextQuery)) {
+            router.replace({ pathname: router.pathname, query: nextQuery }, undefined, { shallow: true });
+        }
+    }, [filtersHydrated, router.isReady, periodMode, filters]);
+
+    useEffect(() => {
+        if (!filtersHydrated) return;
         fetchRows();
-    }, [token]);
+    }, [token, filtersHydrated]);
 
     const visibleStudios = filters.site
         ? studios.filter((studio) => String(studio.site) === String(filters.site))
