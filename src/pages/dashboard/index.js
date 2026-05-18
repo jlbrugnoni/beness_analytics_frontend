@@ -656,7 +656,7 @@ const WeeklyOccupancyComparisonChart = ({ rows, wide = false, action }) => (
 );
 
 
-const OccupancyCapacityByDayChart = ({ rows }) => {
+const OccupancyCapacityByDayChart = ({ rows, action }) => {
     const chartRows = (rows || []).map((row) => {
         const capacity = Number(row.capacity || 0);
         const attended = Number(row.attended || 0);
@@ -671,7 +671,10 @@ const OccupancyCapacityByDayChart = ({ rows }) => {
 
     return (
         <Paper style={{ padding: "16px" }}>
-            <h2 style={{ marginTop: 0 }}>Capacity Used by Day</h2>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap" style={{ marginBottom: "8px" }}>
+                <h2 style={{ margin: 0 }}>Capacity Used by Day</h2>
+                {action}
+            </Stack>
             <div style={{ width: "100%", height: 320 }}>
                 <ResponsiveContainer>
                     <RechartsBarChart data={chartRows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
@@ -949,19 +952,22 @@ const OccupancySlotTable = ({ title, rows }) => (
 );
 
 
-const CapacityUsageCard = ({ occupation }) => {
+const CapacityUsageCard = ({ occupation, action }) => {
     const capacity = Number(occupation?.scheduled_capacity || 0);
     const attended = Number(occupation?.matched_attended_visits || 0);
     const width = capacity ? Math.min(100, Math.max(0, (attended / capacity) * 100)) : 0;
 
     return (
         <Paper style={{ padding: "18px", display: "grid", gap: "12px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", alignItems: "baseline" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
                 <div>
                     <h2 style={{ margin: 0 }}>Capacity Used</h2>
                     <div style={{ color: "#666", fontSize: "14px", marginTop: "4px" }}>Attendance compared with scheduled capacity.</div>
                 </div>
-                <strong style={{ fontSize: "30px" }}>{formatPercent(occupation?.occupation_rate)}</strong>
+                <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap" justifyContent="flex-end">
+                    {action}
+                    <strong style={{ fontSize: "30px" }}>{formatPercent(occupation?.occupation_rate)}</strong>
+                </Stack>
             </div>
             <div style={{ height: "18px", background: "#eef1f4", borderRadius: "9px", overflow: "hidden" }}>
                 <div style={{ width: `${width}%`, height: "100%", background: "#2f6f73" }} />
@@ -2076,9 +2082,23 @@ export default function Dashboard() {
 
                     {activeTab === "occupancy" && (
                         <>
-                            <CapacityUsageCard occupation={occupation} />
+                            <CapacityUsageCard
+                                occupation={occupation}
+                                action={
+                                    <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_health")}>
+                                        View Trend
+                                    </Button>
+                                }
+                            />
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <OccupancyCapacityByDayChart rows={occupation?.by_day} />
+                                <OccupancyCapacityByDayChart
+                                    rows={occupation?.by_day}
+                                    action={
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
+                                            Weekday Detail
+                                        </Button>
+                                    }
+                                />
                                 <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} />
                             </div>
 
