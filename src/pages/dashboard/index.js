@@ -786,26 +786,6 @@ const selectedDateRange = (dashboardMode, periodModes, filters) => {
 };
 
 
-const comparisonDateRange = (dashboardMode, dateRange) => {
-    if (!dateRange?.date_from || !dateRange?.date_to) return null;
-    if (dashboardMode === "monthly") {
-        return monthRange(addMonths(dateRange.date_from.slice(0, 7), -1));
-    }
-    return weekRangeFromDate(addDays(dateRange.date_from, -7));
-};
-
-
-const retentionTrendRange = (dateRange, months = 6) => {
-    if (!dateRange?.date_from) return null;
-    const endMonth = dateRange.date_from.slice(0, 7);
-    const startMonth = addMonths(endMonth, -(months - 1));
-    return {
-        date_from: monthRange(startMonth).date_from,
-        date_to: monthRange(endMonth).date_to,
-    };
-};
-
-
 const weekdayIndex = (dateValue) => {
     const day = parseDateValue(dateValue).getDay();
     return day === 0 ? 6 : day - 1;
@@ -969,7 +949,6 @@ export default function Dashboard() {
         setError("");
         try {
             const dateFilters = selectedDateRange(dashboardMode, periodModes, filters);
-            const previousDateFilters = comparisonDateRange(dashboardMode, dateFilters);
             const queryStringFor = (range) => {
                 const params = new URLSearchParams();
                 const requestFilters = {
@@ -983,60 +962,32 @@ export default function Dashboard() {
                 return params.toString();
             };
             const queryString = queryStringFor(dateFilters);
-            const comparisonQueryString = previousDateFilters ? queryStringFor(previousDateFilters) : "";
-            const requests = [
-                axios.get(`${backendUrl}/api/data/analytics/summary/?${queryString}`, authHeaders),
-            ];
-            const comparisonRequests = [
-                axios.get(`${backendUrl}/api/data/analytics/summary/?${comparisonQueryString}`, authHeaders),
-            ];
 
             if (dashboardMode === "monthly") {
-                requests.push(
-                    axios.get(`${backendUrl}/api/data/analytics/revenue/?${queryString}`, authHeaders),
-                    axios.get(`${backendUrl}/api/data/analytics/retention/?${queryString}`, authHeaders),
-                );
-                comparisonRequests.push(
-                    axios.get(`${backendUrl}/api/data/analytics/retention/?${comparisonQueryString}`, authHeaders),
-                );
-                const trendQueryString = queryStringFor(retentionTrendRange(dateFilters));
-                comparisonRequests.push(
-                    axios.get(`${backendUrl}/api/data/analytics/retention/?${trendQueryString}`, authHeaders),
-                );
-            } else {
-                requests.push(
-                    axios.get(`${backendUrl}/api/data/analytics/attendance/?${queryString}`, authHeaders),
-                    axios.get(`${backendUrl}/api/data/analytics/occupation/?${queryString}`, authHeaders),
-                );
-                comparisonRequests.push(
-                    axios.get(`${backendUrl}/api/data/analytics/attendance/?${comparisonQueryString}`, authHeaders),
-                    axios.get(`${backendUrl}/api/data/analytics/occupation/?${comparisonQueryString}`, authHeaders),
-                );
-            }
-
-            const [
-                [summaryResponse, primaryResponse, secondaryResponse],
-                [comparisonSummaryResponse, comparisonPrimaryResponse, comparisonSecondaryResponse],
-            ] = await Promise.all([
-                Promise.all(requests),
-                Promise.all(comparisonRequests),
-            ]);
-            setSummary(summaryResponse.data);
-            setComparisonSummary(comparisonSummaryResponse.data);
-            if (dashboardMode === "monthly") {
-                setRevenue(primaryResponse.data);
-                setRetention(secondaryResponse.data);
-                setComparisonRetention(comparisonPrimaryResponse.data);
-                setRetentionTrend(comparisonSecondaryResponse.data);
+                const [dashboardResponse, trendResponse] = await Promise.all([
+                    axios.get(`${backendUrl}/api/data/analytics/dashboard/monthly/?${queryString}`, authHeaders),
+                    axios.get(`${backendUrl}/api/data/analytics/dashboard/monthly/trends/?${queryString}`, authHeaders),
+                ]);
+                const dashboardData = dashboardResponse.data;
+                setSummary(dashboardData.current.summary);
+                setRevenue(dashboardData.current.revenue);
+                setRetention(dashboardData.current.retention);
+                setComparisonSummary(dashboardData.comparison.summary);
+                setComparisonRetention(dashboardData.comparison.retention);
+                setRetentionTrend(trendResponse.data);
                 setComparisonAttendance(null);
                 setComparisonOccupation(null);
                 setAttendance(null);
                 setOccupation(null);
             } else {
-                setAttendance(primaryResponse.data);
-                setOccupation(secondaryResponse.data);
-                setComparisonAttendance(comparisonPrimaryResponse.data);
-                setComparisonOccupation(comparisonSecondaryResponse.data);
+                const dashboardResponse = await axios.get(`${backendUrl}/api/data/analytics/dashboard/weekly/?${queryString}`, authHeaders);
+                const dashboardData = dashboardResponse.data;
+                setSummary(dashboardData.current.summary);
+                setAttendance(dashboardData.current.attendance);
+                setOccupation(dashboardData.current.occupation);
+                setComparisonSummary(dashboardData.comparison.summary);
+                setComparisonAttendance(dashboardData.comparison.attendance);
+                setComparisonOccupation(dashboardData.comparison.occupation);
                 setComparisonRetention(null);
                 setRetentionTrend(null);
                 setRevenue(null);
@@ -1077,10 +1028,10 @@ export default function Dashboard() {
         .filter((row) => Number(row.capacity || 0) > 0)
         .sort((a, b) => Number(b.occupation_rate || 0) - Number(a.occupation_rate || 0))
         .slice(0, 10);
-    const retentionTrendRows = (retentionTrend?.months || []).map((month) => ({
-        label: formatMonthLabel(month),
-        current_members: retentionTrend?.current_month_members_by_month?.[month] || 0,
-        not_renewed: retentionTrend?.not_renewed_members_by_month?.[month] || 0,
+    const retentionTrendRows = (retentionTrend?.months || []).map((row) => ({
+        label: formatMonthLabel(row.month),
+        current_members: row.current_members || 0,
+        not_renewed: row.not_renewed_members || 0,
     }));
     const weeklyAttendanceComparisonRows = weeklyComparisonRows(
         activeDateRange,
