@@ -396,9 +396,12 @@ const CompletedVisitsByHourChart = ({ rows, wide = false }) => {
 };
 
 
-const WeeklyAttendanceComparisonChart = ({ rows, wide = false }) => (
+const WeeklyAttendanceComparisonChart = ({ rows, wide = false, action }) => (
     <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
-        <h2 style={{ marginTop: 0 }}>Completed Visits vs Previous Week</h2>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
+            <h2 style={{ margin: 0 }}>Completed Visits vs Previous Week</h2>
+            {action}
+        </Stack>
         <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
@@ -557,9 +560,63 @@ const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
 );
 
 
-const WeeklyOccupancyComparisonChart = ({ rows, wide = false }) => (
+const WeeklyWeekdayDrilldownChart = ({ rows, metric }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis tick={chartText} tickFormatter={metric === "occupancy" ? (value) => `${value}%` : undefined} />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "completed_visits") return [formatNumber(value), "Completed visits"];
+                        if (name === "total_bookings") return [formatNumber(value), "Total bookings"];
+                        if (name === "occupation_rate") return [`${formatNumber(value)}%`, "Occupancy rate"];
+                        if (name === "attendance_used") return [formatNumber(value), "Attendance used"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                {metric === "attendance" ? (
+                    <>
+                        <Bar dataKey="total_bookings" name="Total bookings" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="completed_visits"
+                            name="Completed visits"
+                            stroke="#2f6f73"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <Bar dataKey="attendance_used" name="Attendance used" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="occupation_rate"
+                            name="Occupancy rate"
+                            stroke="#8a5cf6"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                )}
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const WeeklyOccupancyComparisonChart = ({ rows, wide = false, action }) => (
     <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
-        <h2 style={{ marginTop: 0 }}>Occupancy vs Previous Week</h2>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
+            <h2 style={{ margin: 0 }}>Occupancy vs Previous Week</h2>
+            {action}
+        </Stack>
         <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
@@ -1022,6 +1079,9 @@ const currentMonthValue = () => {
 };
 
 
+const weekdayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+
 const lastCompletedMonthValue = () => {
     const now = new Date();
     const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -1258,6 +1318,7 @@ export default function Dashboard() {
     const [weeklyTrendsLoading, setWeeklyTrendsLoading] = useState(false);
     const [weeklyAttendanceTrendView, setWeeklyAttendanceTrendView] = useState("visits");
     const [weeklyOccupancyTrendView, setWeeklyOccupancyTrendView] = useState("capacity");
+    const [weeklyDrilldownWeekday, setWeeklyDrilldownWeekday] = useState("Monday");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -1413,6 +1474,15 @@ export default function Dashboard() {
         attendance_used: row.attendance_used || 0,
         scheduled_classes: row.scheduled_classes || 0,
     }));
+    const weeklyWeekdayDrilldownRows = (weeklyTrends?.weekday_rows || [])
+        .filter((row) => row.weekday === weeklyDrilldownWeekday)
+        .map((row) => ({
+            label: formatShortWeekdayDate(row.date),
+            total_bookings: row.total_bookings || 0,
+            completed_visits: row.completed_visits || 0,
+            attendance_used: row.attendance_used || 0,
+            occupation_rate: row.occupation_rate || 0,
+        }));
     const weeklyAttendanceComparisonRows = weeklyComparisonRows(
         activeDateRange,
         attendance?.attended_by_date,
@@ -1822,8 +1892,24 @@ export default function Dashboard() {
                                 />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} wide />
-                                <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} wide />
+                                <WeeklyAttendanceComparisonChart
+                                    rows={weeklyAttendanceComparisonRows}
+                                    wide
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_attendance_weekday")}>
+                                            Weekday Detail
+                                        </Button>
+                                    )}
+                                />
+                                <WeeklyOccupancyComparisonChart
+                                    rows={weeklyOccupancyComparisonRows}
+                                    wide
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
+                                            Weekday Detail
+                                        </Button>
+                                    )}
+                                />
                                 <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
                             </div>
                         </>
@@ -2138,6 +2224,72 @@ export default function Dashboard() {
                         <LinearProgress />
                     ) : (
                         <WeeklyOccupancyHealthTrendChart rows={weeklyTrendRows} view={weeklyOccupancyTrendView} />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_attendance_weekday"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Completed Visits by Weekday</span>
+                        <IconButton aria-label="Close completed visits weekday detail" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyDrilldownWeekday}
+                        onChange={(_, value) => setWeeklyDrilldownWeekday(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        {weekdayNames.map((weekday) => (
+                            <Tab key={weekday} label={weekday} value={weekday} />
+                        ))}
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <WeeklyWeekdayDrilldownChart rows={weeklyWeekdayDrilldownRows} metric="attendance" />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_occupancy_weekday"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Occupancy by Weekday</span>
+                        <IconButton aria-label="Close occupancy weekday detail" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyDrilldownWeekday}
+                        onChange={(_, value) => setWeeklyDrilldownWeekday(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        {weekdayNames.map((weekday) => (
+                            <Tab key={weekday} label={weekday} value={weekday} />
+                        ))}
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <WeeklyWeekdayDrilldownChart rows={weeklyWeekdayDrilldownRows} metric="occupancy" />
                     )}
                 </DialogContent>
             </Dialog>
