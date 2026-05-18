@@ -133,7 +133,9 @@ export default function Uploads() {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
     const [sites, setSites] = useState([]);
+    const [studios, setStudios] = useState([]);
     const [site, setSite] = useState("");
+    const [studio, setStudio] = useState("");
     const [reportType, setReportType] = useState("attendance_with_revenue");
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState(null);
@@ -150,22 +152,48 @@ export default function Uploads() {
     }), [token]);
 
     useEffect(() => {
-        const fetchSites = async () => {
+        const fetchLookups = async () => {
             if (!token) return;
-            const response = await axios.get(`${backendUrl}/api/data/sites/`, authHeaders);
-            const nextSites = response.data.results || response.data;
+            const [sitesResponse, studiosResponse] = await Promise.all([
+                axios.get(`${backendUrl}/api/data/sites/`, authHeaders),
+                axios.get(`${backendUrl}/api/data/studios/`, authHeaders),
+            ]);
+            const nextSites = sitesResponse.data.results || sitesResponse.data;
+            const nextStudios = studiosResponse.data.results || studiosResponse.data;
             setSites(nextSites);
+            setStudios(nextStudios);
             if (!site && nextSites.length > 0) {
                 setSite(nextSites[0].id);
             }
         };
 
-        fetchSites().catch((err) => setError(err.response?.data?.detail || "Error loading sites."));
+        fetchLookups().catch((err) => setError(err.response?.data?.detail || "Error loading upload lookups."));
     }, [token]);
+
+    const visibleStudios = site
+        ? studios.filter((item) => String(item.site) === String(site))
+        : studios;
+
+    useEffect(() => {
+        if (studio && !visibleStudios.some((item) => String(item.id) === String(studio))) {
+            setStudio("");
+        }
+    }, [site, studios, studio]);
+
+    useEffect(() => {
+        setPreview(null);
+        setImportResult(null);
+        setScheduleAutomation(null);
+        setRoomCapacities({});
+    }, [site, studio, reportType]);
 
     const handlePreview = async () => {
         if (!site || !reportType || !file) {
             setError("Select site, report type, and file.");
+            return;
+        }
+        if (reportType === "sales_by_service" && !studio) {
+            setError("Select the studio for this Sales by Service export.");
             return;
         }
 
@@ -180,6 +208,9 @@ export default function Uploads() {
         formData.append("site", site);
         formData.append("report_type", reportType);
         formData.append("file", file);
+        if (reportType === "sales_by_service") {
+            formData.append("studio", studio);
+        }
 
         try {
             const response = await axios.post(`${backendUrl}/api/data/report-imports/preview/`, formData, {
@@ -201,6 +232,10 @@ export default function Uploads() {
             setError("Preview the file before importing.");
             return;
         }
+        if (reportType === "sales_by_service" && !studio) {
+            setError("Select the studio for this Sales by Service export.");
+            return;
+        }
 
         if (!window.confirm("Import this report and update analytics records?")) return;
 
@@ -213,6 +248,9 @@ export default function Uploads() {
         formData.append("site", site);
         formData.append("report_type", reportType);
         formData.append("file", file);
+        if (reportType === "sales_by_service") {
+            formData.append("studio", studio);
+        }
         if (reportType === "trainer_availability") {
             formData.append("room_capacities", JSON.stringify(
                 (preview.capacity_requirements || []).map((row) => ({
@@ -245,7 +283,7 @@ export default function Uploads() {
 
     const handleResetAnalyticsData = async () => {
         const confirmation = window.prompt(
-            "This will delete imported analytics data, clients, studios, staff, pricing options, payment methods, and imports. Users and sites are preserved. Type RESET ANALYTICS DATA to continue."
+            "This will delete imported analytics data, clients, pricing options, payment methods, generated/imported classes, expected slots, and imports. Users, sites, studios, rooms, staff, weekly room templates, and studio closures are preserved. Type RESET ANALYTICS DATA to continue."
         );
         if (confirmation !== "RESET ANALYTICS DATA") return;
 
@@ -285,7 +323,8 @@ export default function Uploads() {
         && preview.is_valid_schema
         && !importing
         && (preview.row_counts.invalid_rows === 0 || reportType === "trainer_availability")
-        && missingCapacityCount === 0;
+        && missingCapacityCount === 0
+        && (reportType !== "sales_by_service" || Boolean(studio));
 
     useEffect(() => {
         if (!preview?.capacity_requirements) {
@@ -340,6 +379,23 @@ export default function Uploads() {
                                     </MenuItem>
                                 ))}
                             </TextField>
+                            {reportType === "sales_by_service" && (
+                                <TextField
+                                    select
+                                    required
+                                    label="Studio for this file"
+                                    value={studio}
+                                    onChange={(event) => setStudio(event.target.value)}
+                                    helperText="Sales by Service does not include studio, so select the studio used for this export."
+                                >
+                                    <MenuItem value="">Select Studio</MenuItem>
+                                    {visibleStudios.map((item) => (
+                                        <MenuItem value={item.id} key={item.id}>
+                                            {item.name}
+                                        </MenuItem>
+                                    ))}
+                                </TextField>
+                            )}
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
@@ -380,6 +436,12 @@ export default function Uploads() {
 
                     {preview && (
                         <>
+                            {preview.import_context?.studio && (
+                                <Alert severity="info">
+                                    This Sales by Service file will be imported as studio: {preview.import_context.studio}.
+                                </Alert>
+                            )}
+
                             {importResult && (
                                 <Alert severity="success">
                                     Import completed. Import ID: {importResult.report_import_id}

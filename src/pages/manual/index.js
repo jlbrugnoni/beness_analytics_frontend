@@ -58,6 +58,12 @@ export default function Manual() {
                             tener dos visitas identicas en el mismo contexto. En ventas y servicios, filas repetidas pueden
                             ser validas porque un cliente puede comprar varias unidades del mismo producto.
                         </p>
+                        <p>
+                            <strong>SalesByService debe exportarse por estudio.</strong> MindBody no incluye el estudio en
+                            ese reporte, por lo que al subirlo se debe seleccionar el estudio exacto usado para la
+                            exportacion. Esa seleccion se guarda en todas las compras de servicio importadas y permite
+                            analizar ingresos de servicios por estudio.
+                        </p>
                     </Section>
 
                     <Section title="4. Normalizacion de nombres">
