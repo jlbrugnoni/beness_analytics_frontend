@@ -6,6 +6,7 @@ import axios from "axios";
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
 import { dataResources } from "@/constants/dataResources";
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
@@ -96,7 +97,7 @@ export default function ResourcePage() {
             const response = await axios.get(url, authHeaders);
             const pageRows = response.data.results || response.data;
             allRows = [...allRows, ...pageRows];
-            url = response.data.next || null;
+            url = normalizeApiNextUrl(response.data.next, backendUrl);
         }
         return allRows;
     };
