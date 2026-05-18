@@ -584,6 +584,9 @@ export default function SchedulePage() {
                             <Link href="/schedule/templates">
                                 <Button variant="contained" color="secondary">Visual Template Builder</Button>
                             </Link>
+                            <Link href="/schedule/unmatched-attendance">
+                                <Button variant="outlined">Review Unmatched Attendance</Button>
+                            </Link>
                             <Button variant="outlined" onClick={handleGenerateExpectedSlots} disabled={generating || !site}>
                                 {generating ? "Generating..." : "Generate Expected Slots"}
                             </Button>

@@ -2,6 +2,21 @@ import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import CloseIcon from "@mui/icons-material/Close";
+import {
+    Bar,
+    BarChart as RechartsBarChart,
+    CartesianGrid,
+    ComposedChart,
+    Legend,
+    Line,
+    ResponsiveContainer,
+    Tooltip as ChartTooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
@@ -9,8 +24,14 @@ import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
+import LinearProgress from "@mui/material/LinearProgress";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -20,12 +41,56 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
 
 
-const KpiCard = ({ label, value }) => (
-    <Paper style={{ padding: "16px", minHeight: "86px" }}>
-        <div style={{ color: "#666", fontSize: "13px" }}>{label}</div>
-        <div style={{ fontSize: "28px", fontWeight: 700 }}>{value}</div>
+const chartText = { fontSize: 15 };
+const chartTooltipStyle = { fontSize: 14, borderRadius: 6, borderColor: "#d8dee4" };
+const expandedChartTooltipStyle = { fontSize: 17, borderRadius: 8, borderColor: "#d8dee4", padding: "12px 14px" };
+const chartLegendStyle = { fontSize: 15, paddingTop: 8 };
+
+
+const KpiCard = ({ label, value, action }) => (
+    <Paper style={{ padding: "18px", minHeight: "96px", display: "grid", gap: "10px" }}>
+        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1.5}>
+            <div style={{ color: "#555", fontSize: "15px", fontWeight: 700 }}>{label}</div>
+            {action}
+        </Stack>
+        <div style={{ fontSize: "32px", fontWeight: 800, marginTop: "4px" }}>{value}</div>
+    </Paper>
+);
+
+
+const InsightCard = ({ title, value, caption, delta, details = [], action }) => (
+    <Paper style={{ padding: "20px", display: "grid", gap: "16px", minHeight: "230px" }}>
+        <div>
+            <div style={{ color: "#555", fontSize: "15px", fontWeight: 800, textTransform: "uppercase" }}>{title}</div>
+            <div style={{ fontSize: "34px", fontWeight: 800, marginTop: "4px" }}>{value}</div>
+            {delta && (
+                <div style={{ color: delta.tone === "down" ? "#b42318" : delta.tone === "flat" ? "#555" : "#1f7a4d", fontSize: "16px", fontWeight: 800, marginTop: "4px" }}>
+                    {delta.label}
+                </div>
+            )}
+            {caption && <div style={{ color: "#555", fontSize: "16px", lineHeight: 1.35, marginTop: "6px" }}>{caption}</div>}
+        </div>
+        <div style={{ display: "grid", gap: "8px" }}>
+            {details.map((detail) => (
+                <div
+                    key={detail.label}
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "12px",
+                        borderTop: "1px solid #eef1f4",
+                        paddingTop: "8px",
+                    }}
+                >
+                    <span style={{ color: "#555", fontSize: "16px" }}>{detail.label}</span>
+                    <strong style={{ fontSize: "16px", textAlign: "right" }}>{detail.value}</strong>
+                </div>
+            ))}
+        </div>
+        {action && <div>{action}</div>}
     </Paper>
 );
 
@@ -64,6 +129,604 @@ const BreakdownTable = ({ title, rows, nameKey = "name", valueKey = "total", mon
 );
 
 
+const MemberTrendChart = ({ rows }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>Member Trend</h2>
+        <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer>
+                <ComposedChart data={rows} margin={{ top: 16, right: 20, bottom: 8, left: 8 }}>
+                    <CartesianGrid stroke="#eef1f4" vertical={false} />
+                    <XAxis dataKey="label" tick={chartText} />
+                    <YAxis allowDecimals={false} tick={chartText} />
+                    <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={chartTooltipStyle} />
+                    <Legend wrapperStyle={chartLegendStyle} />
+                    <Bar dataKey="not_renewed" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
+                    <Line
+                        type="monotone"
+                        dataKey="current_members"
+                        name="Current members"
+                        stroke="#2f6f73"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                    />
+                </ComposedChart>
+            </ResponsiveContainer>
+        </div>
+        {!rows.length && <div>No data</div>}
+    </Paper>
+);
+
+
+const RevenueItemChart = ({ rows }) => {
+    const chartRows = (rows || []).slice(0, 10).map((row) => ({
+        label: row.name || "N/A",
+        total: Number(row.total || 0),
+        count: Number(row.count || 0),
+    }));
+    const chartHeight = Math.max(360, chartRows.length * 54 + 90);
+
+    return (
+        <Paper style={{ padding: "16px" }}>
+            <h2 style={{ marginTop: 0 }}>Revenue by Item</h2>
+            <div style={{ width: "100%", height: chartHeight }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} layout="vertical" margin={{ top: 8, right: 32, bottom: 16, left: 12 }}>
+                        <CartesianGrid stroke="#eef1f4" horizontal={false} />
+                        <XAxis type="number" tickFormatter={formatCompactMoney} tick={chartText} />
+                        <YAxis
+                            type="category"
+                            dataKey="label"
+                            width={240}
+                            tick={chartText}
+                            tickFormatter={(value) => truncateLabel(value, 32)}
+                        />
+                        <ChartTooltip
+                            formatter={(value) => [formatMoney(value), "Revenue"]}
+                            labelFormatter={(value) => value}
+                            contentStyle={chartTooltipStyle}
+                        />
+                        <Bar dataKey="total" name="Revenue" fill="#2f6f73" radius={[0, 4, 4, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const RevenueHealthTrendChart = ({ rows }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis yAxisId="money" tick={chartText} tickFormatter={formatCompactMoney} />
+                <YAxis yAxisId="ticket" orientation="right" tick={chartText} tickFormatter={formatCompactMoney} />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "sales_revenue") return [formatMoney(value), "Sales revenue"];
+                        if (name === "average_ticket") return [formatMoney(value), "Average ticket"];
+                        return [formatMoney(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                <Bar yAxisId="money" dataKey="sales_revenue" name="Sales revenue" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                <Line
+                    yAxisId="ticket"
+                    type="monotone"
+                    dataKey="average_ticket"
+                    name="Average ticket"
+                    stroke="#8a5cf6"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                />
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const RetentionHealthTrendChart = ({ rows }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis yAxisId="rate" tick={chartText} tickFormatter={(value) => `${value}%`} />
+                <YAxis yAxisId="members" orientation="right" allowDecimals={false} tick={chartText} />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "renewal_rate") return [`${formatNumber(value)}%`, "Renewal rate"];
+                        if (name === "not_renewed_members") return [formatNumber(value), "Not renewed"];
+                        if (name === "not_renewed_unassigned_studio") return [formatNumber(value), "Unassigned studio"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                <Bar yAxisId="members" dataKey="not_renewed_members" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="members" dataKey="not_renewed_unassigned_studio" name="Unassigned studio" fill="#d97706" radius={[4, 4, 0, 0]} />
+                <Line
+                    yAxisId="rate"
+                    type="monotone"
+                    dataKey="renewal_rate"
+                    name="Renewal rate"
+                    stroke="#2f6f73"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                />
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const MemberMixHistoryChart = ({ rows, view }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                {view === "renewal" ? (
+                    <YAxis tick={chartText} tickFormatter={(value) => `${value}%`} />
+                ) : (
+                    <YAxis allowDecimals={false} tick={chartText} />
+                )}
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "renewal_rate") return [`${formatNumber(value)}%`, "Renewal rate"];
+                        if (name === "current_members") return [formatNumber(value), "Current members"];
+                        if (name === "retained_members") return [formatNumber(value), "Retained"];
+                        if (name === "new_members") return [formatNumber(value), "New"];
+                        if (name === "reactivated_members") return [formatNumber(value), "Reactivated"];
+                        if (name === "not_renewed_members") return [formatNumber(value), "Not renewed"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                {view === "members" && (
+                    <>
+                        <Bar dataKey="current_members" name="Current members" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="retained_members"
+                            name="Retained"
+                            stroke="#215b63"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                )}
+                {view === "renewal" && (
+                    <Line
+                        type="monotone"
+                        dataKey="renewal_rate"
+                        name="Renewal rate"
+                        stroke="#2f6f73"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                    />
+                )}
+                {view === "movement" && (
+                    <>
+                        <Bar dataKey="new_members" name="New" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="reactivated_members" name="Reactivated" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="not_renewed_members" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
+                    </>
+                )}
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const CompletedVisitsRankingChart = ({ title, rows, limit = 10, wide = false }) => {
+    const chartRows = (rows || []).slice(0, limit).map((row) => ({
+        label: row.name || "N/A",
+        total: Number(row.total || 0),
+    }));
+
+    return (
+        <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
+            <h2 style={{ marginTop: 0 }}>{title}</h2>
+            <div style={{ width: "100%", height: 340 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 8, bottom: 48, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis
+                            dataKey="label"
+                            interval={0}
+                            angle={-28}
+                            textAnchor="end"
+                            height={58}
+                            tick={chartText}
+                            tickFormatter={(value) => truncateLabel(value, 12)}
+                        />
+                        <YAxis allowDecimals={false} tick={chartText} />
+                        <ChartTooltip
+                            formatter={(value) => [formatNumber(value), "Completed visits"]}
+                            labelFormatter={(value) => value}
+                            contentStyle={chartTooltipStyle}
+                        />
+                        <Bar dataKey="total" name="Completed visits" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const CompletedVisitsByHourChart = ({ rows, wide = false }) => {
+    const chartRows = (rows || []).map((row) => ({
+        hour: row.hour || "N/A",
+        total: Number(row.total || 0),
+    }));
+
+    return (
+        <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
+            <h2 style={{ marginTop: 0 }}>Completed Visits by Hour</h2>
+            <div style={{ width: "100%", height: 340 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 8, bottom: 28, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis
+                            dataKey="hour"
+                            interval={0}
+                            angle={-28}
+                            textAnchor="end"
+                            height={42}
+                            tick={chartText}
+                        />
+                        <YAxis allowDecimals={false} tick={chartText} />
+                        <ChartTooltip formatter={(value) => [formatNumber(value), "Completed visits"]} contentStyle={chartTooltipStyle} />
+                        <Bar dataKey="total" name="Completed visits" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const WeeklyAttendanceComparisonChart = ({ rows, wide = false, action }) => (
+    <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
+            <h2 style={{ margin: 0 }}>Completed Visits vs Previous Week</h2>
+            {action}
+        </Stack>
+        <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer>
+                <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                    <CartesianGrid stroke="#eef1f4" vertical={false} />
+                    <XAxis dataKey="label" tick={chartText} />
+                    <YAxis allowDecimals={false} tick={chartText} />
+                    <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={chartTooltipStyle} />
+                    <Legend wrapperStyle={chartLegendStyle} />
+                    <Bar dataKey="previous" name="Previous week" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="current" name="Selected week" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                </ComposedChart>
+            </ResponsiveContainer>
+        </div>
+        {!rows.length && <div>No data</div>}
+    </Paper>
+);
+
+
+const BookingQualityChart = ({ rows, wide = false, action }) => {
+    const chartRows = (rows || []).map((row) => ({
+        label: formatShortWeekdayDate(row.date),
+        attended: Number(row.attended || 0),
+        no_shows: Number(row.no_shows || 0),
+        late_cancels: Number(row.late_cancels || 0),
+    }));
+
+    return (
+        <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
+                <h2 style={{ margin: 0 }}>Booking Quality by Day</h2>
+                {action}
+            </Stack>
+            <div style={{ width: "100%", height: 320 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis dataKey="label" tick={chartText} />
+                        <YAxis allowDecimals={false} tick={chartText} />
+                        <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={chartTooltipStyle} />
+                        <Legend wrapperStyle={chartLegendStyle} />
+                        <Bar dataKey="attended" name="Completed visits" stackId="bookings" fill="#2f6f73" />
+                        <Bar dataKey="late_cancels" name="Late cancels" stackId="bookings" fill="#d97706" />
+                        <Bar dataKey="no_shows" name="No-shows" stackId="bookings" fill="#b42318" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart
+                data={rows.map((row) => ({
+                    ...row,
+                    not_completed_bookings: Math.max(0, Number(row.total_bookings || 0) - Number(row.completed_visits || 0)),
+                }))}
+                margin={{ top: 16, right: 24, bottom: 8, left: 8 }}
+            >
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis
+                    tick={chartText}
+                    tickFormatter={
+                        view === "rates"
+                            ? (value) => `${value}%`
+                            : view === "revenue"
+                                ? formatCompactMoney
+                                : undefined
+                    }
+                />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "no_show_rate") return [`${formatNumber(value)}%`, "No-show rate"];
+                        if (name === "late_cancel_rate") return [`${formatNumber(value)}%`, "Late cancel rate"];
+                        if (name === "average_revenue_per_attended_visit") return [formatMoney(value), "Avg revenue / visit"];
+                        if (name === "total_bookings") return [formatNumber(value), "Total bookings"];
+                        if (name === "completed_visits") return [formatNumber(value), "Completed visits"];
+                        if (name === "not_completed_bookings") return [formatNumber(value), "Booked but not completed"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                {view === "visits" ? (
+                    <>
+                        <Bar dataKey="completed_visits" name="Completed visits" stackId="bookings" fill="#2f6f73" />
+                        <Bar dataKey="not_completed_bookings" name="Booked but not completed" stackId="bookings" fill="#f2c94c" radius={[4, 4, 0, 0]} />
+                    </>
+                ) : view === "rates" ? (
+                    <>
+                        <Line
+                            type="monotone"
+                            dataKey="late_cancel_rate"
+                            name="Late cancel rate"
+                            stroke="#d97706"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                        <Line
+                            type="monotone"
+                            dataKey="no_show_rate"
+                            name="No-show rate"
+                            stroke="#b42318"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                ) : (
+                    <Line
+                        type="monotone"
+                        dataKey="average_revenue_per_attended_visit"
+                        name="Avg revenue / visit"
+                        stroke="#2f6f73"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                    />
+                )}
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis tick={chartText} tickFormatter={view === "rate" ? (value) => `${value}%` : undefined} />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "occupation_rate") return [`${formatNumber(value)}%`, "Occupancy rate"];
+                        if (name === "scheduled_capacity") return [formatNumber(value), "Scheduled capacity"];
+                        if (name === "attendance_used") return [formatNumber(value), "Attendance used"];
+                        if (name === "scheduled_classes") return [formatNumber(value), "Scheduled classes"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                {view === "capacity" ? (
+                    <>
+                        <Bar dataKey="scheduled_capacity" name="Scheduled capacity" fill="#d8dee4" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="attendance_used"
+                            name="Attendance used"
+                            stroke="#2f6f73"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                ) : view === "classes" ? (
+                    <Bar dataKey="scheduled_classes" name="Scheduled classes" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                ) : (
+                    <Line
+                        type="monotone"
+                        dataKey="occupation_rate"
+                        name="Occupancy rate"
+                        stroke="#2f6f73"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                    />
+                )}
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const WeeklyWeekdayDrilldownChart = ({ rows, metric }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis tick={chartText} tickFormatter={metric === "occupancy" ? (value) => `${value}%` : undefined} />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "completed_visits") return [formatNumber(value), "Completed visits"];
+                        if (name === "total_bookings") return [formatNumber(value), "Total bookings"];
+                        if (name === "occupation_rate") return [`${formatNumber(value)}%`, "Occupancy rate"];
+                        if (name === "attendance_used") return [formatNumber(value), "Attendance used"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                {metric === "attendance" ? (
+                    <>
+                        <Bar dataKey="total_bookings" name="Total bookings" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="completed_visits"
+                            name="Completed visits"
+                            stroke="#2f6f73"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <Bar dataKey="attendance_used" name="Attendance used" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="occupation_rate"
+                            name="Occupancy rate"
+                            stroke="#8a5cf6"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                )}
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const BookingQualityWeekdayHistoryChart = ({ rows }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <RechartsBarChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis allowDecimals={false} tick={chartText} />
+                <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={expandedChartTooltipStyle} />
+                <Legend wrapperStyle={chartLegendStyle} />
+                <Bar dataKey="completed_visits" name="Completed visits" stackId="bookings" fill="#2f6f73" />
+                <Bar dataKey="late_cancels" name="Late cancels" stackId="bookings" fill="#d97706" />
+                <Bar dataKey="no_shows" name="No-shows" stackId="bookings" fill="#b42318" radius={[4, 4, 0, 0]} />
+            </RechartsBarChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const WeeklyOccupancyComparisonChart = ({ rows, wide = false, action }) => (
+    <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
+            <h2 style={{ margin: 0 }}>Occupancy vs Previous Week</h2>
+            {action}
+        </Stack>
+        <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer>
+                <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                    <CartesianGrid stroke="#eef1f4" vertical={false} />
+                    <XAxis dataKey="label" tick={chartText} />
+                    <YAxis tick={chartText} tickFormatter={(value) => `${value}%`} />
+                    <ChartTooltip formatter={(value) => `${formatNumber(value)}%`} contentStyle={chartTooltipStyle} />
+                    <Legend wrapperStyle={chartLegendStyle} />
+                    <Bar dataKey="previous" name="Previous week" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="current" name="Selected week" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                </ComposedChart>
+            </ResponsiveContainer>
+        </div>
+        {!rows.length && <div>No data</div>}
+    </Paper>
+);
+
+
+const OccupancyCapacityByDayChart = ({ rows, action }) => {
+    const chartRows = (rows || []).map((row) => {
+        const capacity = Number(row.capacity || 0);
+        const attended = Number(row.attended || 0);
+        return {
+            label: formatShortWeekdayDate(row.date),
+            attended,
+            unused_capacity: Math.max(0, capacity - attended),
+            capacity,
+            occupation_rate: Number(row.occupation_rate || 0),
+        };
+    });
+
+    return (
+        <Paper style={{ padding: "16px" }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap" style={{ marginBottom: "8px" }}>
+                <h2 style={{ margin: 0 }}>Capacity Used by Day</h2>
+                {action}
+            </Stack>
+            <div style={{ width: "100%", height: 320 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis dataKey="label" tick={chartText} />
+                        <YAxis allowDecimals={false} tick={chartText} />
+                        <ChartTooltip
+                            formatter={(value, name, item) => {
+                                if (name === "attended") return [formatNumber(value), "Attendance used"];
+                                if (name === "unused_capacity") return [formatNumber(value), "Unused capacity"];
+                                return [formatNumber(value), name];
+                            }}
+                            labelFormatter={(label, payload) => {
+                                const row = payload?.[0]?.payload;
+                                return row ? `${label} - ${formatPercent(row.occupation_rate)}` : label;
+                            }}
+                            contentStyle={chartTooltipStyle}
+                        />
+                        <Legend wrapperStyle={chartLegendStyle} />
+                        <Bar dataKey="attended" name="Attendance used" stackId="capacity" fill="#2f6f73" />
+                        <Bar dataKey="unused_capacity" name="Unused capacity" stackId="capacity" fill="#d8dee4" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
 const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = false, limit = 31 }) => {
     const chartRows = (rows || []).slice(-limit);
     const maxValue = Math.max(...chartRows.map((row) => Number(row[valueKey] || 0)), 0);
@@ -78,7 +741,7 @@ const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = 
                     return (
                         <div key={`${title}-${index}`} style={{ display: "grid", gridTemplateColumns: "120px 1fr 90px", alignItems: "center", gap: "10px" }}>
                             <div style={{ fontSize: "13px", color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {row[labelKey] || "N/A"}
+                                {labelKey === "date" ? formatShortWeekdayDate(row[labelKey]) : row[labelKey] || "N/A"}
                             </div>
                             <div style={{ height: "12px", background: "#eef1f4", borderRadius: "6px", overflow: "hidden" }}>
                                 <div style={{ width: `${width}%`, height: "100%", background: "#2f6f73" }} />
@@ -149,6 +812,95 @@ const RetentionTable = ({ title, rows }) => (
 );
 
 
+const retentionTableColumns = {
+    not_renewed: [
+        { key: "client", label: "Client" },
+        { key: "studio", label: "Studio" },
+        { key: "service", label: "Service" },
+        { key: "status", label: "Status", format: (row) => row.status || "N/A" },
+        { key: "activity", label: "Activity", format: (row) => formatActivityStatus(row.not_renewed_activity_status) },
+        { key: "sale_date", label: "Last Purchase" },
+        { key: "expiration_date", label: "Expiration" },
+        { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+        { key: "tracked_membership_purchase_count", label: "Purchases", align: "right", format: (row) => formatNumber(row.tracked_membership_purchase_count) },
+        { key: "lifetime_membership_value", label: "Lifetime", align: "right", format: (row) => formatMoney(row.lifetime_membership_value) },
+    ],
+    retained: [
+        { key: "client", label: "Client" },
+        { key: "studio", label: "Studio" },
+        { key: "service", label: "Service" },
+        { key: "sale_date", label: "Last Purchase" },
+        { key: "expiration_date", label: "Expiration" },
+        { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+        { key: "tracked_membership_purchase_count", label: "Purchases", align: "right", format: (row) => formatNumber(row.tracked_membership_purchase_count) },
+        { key: "lifetime_membership_value", label: "Lifetime", align: "right", format: (row) => formatMoney(row.lifetime_membership_value) },
+    ],
+    new_members: [
+        { key: "month", label: "Month" },
+        { key: "client", label: "Client" },
+        { key: "studio", label: "Studio" },
+        { key: "service", label: "Service Purchased" },
+        { key: "sale_date", label: "Purchase Date" },
+        { key: "expiration_date", label: "Expiration" },
+        { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+    ],
+    reactivated: [
+        { key: "client", label: "Client" },
+        { key: "studio", label: "Studio" },
+        { key: "service", label: "Service" },
+        { key: "sale_date", label: "Reactivation Purchase" },
+        { key: "expiration_date", label: "Expiration" },
+        { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+        { key: "last_membership_purchase_date", label: "Previous Purchase" },
+    ],
+};
+
+
+const RetentionDetailTable = ({ rows, tableKey }) => {
+    const columns = retentionTableColumns[tableKey] || retentionTableColumns.not_renewed;
+    return (
+        <TableContainer style={{ maxHeight: 520 }}>
+            <Table size="small" stickyHeader>
+                <TableHead>
+                    <TableRow>
+                        {columns.map((column) => (
+                            <TableCell key={column.key} align={column.align || "left"}>{column.label}</TableCell>
+                        ))}
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {(rows || []).map((row, index) => (
+                        <TableRow key={`${tableKey}-${row.id || index}`}>
+                            {columns.map((column) => (
+                                <TableCell key={column.key} align={column.align || "left"}>
+                                    {column.format ? column.format(row) : row[column.key] || "N/A"}
+                                </TableCell>
+                            ))}
+                        </TableRow>
+                    ))}
+                    {!rows?.length && (
+                        <TableRow>
+                            <TableCell colSpan={columns.length}>No data</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+};
+
+
+const RetentionSummaryTableCard = ({ title, rows, tableKey, onExpand }) => (
+    <Paper style={{ padding: "16px" }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
+            <h2 style={{ margin: 0 }}>{title}</h2>
+            <Button size="small" variant="outlined" onClick={onExpand}>Open Table</Button>
+        </Stack>
+        <RetentionDetailTable rows={(rows || []).slice(0, 5)} tableKey={tableKey} />
+    </Paper>
+);
+
+
 const OccupationTable = ({ title, rows, labelKey = "name" }) => (
     <Paper style={{ padding: "16px" }}>
         <h2 style={{ marginTop: 0 }}>{title}</h2>
@@ -165,7 +917,7 @@ const OccupationTable = ({ title, rows, labelKey = "name" }) => (
                 <TableBody>
                     {(rows || []).map((row, index) => (
                         <TableRow key={`${title}-${index}`}>
-                            <TableCell>{row[labelKey] || "N/A"}</TableCell>
+                            <TableCell>{labelKey === "date" ? formatShortWeekdayDate(row[labelKey]) : row[labelKey] || "N/A"}</TableCell>
                             <TableCell align="right">{formatNumber(row.capacity)}</TableCell>
                             <TableCell align="right">{formatNumber(row.attended)}</TableCell>
                             <TableCell align="right">{formatNumber(row.occupation_rate)}%</TableCell>
@@ -183,6 +935,88 @@ const OccupationTable = ({ title, rows, labelKey = "name" }) => (
 );
 
 
+const OccupancySlotTable = ({ title, rows }) => (
+    <Paper style={{ padding: "16px" }}>
+        <h2 style={{ marginTop: 0 }}>{title}</h2>
+        <TableContainer style={{ maxHeight: 360 }}>
+            <Table size="small" stickyHeader>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Slot</TableCell>
+                        <TableCell>Studio</TableCell>
+                        <TableCell align="right">Capacity</TableCell>
+                        <TableCell align="right">Attendance</TableCell>
+                        <TableCell align="right">Occupancy</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {(rows || []).map((row, index) => (
+                        <TableRow key={`${title}-${row.date}-${row.start_time}-${row.studio}-${index}`}>
+                            <TableCell>
+                                <div>{formatShortWeekdayDate(row.date)}</div>
+                                <div style={{ color: "#666", fontSize: "12px" }}>{row.start_time || "N/A"}</div>
+                            </TableCell>
+                            <TableCell>{row.studio || "N/A"}</TableCell>
+                            <TableCell align="right">{formatNumber(row.capacity)}</TableCell>
+                            <TableCell align="right">{formatNumber(row.attended)}</TableCell>
+                            <TableCell align="right">{formatNumber(row.occupation_rate)}%</TableCell>
+                        </TableRow>
+                    ))}
+                    {!rows?.length && (
+                        <TableRow>
+                            <TableCell colSpan={5}>No data</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    </Paper>
+);
+
+
+const CapacityUsageCard = ({ occupation, action }) => {
+    const capacity = Number(occupation?.scheduled_capacity || 0);
+    const attended = Number(occupation?.matched_attended_visits || 0);
+    const width = capacity ? Math.min(100, Math.max(0, (attended / capacity) * 100)) : 0;
+
+    return (
+        <Paper style={{ padding: "18px", display: "grid", gap: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                <div>
+                    <h2 style={{ margin: 0 }}>Capacity Used</h2>
+                    <div style={{ color: "#666", fontSize: "14px", marginTop: "4px" }}>Attendance compared with scheduled capacity.</div>
+                </div>
+                <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap" justifyContent="flex-end">
+                    {action}
+                    <strong style={{ fontSize: "30px" }}>{formatPercent(occupation?.occupation_rate)}</strong>
+                </Stack>
+            </div>
+            <div style={{ height: "18px", background: "#eef1f4", borderRadius: "9px", overflow: "hidden" }}>
+                <div style={{ width: `${width}%`, height: "100%", background: "#2f6f73" }} />
+            </div>
+            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                <div>
+                    <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>Attendance Used</div>
+                    <div style={{ fontSize: "26px", fontWeight: 800 }}>{formatNumber(attended)}</div>
+                </div>
+                <div>
+                    <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>Scheduled Capacity</div>
+                    <div style={{ fontSize: "26px", fontWeight: 800 }}>{formatNumber(capacity)}</div>
+                </div>
+                <div>
+                    <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>Scheduled Classes</div>
+                    <div style={{ fontSize: "26px", fontWeight: 800 }}>{formatNumber(occupation?.available_classes)}</div>
+                </div>
+                <div>
+                    <div style={{ color: "#666", fontSize: "13px", fontWeight: 700, textTransform: "uppercase" }}>Closed / Unavailable</div>
+                    <div style={{ fontSize: "26px", fontWeight: 800 }}>{formatNumber(occupation?.closed_or_unavailable_classes)}</div>
+                </div>
+            </div>
+        </Paper>
+    );
+};
+
+
 const InstructorQualityTable = ({ rows }) => (
     <Paper style={{ padding: "16px" }}>
         <h2 style={{ marginTop: 0 }}>Instructor Quality</h2>
@@ -191,8 +1025,8 @@ const InstructorQualityTable = ({ rows }) => (
                 <TableHead>
                     <TableRow>
                         <TableCell>Instructor</TableCell>
-                        <TableCell align="right">Visits</TableCell>
-                        <TableCell align="right">Attended</TableCell>
+                        <TableCell align="right">Reservations</TableCell>
+                        <TableCell align="right">Completed</TableCell>
                         <TableCell align="right">No-show</TableCell>
                         <TableCell align="right">Late Cancel</TableCell>
                         <TableCell align="right">Revenue</TableCell>
@@ -222,7 +1056,43 @@ const InstructorQualityTable = ({ rows }) => (
 
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
-const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatCompactMoney = (value) => {
+    const numberValue = Number(value || 0);
+    if (Math.abs(numberValue) >= 1000000) return `${(numberValue / 1000000).toFixed(1)}M`;
+    if (Math.abs(numberValue) >= 1000) return `${(numberValue / 1000).toFixed(0)}K`;
+    return formatMoney(numberValue);
+};
+const truncateLabel = (value, maxLength = 24) => {
+    const text = String(value || "N/A");
+    return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text;
+};
+const formatPercent = (value) => `${formatNumber(value)}%`;
+const numericValue = (value) => Number(value || 0);
+const comparisonDelta = (current, previous, options = {}) => {
+    const difference = numericValue(current) - numericValue(previous);
+    const decimals = options.decimals ?? 0;
+    const suffix = options.suffix || "";
+    const tone = difference > 0
+        ? (options.invertTone ? "down" : "up")
+        : difference < 0
+            ? (options.invertTone ? "up" : "down")
+            : "flat";
+    const formattedDifference = options.money
+        ? formatMoney(Math.abs(difference))
+        : Math.abs(difference).toLocaleString(undefined, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+        });
+    const sign = difference > 0 ? "+" : difference < 0 ? "-" : "";
+    const labelValue = Math.abs(difference) < 0.005
+        ? (options.money ? formatMoney(0) : `0${suffix}`)
+        : `${sign}${options.money ? formattedDifference : `${formattedDifference}${suffix}`}`;
+    return {
+        tone,
+        label: `${labelValue} vs previous ${options.periodLabel || "period"}`,
+    };
+};
 const formatActivityStatus = (value) => ({
     inactive: "Inactive",
     attending_unpaid: "Attending Unpaid",
@@ -258,6 +1128,9 @@ const currentMonthValue = () => {
 };
 
 
+const weekdayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+
 const lastCompletedMonthValue = () => {
     const now = new Date();
     const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -276,6 +1149,34 @@ const monthParts = (monthValue) => {
 const buildMonthValue = (year, month) => `${year}-${month}`;
 
 
+const parseDateValue = (value) => {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+};
+
+
+const formatDateValue = (value) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
+
+const addMonths = (monthValue, amount) => {
+    const [year, month] = monthValue.split("-").map(Number);
+    const nextDate = new Date(year, month - 1 + amount, 1);
+    return `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
+};
+
+
+const addDays = (dateValue, amount) => {
+    const nextDate = parseDateValue(dateValue);
+    nextDate.setDate(nextDate.getDate() + amount);
+    return formatDateValue(nextDate);
+};
+
+
 const monthRange = (monthValue) => {
     const [year, month] = monthValue.split("-").map(Number);
     const lastDay = new Date(year, month, 0).getDate();
@@ -286,18 +1187,83 @@ const monthRange = (monthValue) => {
 };
 
 
-const selectedDateRange = (periodMode, filters) => {
+const weekRange = (value = new Date()) => {
+    const dateValue = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    const weekday = dateValue.getDay();
+    const daysFromMonday = weekday === 0 ? 6 : weekday - 1;
+    const start = new Date(dateValue);
+    start.setDate(dateValue.getDate() - daysFromMonday);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return {
+        date_from: formatDateValue(start),
+        date_to: formatDateValue(end),
+    };
+};
+
+
+const previousWeekRange = () => {
+    const today = new Date();
+    today.setDate(today.getDate() - 7);
+    return weekRange(today);
+};
+
+
+const weekRangeFromDate = (value) => {
+    if (!value) return weekRange();
+    return weekRange(parseDateValue(value));
+};
+
+
+const selectedDateRange = (dashboardMode, periodModes, filters) => {
+    const periodMode = periodModes[dashboardMode];
+    if (dashboardMode === "weekly") {
+        if (periodMode === "current_week") return weekRange();
+        if (periodMode === "previous_week") return previousWeekRange();
+        if (periodMode === "specific_week") return weekRangeFromDate(filters.week_date);
+        return { date_from: filters.date_from, date_to: filters.date_to };
+    }
     if (periodMode === "last_completed_month") return monthRange(lastCompletedMonthValue());
     if (periodMode === "current_month") return monthRange(currentMonthValue());
     if (periodMode === "specific_month") return monthRange(filters.month);
-    return { date_from: filters.date_from, date_to: filters.date_to };
+    return monthRange(lastCompletedMonthValue());
+};
+
+
+const weekdayIndex = (dateValue) => {
+    const day = parseDateValue(dateValue).getDay();
+    return day === 0 ? 6 : day - 1;
+};
+
+
+const rowsByWeekday = (rows, dateKey = "date") => {
+    const lookup = {};
+    (rows || []).forEach((row) => {
+        if (!row[dateKey]) return;
+        lookup[weekdayIndex(row[dateKey])] = row;
+    });
+    return lookup;
+};
+
+
+const weeklyComparisonRows = (dateRange, currentRows, previousRows, valueKey = "total") => {
+    if (!dateRange?.date_from) return [];
+    const currentLookup = rowsByWeekday(currentRows);
+    const previousLookup = rowsByWeekday(previousRows);
+    return Array.from({ length: 7 }, (_, index) => {
+        const dateValue = addDays(dateRange.date_from, index);
+        return {
+            label: formatShortWeekdayDate(dateValue),
+            current: Number(currentLookup[index]?.[valueKey] || 0),
+            previous: Number(previousLookup[index]?.[valueKey] || 0),
+        };
+    });
 };
 
 
 const formatDisplayDate = (value) => {
     if (!value) return "N/A";
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    return parseDateValue(value).toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -305,27 +1271,103 @@ const formatDisplayDate = (value) => {
 };
 
 
+const formatShortWeekdayDate = (value) => {
+    if (!value) return "N/A";
+    const dateValue = parseDateValue(value);
+    const weekday = dateValue.toLocaleDateString(undefined, { weekday: "short" });
+    const day = String(dateValue.getDate()).padStart(2, "0");
+    const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+    return `${weekday} ${day}-${month}`;
+};
+
+
+const formatPeriodTitle = (dashboardMode, dateRange) => {
+    if (!dateRange?.date_from || !dateRange?.date_to) return "N/A";
+    const start = parseDateValue(dateRange.date_from);
+    const end = parseDateValue(dateRange.date_to);
+    if (dashboardMode === "monthly") {
+        return start.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    }
+    return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+};
+
+
+const formatMonthLabel = (monthValue) => {
+    if (!monthValue) return "N/A";
+    return parseDateValue(monthValue).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+};
+
+
+const dashboardModes = {
+    monthly: {
+        title: "Monthly Performance",
+        defaultTab: "monthly_overview",
+    },
+    weekly: {
+        title: "Weekly Operations",
+        defaultTab: "weekly_overview",
+    },
+};
+
+
+const dashboardTabs = {
+    monthly: [
+        { label: "Summary", value: "monthly_overview" },
+        { label: "Revenue", value: "revenue" },
+        { label: "Retention", value: "retention" },
+    ],
+    weekly: [
+        { label: "Summary", value: "weekly_overview" },
+        { label: "Attendance", value: "attendance" },
+        { label: "Occupancy", value: "occupancy" },
+    ],
+};
+
+
 export default function Dashboard() {
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const defaultMonth = lastCompletedMonthValue();
+    const defaultWeek = weekRange();
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
-    const [periodMode, setPeriodMode] = useState("last_completed_month");
+    const [periodModes, setPeriodModes] = useState({
+        monthly: "last_completed_month",
+        weekly: "current_week",
+    });
+    const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+    const [periodNavigationVersion, setPeriodNavigationVersion] = useState(0);
     const [filters, setFilters] = useState({
         site: "",
         studio: "",
         month: defaultMonth,
-        date_from: monthRange(defaultMonth).date_from,
-        date_to: monthRange(defaultMonth).date_to,
+        week_date: defaultWeek.date_from,
+        date_from: defaultWeek.date_from,
+        date_to: defaultWeek.date_to,
     });
     const [summary, setSummary] = useState(null);
     const [revenue, setRevenue] = useState(null);
     const [attendance, setAttendance] = useState(null);
     const [retention, setRetention] = useState(null);
     const [occupation, setOccupation] = useState(null);
-    const [activeTab, setActiveTab] = useState("overview");
+    const [comparisonSummary, setComparisonSummary] = useState(null);
+    const [comparisonRetention, setComparisonRetention] = useState(null);
+    const [comparisonAttendance, setComparisonAttendance] = useState(null);
+    const [comparisonOccupation, setComparisonOccupation] = useState(null);
+    const [retentionTrend, setRetentionTrend] = useState(null);
+    const [dashboardMode, setDashboardMode] = useState("monthly");
+    const [activeTab, setActiveTab] = useState("monthly_overview");
+    const [expandedInsight, setExpandedInsight] = useState(null);
+    const [memberMixTrendView, setMemberMixTrendView] = useState("members");
+    const [retentionTables, setRetentionTables] = useState(null);
+    const [retentionTablesLoading, setRetentionTablesLoading] = useState(false);
+    const [activeRetentionTable, setActiveRetentionTable] = useState("not_renewed");
+    const [weeklyTrends, setWeeklyTrends] = useState(null);
+    const [weeklyTrendsLoading, setWeeklyTrendsLoading] = useState(false);
+    const [weeklyAttendanceTrendView, setWeeklyAttendanceTrendView] = useState("visits");
+    const [weeklyOccupancyTrendView, setWeeklyOccupancyTrendView] = useState("capacity");
+    const [weeklyDrilldownWeekday, setWeeklyDrilldownWeekday] = useState("Monday");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -360,29 +1402,55 @@ export default function Dashboard() {
         setLoading(true);
         setError("");
         try {
-            const params = new URLSearchParams();
-            const dateFilters = selectedDateRange(periodMode, filters);
-            const requestFilters = {
-                site: filters.site,
-                studio: filters.studio,
-                ...dateFilters,
+            const dateFilters = selectedDateRange(dashboardMode, periodModes, filters);
+            const queryStringFor = (range) => {
+                const params = new URLSearchParams();
+                const requestFilters = {
+                    site: filters.site,
+                    studio: filters.studio,
+                    ...range,
+                };
+                Object.entries(requestFilters).forEach(([key, value]) => {
+                    if (value) params.set(key, value);
+                });
+                return params.toString();
             };
-            Object.entries(requestFilters).forEach(([key, value]) => {
-                if (value) params.set(key, value);
-            });
-            const queryString = params.toString();
-            const [summaryResponse, revenueResponse, attendanceResponse, retentionResponse, occupationResponse] = await Promise.all([
-                axios.get(`${backendUrl}/api/data/analytics/summary/?${queryString}`, authHeaders),
-                axios.get(`${backendUrl}/api/data/analytics/revenue/?${queryString}`, authHeaders),
-                axios.get(`${backendUrl}/api/data/analytics/attendance/?${queryString}`, authHeaders),
-                axios.get(`${backendUrl}/api/data/analytics/retention/?${queryString}`, authHeaders),
-                axios.get(`${backendUrl}/api/data/analytics/occupation/?${queryString}`, authHeaders),
-            ]);
-            setSummary(summaryResponse.data);
-            setRevenue(revenueResponse.data);
-            setAttendance(attendanceResponse.data);
-            setRetention(retentionResponse.data);
-            setOccupation(occupationResponse.data);
+            const queryString = queryStringFor(dateFilters);
+
+            if (dashboardMode === "monthly") {
+                const [dashboardResponse, trendResponse] = await Promise.all([
+                    axios.get(`${backendUrl}/api/data/analytics/dashboard/monthly/?${queryString}`, authHeaders),
+                    axios.get(`${backendUrl}/api/data/analytics/dashboard/monthly/trends/?${queryString}`, authHeaders),
+                ]);
+                const dashboardData = dashboardResponse.data;
+                setSummary(dashboardData.current.summary);
+                setRevenue(dashboardData.current.revenue);
+                setRetention(dashboardData.current.retention);
+                setComparisonSummary(dashboardData.comparison.summary);
+                setComparisonRetention(dashboardData.comparison.retention);
+                setRetentionTrend(trendResponse.data);
+                setComparisonAttendance(null);
+                setComparisonOccupation(null);
+                setAttendance(null);
+                setOccupation(null);
+                setRetentionTables(null);
+                setWeeklyTrends(null);
+            } else {
+                const dashboardResponse = await axios.get(`${backendUrl}/api/data/analytics/dashboard/weekly/?${queryString}`, authHeaders);
+                const dashboardData = dashboardResponse.data;
+                setSummary(dashboardData.current.summary);
+                setAttendance(dashboardData.current.attendance);
+                setOccupation(dashboardData.current.occupation);
+                setComparisonSummary(dashboardData.comparison.summary);
+                setComparisonAttendance(dashboardData.comparison.attendance);
+                setComparisonOccupation(dashboardData.comparison.occupation);
+                setComparisonRetention(null);
+                setRetentionTrend(null);
+                setRetentionTables(null);
+                setWeeklyTrends(null);
+                setRevenue(null);
+                setRetention(null);
+            }
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading dashboard.");
         } finally {
@@ -396,14 +1464,186 @@ export default function Dashboard() {
 
     useEffect(() => {
         fetchDashboard();
-    }, [token]);
+    }, [token, dashboardMode, periodNavigationVersion]);
 
     const totals = summary?.totals || {};
+    const comparisonTotals = comparisonSummary?.totals || {};
+    const periodLabel = dashboardMode === "monthly" ? "month" : "week";
     const visibleStudios = filters.site
         ? studios.filter((studio) => String(studio.site) === String(filters.site))
         : studios;
-    const activeDateRange = selectedDateRange(periodMode, filters);
+    const activePeriodMode = periodModes[dashboardMode];
+    const activeDateRange = selectedDateRange(dashboardMode, periodModes, filters);
+    const activePeriodTitle = formatPeriodTitle(dashboardMode, activeDateRange);
     const selectedMonthParts = monthParts(filters.month);
+    const activeDashboardTabs = dashboardTabs[dashboardMode];
+    const occupancySlots = occupation?.by_slot || [];
+    const lowOccupancySlots = [...occupancySlots]
+        .filter((row) => Number(row.capacity || 0) > 0)
+        .sort((a, b) => Number(a.occupation_rate || 0) - Number(b.occupation_rate || 0))
+        .slice(0, 10);
+    const highOccupancySlots = [...occupancySlots]
+        .filter((row) => Number(row.capacity || 0) > 0)
+        .sort((a, b) => Number(b.occupation_rate || 0) - Number(a.occupation_rate || 0))
+        .slice(0, 10);
+    const retentionTrendRows = (retentionTrend?.months || []).map((row) => ({
+        label: formatMonthLabel(row.month),
+        current_members: row.current_members || 0,
+        not_renewed: row.not_renewed_members || 0,
+    }));
+    const revenueTrendRows = (retentionTrend?.months || []).map((row) => ({
+        label: formatMonthLabel(row.month),
+        sales_revenue: row.sales_revenue || 0,
+        average_ticket: row.average_ticket || 0,
+    }));
+    const retentionHealthTrendRows = (retentionTrend?.months || []).map((row) => ({
+        label: formatMonthLabel(row.month),
+        renewal_rate: row.renewal_rate || 0,
+        not_renewed_members: row.not_renewed_members || 0,
+        not_renewed_unassigned_studio: row.not_renewed_unassigned_studio || 0,
+    }));
+    const memberMixTrendRows = (retentionTrend?.months || []).map((row) => ({
+        label: formatMonthLabel(row.month),
+        current_members: row.current_members || 0,
+        retained_members: row.retained_members || 0,
+        new_members: row.new_members || 0,
+        reactivated_members: row.reactivated_members || 0,
+        not_renewed_members: row.not_renewed_members || 0,
+        renewal_rate: row.renewal_rate || 0,
+    }));
+    const weeklyTrendRows = (weeklyTrends?.weeks || []).map((row) => ({
+        label: formatShortWeekdayDate(row.week_start),
+        total_bookings: row.total_bookings || 0,
+        completed_visits: row.completed_visits || 0,
+        no_show_rate: row.no_show_rate || 0,
+        late_cancel_rate: row.late_cancel_rate || 0,
+        average_revenue_per_attended_visit: row.average_revenue_per_attended_visit || 0,
+        occupation_rate: row.occupation_rate || 0,
+        scheduled_capacity: row.scheduled_capacity || 0,
+        attendance_used: row.attendance_used || 0,
+        scheduled_classes: row.scheduled_classes || 0,
+    }));
+    const weeklyWeekdayDrilldownRows = (weeklyTrends?.weekday_rows || [])
+        .filter((row) => row.weekday === weeklyDrilldownWeekday)
+        .map((row) => ({
+            label: formatShortWeekdayDate(row.date),
+            total_bookings: row.total_bookings || 0,
+            completed_visits: row.completed_visits || 0,
+            no_shows: row.no_shows || 0,
+            late_cancels: row.late_cancels || 0,
+            attendance_used: row.attendance_used || 0,
+            occupation_rate: row.occupation_rate || 0,
+        }));
+    const weeklyAttendanceComparisonRows = weeklyComparisonRows(
+        activeDateRange,
+        attendance?.attended_by_date,
+        comparisonAttendance?.attended_by_date,
+        "total",
+    );
+    const weeklyOccupancyComparisonRows = weeklyComparisonRows(
+        activeDateRange,
+        occupation?.by_day,
+        comparisonOccupation?.by_day,
+        "occupation_rate",
+    );
+
+    const handleDashboardModeChange = (_, value) => {
+        if (!value) return;
+        setDashboardMode(value);
+        setActiveTab(dashboardModes[value].defaultTab);
+    };
+
+    const handlePeriodModeChange = (event) => {
+        setPeriodModes({
+            ...periodModes,
+            [dashboardMode]: event.target.value,
+        });
+    };
+
+    const handleSiteChange = (event) => {
+        setFilters({ ...filters, site: event.target.value, studio: "" });
+        setPeriodNavigationVersion((current) => current + 1);
+    };
+
+    const handleStudioChange = (event) => {
+        setFilters({ ...filters, studio: event.target.value });
+        setPeriodNavigationVersion((current) => current + 1);
+    };
+
+    const openRetentionTable = async (tableKey) => {
+        setActiveRetentionTable(tableKey);
+        setExpandedInsight("retention_tables");
+        if (retentionTables) return;
+        setRetentionTablesLoading(true);
+        try {
+            const dateFilters = selectedDateRange("monthly", periodModes, filters);
+            const params = new URLSearchParams({
+                date_from: dateFilters.date_from,
+                date_to: dateFilters.date_to,
+                limit: "500",
+            });
+            if (filters.site) params.set("site", filters.site);
+            if (filters.studio) params.set("studio", filters.studio);
+            const response = await axios.get(
+                `${backendUrl}/api/data/analytics/dashboard/monthly/retention-tables/?${params.toString()}`,
+                authHeaders,
+            );
+            setRetentionTables(response.data.tables);
+        } catch (err) {
+            setError(err.response?.data?.detail || "Error loading retention table.");
+        } finally {
+            setRetentionTablesLoading(false);
+        }
+    };
+
+    const openWeeklyTrend = async (insightKey) => {
+        setExpandedInsight(insightKey);
+        if (weeklyTrends) return;
+        setWeeklyTrendsLoading(true);
+        try {
+            const dateFilters = selectedDateRange("weekly", periodModes, filters);
+            const params = new URLSearchParams({
+                date_from: dateFilters.date_from,
+                date_to: dateFilters.date_to,
+            });
+            if (filters.site) params.set("site", filters.site);
+            if (filters.studio) params.set("studio", filters.studio);
+            const response = await axios.get(
+                `${backendUrl}/api/data/analytics/dashboard/weekly/trends/?${params.toString()}`,
+                authHeaders,
+            );
+            setWeeklyTrends(response.data);
+        } catch (err) {
+            setError(err.response?.data?.detail || "Error loading weekly trend.");
+        } finally {
+            setWeeklyTrendsLoading(false);
+        }
+    };
+
+    const openWeeklyAttendanceTrend = (view) => {
+        setWeeklyAttendanceTrendView(view);
+        openWeeklyTrend("weekly_attendance_health");
+    };
+
+    const navigatePeriod = (direction) => {
+        if (dashboardMode === "monthly") {
+            const activeMonth = activeDateRange.date_from.slice(0, 7);
+            const nextMonth = addMonths(activeMonth, direction);
+            setPeriodModes({ ...periodModes, monthly: "specific_month" });
+            setFilters({ ...filters, month: nextMonth });
+        } else {
+            const nextWeekDate = addDays(activeDateRange.date_from, direction * 7);
+            const nextWeekRange = weekRangeFromDate(nextWeekDate);
+            setPeriodModes({ ...periodModes, weekly: "specific_week" });
+            setFilters({
+                ...filters,
+                week_date: nextWeekRange.date_from,
+                date_from: nextWeekRange.date_from,
+                date_to: nextWeekRange.date_to,
+            });
+        }
+        setPeriodNavigationVersion((current) => current + 1);
+    };
 
     return (
         <MainPage>
@@ -418,13 +1658,27 @@ export default function Dashboard() {
                 <div style={{ width: "90%", display: "grid", gap: "16px" }}>
                     {error && <Alert severity="error">{error}</Alert>}
 
-                    <Paper style={{ padding: "16px", display: "grid", gap: "12px" }}>
-                        <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                    <Paper style={{ padding: "0 12px" }}>
+                        <Tabs
+                            value={dashboardMode}
+                            onChange={handleDashboardModeChange}
+                            variant="scrollable"
+                            scrollButtons="auto"
+                        >
+                            <Tab label="Monthly Performance" value="monthly" />
+                            <Tab label="Weekly Operations" value="weekly" />
+                        </Tabs>
+                    </Paper>
+
+                    <Paper style={{ padding: "12px", display: "grid", gap: "12px" }}>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
                             <TextField
                                 select
                                 label="Site"
+                                size="small"
                                 value={filters.site}
-                                onChange={(event) => setFilters({ ...filters, site: event.target.value, studio: "" })}
+                                onChange={handleSiteChange}
+                                style={{ minWidth: "220px" }}
                             >
                                 <MenuItem value="">All Sites</MenuItem>
                                 {sites.map((site) => (
@@ -434,90 +1688,132 @@ export default function Dashboard() {
                             <TextField
                                 select
                                 label="Studio"
+                                size="small"
                                 value={filters.studio}
-                                onChange={(event) => setFilters({ ...filters, studio: event.target.value })}
+                                onChange={handleStudioChange}
+                                style={{ minWidth: "220px" }}
                             >
                                 <MenuItem value="">All Studios</MenuItem>
                                 {visibleStudios.map((studio) => (
                                     <MenuItem key={studio.id} value={studio.id}>{studio.name}</MenuItem>
                                 ))}
                             </TextField>
-                            <TextField
-                                select
-                                label="Period"
-                                value={periodMode}
-                                onChange={(event) => setPeriodMode(event.target.value)}
-                            >
-                                <MenuItem value="last_completed_month">Last Completed Month</MenuItem>
-                                <MenuItem value="current_month">Current Month</MenuItem>
-                                <MenuItem value="specific_month">Specific Month</MenuItem>
-                                <MenuItem value="range">Date Range</MenuItem>
-                            </TextField>
-                            {periodMode === "specific_month" && (
-                                <>
-                                    <TextField
-                                        select
-                                        label="Month"
-                                        value={selectedMonthParts.month}
-                                        onChange={(event) => setFilters({
-                                            ...filters,
-                                            month: buildMonthValue(selectedMonthParts.year, event.target.value),
-                                        })}
-                                    >
-                                        {monthOptions.map((month) => (
-                                            <MenuItem key={month.value} value={month.value}>{month.label}</MenuItem>
-                                        ))}
-                                    </TextField>
-                                    <TextField
-                                        select
-                                        label="Year"
-                                        value={Number(selectedMonthParts.year)}
-                                        onChange={(event) => setFilters({
-                                            ...filters,
-                                            month: buildMonthValue(event.target.value, selectedMonthParts.month),
-                                        })}
-                                    >
-                                        {yearOptions().map((year) => (
-                                            <MenuItem key={year} value={year}>{year}</MenuItem>
-                                        ))}
-                                    </TextField>
-                                </>
-                            )}
-                            {periodMode === "range" && (
-                                <>
-                                    <TextField
-                                        label="Date From"
-                                        type="date"
-                                        value={filters.date_from}
-                                        InputLabelProps={{ shrink: true }}
-                                        onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
-                                    />
-                                    <TextField
-                                        label="Date To"
-                                        type="date"
-                                        value={filters.date_to}
-                                        InputLabelProps={{ shrink: true }}
-                                        onChange={(event) => setFilters({ ...filters, date_to: event.target.value })}
-                                    />
-                                </>
-                            )}
-                        </div>
-                        <div style={{ color: "#666", fontSize: "14px" }}>
-                            Showing: {formatDisplayDate(activeDateRange.date_from)} - {formatDisplayDate(activeDateRange.date_to)}
-                        </div>
-                        <div>
-                            <Button variant="contained" onClick={fetchDashboard} disabled={loading}>
-                                {loading ? "Loading..." : "Apply Filters"}
+                            <Button variant="outlined" onClick={() => setAdvancedFiltersOpen(!advancedFiltersOpen)}>
+                                {advancedFiltersOpen ? "Hide Advanced" : "Advanced"}
                             </Button>
-                        </div>
+                        </Stack>
+                        {advancedFiltersOpen && (
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                                <TextField
+                                    select
+                                    label="Period"
+                                    value={activePeriodMode}
+                                    onChange={handlePeriodModeChange}
+                                >
+                                    {dashboardMode === "monthly" ? (
+                                        [
+                                            <MenuItem key="last_completed_month" value="last_completed_month">Last Completed Month</MenuItem>,
+                                            <MenuItem key="current_month" value="current_month">Current Month</MenuItem>,
+                                            <MenuItem key="specific_month" value="specific_month">Specific Month</MenuItem>,
+                                        ]
+                                    ) : (
+                                        [
+                                            <MenuItem key="current_week" value="current_week">Current Week</MenuItem>,
+                                            <MenuItem key="previous_week" value="previous_week">Previous Week</MenuItem>,
+                                            <MenuItem key="specific_week" value="specific_week">Specific Week</MenuItem>,
+                                            <MenuItem key="range" value="range">Custom Range</MenuItem>,
+                                        ]
+                                    )}
+                                </TextField>
+                                {dashboardMode === "monthly" && activePeriodMode === "specific_month" && (
+                                    <>
+                                        <TextField
+                                            select
+                                            label="Month"
+                                            value={selectedMonthParts.month}
+                                            onChange={(event) => setFilters({
+                                                ...filters,
+                                                month: buildMonthValue(selectedMonthParts.year, event.target.value),
+                                            })}
+                                        >
+                                            {monthOptions.map((month) => (
+                                                <MenuItem key={month.value} value={month.value}>{month.label}</MenuItem>
+                                            ))}
+                                        </TextField>
+                                        <TextField
+                                            select
+                                            label="Year"
+                                            value={Number(selectedMonthParts.year)}
+                                            onChange={(event) => setFilters({
+                                                ...filters,
+                                                month: buildMonthValue(event.target.value, selectedMonthParts.month),
+                                            })}
+                                        >
+                                            {yearOptions().map((year) => (
+                                                <MenuItem key={year} value={year}>{year}</MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </>
+                                )}
+                                {dashboardMode === "weekly" && activePeriodMode === "specific_week" && (
+                                    <TextField
+                                        label="Week Of"
+                                        type="date"
+                                        value={filters.week_date}
+                                        InputLabelProps={{ shrink: true }}
+                                        onChange={(event) => setFilters({ ...filters, week_date: event.target.value })}
+                                    />
+                                )}
+                                {dashboardMode === "weekly" && activePeriodMode === "range" && (
+                                    <>
+                                        <TextField
+                                            label="Date From"
+                                            type="date"
+                                            value={filters.date_from}
+                                            InputLabelProps={{ shrink: true }}
+                                            onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
+                                        />
+                                        <TextField
+                                            label="Date To"
+                                            type="date"
+                                            value={filters.date_to}
+                                            InputLabelProps={{ shrink: true }}
+                                            onChange={(event) => setFilters({ ...filters, date_to: event.target.value })}
+                                        />
+                                    </>
+                                )}
+                                <Button variant="contained" onClick={fetchDashboard} disabled={loading}>
+                                    {loading ? "Loading..." : "Apply"}
+                                </Button>
+                            </div>
+                        )}
+                        {loading && <LinearProgress />}
                     </Paper>
 
-                    {filters.studio && (
-                        <Alert severity="info">
-                            Studio filter applies to attendance, sales, occupancy, and monthly retention snapshots.
-                            Service purchase revenue remains site-level because Sales by Service does not include studio.
-                        </Alert>
-                    )}
+                    <Paper variant="outlined" style={{ padding: "10px 14px", background: "#fafafa" }}>
+                        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
+                            <Tooltip title={`Previous ${dashboardMode === "monthly" ? "month" : "week"}`}>
+                                <span>
+                                    <IconButton onClick={() => navigatePeriod(-1)} disabled={loading} size="small">
+                                        <ChevronLeftIcon />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                            <div style={{ minWidth: "220px", textAlign: "center" }}>
+                                <div style={{ fontSize: "18px", fontWeight: 700 }}>{activePeriodTitle}</div>
+                                <div style={{ color: "#666", fontSize: "13px" }}>
+                                    {formatDisplayDate(activeDateRange.date_from)} - {formatDisplayDate(activeDateRange.date_to)}
+                                </div>
+                            </div>
+                            <Tooltip title={`Next ${dashboardMode === "monthly" ? "month" : "week"}`}>
+                                <span>
+                                    <IconButton onClick={() => navigatePeriod(1)} disabled={loading} size="small">
+                                        <ChevronRightIcon />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                        </Stack>
+                    </Paper>
 
                     <Paper style={{ padding: "0 12px" }}>
                         <Tabs
@@ -526,29 +1822,151 @@ export default function Dashboard() {
                             variant="scrollable"
                             scrollButtons="auto"
                         >
-                            <Tab label="Overview" value="overview" />
-                            <Tab label="Revenue" value="revenue" />
-                            <Tab label="Attendance" value="attendance" />
-                            <Tab label="Retention" value="retention" />
-                            <Tab label="Occupancy" value="occupancy" />
+                            {activeDashboardTabs.map((tab) => (
+                                <Tab key={tab.value} label={tab.label} value={tab.value} />
+                            ))}
                         </Tabs>
                     </Paper>
 
-                    {activeTab === "overview" && (
+                    {activeTab === "monthly_overview" && (
                         <>
-                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
-                                <KpiCard label="Service Revenue" value={formatMoney(totals.service_revenue)} />
-                                <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
-                                <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
-                                <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
-                                <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
-                                <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
-                                <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                                <InsightCard
+                                    title="Revenue Health"
+                                    value={formatMoney(totals.sales_revenue)}
+                                    delta={comparisonDelta(totals.sales_revenue, comparisonTotals.sales_revenue, {
+                                        periodLabel,
+                                        decimals: 2,
+                                        money: true,
+                                    })}
+                                    caption="Sales revenue for the selected month."
+                                    details={[
+                                        { label: "Visit revenue", value: formatMoney(totals.visit_revenue) },
+                                        { label: "Average ticket", value: formatMoney(totals.average_ticket) },
+                                        { label: "Sales by studio", value: formatNumber(revenue?.by_studio?.length) },
+                                    ]}
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => setExpandedInsight("revenue_health")}>
+                                            View Trend
+                                        </Button>
+                                    )}
+                                />
+                                <InsightCard
+                                    title="Retention Health"
+                                    value={formatPercent(retention?.renewal_rate)}
+                                    delta={comparisonDelta(retention?.renewal_rate, comparisonRetention?.renewal_rate, {
+                                        periodLabel,
+                                        decimals: 2,
+                                        suffix: " pts",
+                                    })}
+                                    caption="Renewal rate from monthly membership snapshots."
+                                    details={[
+                                        { label: "Churn rate", value: formatPercent(retention?.churn_rate) },
+                                        { label: "Retained members", value: formatNumber(retention?.retained_members) },
+                                        { label: "Current members", value: formatNumber(retention?.current_month_members) },
+                                        { label: "Unassigned not renewed", value: formatNumber(retention?.not_renewed_unassigned_studio) },
+                                    ]}
+                                    action={(
+                                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                            <Button variant="outlined" size="small" onClick={() => setExpandedInsight("retention_health")}>
+                                                View Trend
+                                            </Button>
+                                            <Link href="/retention">
+                                                <Button variant="outlined" size="small">Open Follow-up</Button>
+                                            </Link>
+                                        </Stack>
+                                    )}
+                                />
+                                <InsightCard
+                                    title="Follow-up Focus"
+                                    value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)}
+                                    delta={comparisonDelta(
+                                        retention?.not_renewed_members ?? retention?.not_renewed_services,
+                                        comparisonRetention?.not_renewed_members ?? comparisonRetention?.not_renewed_services,
+                                        { periodLabel, invertTone: true },
+                                    )}
+                                    caption="Members who did not renew in the selected month."
+                                    details={[
+                                        { label: "Value at risk", value: formatMoney(retention?.not_renewed_value) },
+                                        { label: "Attending unpaid", value: formatNumber(retention?.not_renewed_attending_unpaid) },
+                                        { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
+                                    ]}
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === "weekly_overview" && (
+                        <>
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                                <InsightCard
+                                    title="Attendance Health"
+                                    value={formatNumber(totals.attended_visits)}
+                                    delta={comparisonDelta(totals.attended_visits, comparisonTotals.attended_visits, { periodLabel })}
+                                    caption="Completed visits for the selected week."
+                                    details={[
+                                        { label: "Total bookings", value: formatNumber(totals.attendance_visits) },
+                                        { label: "No-show rate", value: formatPercent(totals.no_show_rate) },
+                                        { label: "Late cancel rate", value: formatPercent(totals.late_cancel_rate) },
+                                    ]}
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_attendance_health")}>
+                                            View Trend
+                                        </Button>
+                                    )}
+                                />
+                                <InsightCard
+                                    title="Occupancy Health"
+                                    value={formatPercent(occupation?.occupation_rate)}
+                                    delta={comparisonDelta(occupation?.occupation_rate, comparisonOccupation?.occupation_rate, {
+                                        periodLabel,
+                                        decimals: 2,
+                                        suffix: " pts",
+                                    })}
+                                    caption="How much scheduled capacity was used."
+                                    details={[
+                                        { label: "Attendance used", value: formatNumber(occupation?.matched_attended_visits) },
+                                        { label: "Scheduled capacity", value: formatNumber(occupation?.scheduled_capacity) },
+                                        { label: "Scheduled classes", value: formatNumber(occupation?.available_classes) },
+                                    ]}
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_health")}>
+                                            View Trend
+                                        </Button>
+                                    )}
+                                />
+                                <InsightCard
+                                    title="Studio Activity"
+                                    value={formatNumber(totals.active_clients)}
+                                    delta={comparisonDelta(totals.active_clients, comparisonTotals.active_clients, { periodLabel })}
+                                    caption="Clients with activity during the selected week."
+                                    details={[
+                                        { label: "Scheduled classes", value: formatNumber(occupation?.available_classes) },
+                                        { label: "Closed / unavailable", value: formatNumber(occupation?.closed_or_unavailable_classes) },
+                                        { label: "Tracked time slots", value: formatNumber(occupancySlots.length) },
+                                    ]}
+                                />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <BarChart title="Sales Revenue Trend" rows={revenue?.sales_by_date} money />
-                                <BarChart title="Attendance Trend" rows={attendance?.by_date} />
+                                <WeeklyAttendanceComparisonChart
+                                    rows={weeklyAttendanceComparisonRows}
+                                    wide
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_attendance_weekday")}>
+                                            Weekday Detail
+                                        </Button>
+                                    )}
+                                />
+                                <WeeklyOccupancyComparisonChart
+                                    rows={weeklyOccupancyComparisonRows}
+                                    wide
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
+                                            Weekday Detail
+                                        </Button>
+                                    )}
+                                />
+                                <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
                             </div>
                         </>
                     )}
@@ -557,26 +1975,11 @@ export default function Dashboard() {
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                                 <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
-                                <KpiCard label="Service Revenue" value={formatMoney(totals.service_revenue)} />
                                 <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
                                 <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
-                                <KpiCard label="Sales Count" value={formatNumber(totals.sales_count)} />
-                                <KpiCard label="Service Purchases" value={formatNumber(totals.service_purchases)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                                <BarChart title="Sales Revenue by Date" rows={revenue?.sales_by_date} money />
-                                <BarChart title="Sales Revenue by Weekday" rows={revenue?.sales_by_weekday} labelKey="weekday" money limit={7} />
-                                <BreakdownTable title="Revenue by Weekday" rows={revenue?.sales_by_weekday} nameKey="weekday" money />
-                                <BreakdownTable title="Services by Weekday" rows={revenue?.services_by_weekday} nameKey="weekday" money />
-                                <BreakdownTable title="Visit Revenue by Weekday" rows={revenue?.visits_by_weekday} nameKey="weekday" money />
-                                <BreakdownTable title="Revenue by Studio" rows={revenue?.by_studio} money />
-                                <BreakdownTable title="Revenue by Payment Method" rows={revenue?.by_payment_method} money />
-                                <BreakdownTable title="Revenue by Item" rows={revenue?.by_item} money />
-                                <BreakdownTable title="Revenue by Service" rows={revenue?.by_service} money />
-                                <BreakdownTable title="Discounts" rows={[
-                                    { name: "Discounts", total: revenue?.discounts || 0 },
-                                    { name: "Taxes", total: revenue?.taxes || 0 },
-                                ]} money />
+                                <RevenueItemChart rows={revenue?.by_item} />
                             </div>
                         </>
                     )}
@@ -584,21 +1987,48 @@ export default function Dashboard() {
                     {activeTab === "attendance" && (
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Attendance Visits" value={formatNumber(totals.attendance_visits)} />
-                                <KpiCard label="Attended Visits" value={formatNumber(totals.attended_visits)} />
-                                <KpiCard label="Avg Revenue / Visit" value={formatMoney(totals.average_revenue_per_attended_visit)} />
-                                <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
-                                <KpiCard label="Late Cancel Rate" value={`${formatNumber(totals.late_cancel_rate)}%`} />
+                                <KpiCard
+                                    label="Total Bookings"
+                                    value={formatNumber(totals.attendance_visits)}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("visits")}>Trend</Button>}
+                                />
+                                <KpiCard
+                                    label="Completed Visits"
+                                    value={formatNumber(totals.attended_visits)}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("visits")}>Trend</Button>}
+                                />
+                                <KpiCard
+                                    label="Avg Revenue / Visit"
+                                    value={formatMoney(totals.average_revenue_per_attended_visit)}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("revenue")}>Trend</Button>}
+                                />
+                                <KpiCard
+                                    label="No-show Rate"
+                                    value={`${formatNumber(totals.no_show_rate)}%`}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("rates")}>Trend</Button>}
+                                />
+                                <KpiCard
+                                    label="Late Cancel Rate"
+                                    value={`${formatNumber(totals.late_cancel_rate)}%`}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("rates")}>Trend</Button>}
+                                />
                                 <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-                                <BarChart title="Attendance by Date" rows={attendance?.by_date} />
-                                <BarChart title="Attendance by Hour" rows={attendance?.by_hour} labelKey="hour" limit={24} />
-                                <BreakdownTable title="Attendance by Weekday" rows={attendance?.by_weekday} nameKey="weekday" />
-                                <BreakdownTable title="Attendance by Studio" rows={attendance?.by_studio} />
-                                <BreakdownTable title="Attendance by Instructor" rows={attendance?.by_instructor} />
-                                <BreakdownTable title="Attendance by Service" rows={attendance?.by_service} />
-                                <BreakdownTable title="Attendance by Hour" rows={attendance?.by_hour} nameKey="hour" />
+                                <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} wide />
+                                <BookingQualityChart
+                                    rows={attendance?.booking_quality_by_date}
+                                    wide
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_booking_quality_weekday")}>
+                                            Weekday Detail
+                                        </Button>
+                                    )}
+                                />
+                                <CompletedVisitsByHourChart rows={attendance?.attended_by_hour} wide />
+                                <CompletedVisitsRankingChart title="Completed Visits by Instructor" rows={attendance?.attended_by_instructor} />
+                                <BreakdownTable title="Completed Visits by Studio" rows={attendance?.attended_by_studio} />
+                                <CompletedVisitsRankingChart title="Completed Visits by Service" rows={attendance?.attended_by_service} wide />
                                 <InstructorQualityTable rows={attendance?.instructor_quality} />
                             </div>
                         </>
@@ -606,23 +2036,50 @@ export default function Dashboard() {
 
                     {activeTab === "retention" && (
                         <>
-                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Previous Members" value={formatNumber(retention?.previous_month_members)} />
-                                <KpiCard label="Current Members" value={formatNumber(retention?.current_month_members)} />
-                                <KpiCard label="Retained Members" value={formatNumber(retention?.retained_members)} />
-                                <KpiCard label="New Members" value={formatNumber(retention?.new_members)} />
-                                <KpiCard label="Reactivated Members" value={formatNumber(retention?.reactivated_members)} />
-                                <KpiCard label="Not Renewed Members" value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)} />
-                                <KpiCard label="Not Renewed Inactive" value={formatNumber(retention?.not_renewed_inactive)} />
-                                <KpiCard label="Not Renewed Attending Unpaid" value={formatNumber(retention?.not_renewed_attending_unpaid)} />
-                                <KpiCard label="Not Renewed Attending Paid" value={formatNumber(retention?.not_renewed_attending_paid)} />
-                                <KpiCard label="Post-expiration Attendance" value={formatNumber(retention?.not_renewed_post_expiration_attendance)} />
-                                <KpiCard label="Renewal Rate" value={`${formatNumber(retention?.renewal_rate)}%`} />
-                                <KpiCard label="Churn Rate" value={`${formatNumber(retention?.churn_rate)}%`} />
-                                <KpiCard label="Not Renewed Value" value={formatMoney(retention?.not_renewed_value)} />
-                                <KpiCard label="Tracked Products" value={formatNumber(retention?.tracked_pricing_options)} />
-                                <KpiCard label="Snapshot Rows" value={formatNumber(retention?.snapshot_rows)} />
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                                <InsightCard
+                                    title="Current Member Mix"
+                                    value={formatNumber(retention?.current_month_members)}
+                                    caption="How current members are entering the month."
+                                    details={[
+                                        { label: "Renewal rate", value: formatPercent(retention?.renewal_rate) },
+                                        { label: "Retained", value: formatNumber(retention?.retained_members) },
+                                        { label: "New", value: formatNumber(retention?.new_members) },
+                                        { label: "Reactivated", value: formatNumber(retention?.reactivated_members) },
+                                    ]}
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => setExpandedInsight("member_mix")}>
+                                            View History
+                                        </Button>
+                                    )}
+                                />
+                                <InsightCard
+                                    title="Not Renewed Follow-up"
+                                    value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)}
+                                    caption="Members who need attention after not renewing."
+                                    details={[
+                                        { label: "Inactive", value: formatNumber(retention?.not_renewed_inactive) },
+                                        { label: "Attending unpaid", value: formatNumber(retention?.not_renewed_attending_unpaid) },
+                                        { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
+                                    ]}
+                                    action={(
+                                        <Link href="/retention">
+                                            <Button variant="outlined" size="small">Open Follow-up List</Button>
+                                        </Link>
+                                    )}
+                                />
+                                <InsightCard
+                                    title="Value at Risk"
+                                    value={formatMoney(retention?.not_renewed_value)}
+                                    caption="Estimated membership value from not-renewed clients."
+                                    details={[
+                                        { label: "Post-expiration visits", value: formatNumber(retention?.not_renewed_post_expiration_attendance) },
+                                        { label: "Paid visits", value: formatNumber(retention?.not_renewed_post_expiration_paid_attendance) },
+                                        { label: "Unpaid visits", value: formatNumber(retention?.not_renewed_post_expiration_unpaid_attendance) },
+                                    ]}
+                                />
                             </div>
+                            <MemberTrendChart rows={retentionTrendRows} />
 
                             {retention?.tracked_pricing_options === 0 && (
                                 <Alert severity="warning">
@@ -636,10 +2093,30 @@ export default function Dashboard() {
                             )}
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
-                                <RetentionTable title="Not Renewed Clients" rows={retention?.not_renewed_clients} />
-                                <RetentionTable title="Retained Samples" rows={retention?.retained_samples} />
-                                <RetentionTable title="New Member Samples" rows={retention?.new_member_samples} />
-                                <RetentionTable title="Reactivated Samples" rows={retention?.reactivated_samples} />
+                                <RetentionSummaryTableCard
+                                    title="Not Renewed Clients"
+                                    rows={retention?.not_renewed_clients}
+                                    tableKey="not_renewed"
+                                    onExpand={() => openRetentionTable("not_renewed")}
+                                />
+                                <RetentionSummaryTableCard
+                                    title="Retained Members"
+                                    rows={retention?.retained_samples}
+                                    tableKey="retained"
+                                    onExpand={() => openRetentionTable("retained")}
+                                />
+                                <RetentionSummaryTableCard
+                                    title="New Members"
+                                    rows={retention?.new_member_samples}
+                                    tableKey="new_members"
+                                    onExpand={() => openRetentionTable("new_members")}
+                                />
+                                <RetentionSummaryTableCard
+                                    title="Reactivated Members"
+                                    rows={retention?.reactivated_samples}
+                                    tableKey="reactivated"
+                                    onExpand={() => openRetentionTable("reactivated")}
+                                />
                             </div>
 
                             <div>
@@ -652,32 +2129,302 @@ export default function Dashboard() {
 
                     {activeTab === "occupancy" && (
                         <>
-                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Scheduled Capacity" value={formatNumber(occupation?.scheduled_capacity)} />
-                                <KpiCard label="Matched Attendance" value={formatNumber(occupation?.matched_attended_visits)} />
-                                <KpiCard label="Occupancy Rate" value={`${formatNumber(occupation?.occupation_rate)}%`} />
-                                <KpiCard label="Scheduled Classes" value={formatNumber(occupation?.available_classes)} />
-                                <KpiCard label="Closed / Unavailable" value={formatNumber(occupation?.closed_or_unavailable_classes)} />
-                                <KpiCard label="Unscheduled Attendance" value={formatNumber(occupation?.unscheduled_attended_visits)} />
+                            <CapacityUsageCard
+                                occupation={occupation}
+                                action={
+                                    <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_health")}>
+                                        View Trend
+                                    </Button>
+                                }
+                            />
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+                                <OccupancyCapacityByDayChart
+                                    rows={occupation?.by_day}
+                                    action={
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
+                                            Weekday Detail
+                                        </Button>
+                                    }
+                                />
+                                <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} />
                             </div>
-
-                            <Alert severity="info">
-                                La ocupacion se calcula con clases programadas y asistencias emparejadas por site, estudio, fecha y hora.
-                                Para empezar, crea salas y clases en Data &gt; Rooms, Scheduled Classes y Closures.
-                            </Alert>
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
-                                <OccupationTable title="Occupancy by Day" rows={occupation?.by_day} labelKey="date" />
+                                <OccupationTable title="Occupancy by Room" rows={occupation?.by_room_capacity} />
+                                <OccupancySlotTable title="Lowest Occupancy Slots" rows={lowOccupancySlots} />
+                                <OccupancySlotTable title="Highest Occupancy Slots" rows={highOccupancySlots} />
                             </div>
-
-                            <Alert severity="info">
-                                La ocupacion por sala sera mas exacta cuando las asistencias puedan emparejarse con una sala especifica.
-                            </Alert>
                         </>
                     )}
                 </div>
             </div>
+            <Dialog
+                open={expandedInsight === "revenue_health"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Revenue Health Trend</span>
+                        <IconButton aria-label="Close revenue trend" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <RevenueHealthTrendChart rows={revenueTrendRows} />
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "retention_health"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Retention Health Trend</span>
+                        <IconButton aria-label="Close retention trend" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <RetentionHealthTrendChart rows={retentionHealthTrendRows} />
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "member_mix"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Current Member Mix History</span>
+                        <IconButton aria-label="Close member mix history" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={memberMixTrendView}
+                        onChange={(_, value) => setMemberMixTrendView(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label="Members" value="members" />
+                        <Tab label="Renewal Rate" value="renewal" />
+                        <Tab label="Movement" value="movement" />
+                    </Tabs>
+                    <MemberMixHistoryChart rows={memberMixTrendRows} view={memberMixTrendView} />
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "retention_tables"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="xl"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Retention Detail Tables</span>
+                        <IconButton aria-label="Close retention tables" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={activeRetentionTable}
+                        onChange={(_, value) => setActiveRetentionTable(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label={`Not Renewed (${formatNumber(retentionTables?.not_renewed?.count || 0)})`} value="not_renewed" />
+                        <Tab label={`Retained (${formatNumber(retentionTables?.retained?.count || 0)})`} value="retained" />
+                        <Tab label={`New (${formatNumber(retentionTables?.new_members?.count || 0)})`} value="new_members" />
+                        <Tab label={`Reactivated (${formatNumber(retentionTables?.reactivated?.count || 0)})`} value="reactivated" />
+                    </Tabs>
+                    {retentionTablesLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <RetentionDetailTable
+                            rows={retentionTables?.[activeRetentionTable]?.rows || []}
+                            tableKey={activeRetentionTable}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_attendance_health"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Attendance Health Trend</span>
+                        <IconButton aria-label="Close attendance health trend" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyAttendanceTrendView}
+                        onChange={(_, value) => setWeeklyAttendanceTrendView(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label="Bookings & Visits" value="visits" />
+                        <Tab label="No-show & Late Cancel" value="rates" />
+                        <Tab label="Avg Revenue / Visit" value="revenue" />
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <WeeklyAttendanceHealthTrendChart rows={weeklyTrendRows} view={weeklyAttendanceTrendView} />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_occupancy_health"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Occupancy Health Trend</span>
+                        <IconButton aria-label="Close occupancy health trend" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyOccupancyTrendView}
+                        onChange={(_, value) => setWeeklyOccupancyTrendView(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label="Capacity Used" value="capacity" />
+                        <Tab label="Occupancy Rate" value="rate" />
+                        <Tab label="Scheduled Classes" value="classes" />
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <WeeklyOccupancyHealthTrendChart rows={weeklyTrendRows} view={weeklyOccupancyTrendView} />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_attendance_weekday"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Completed Visits by Weekday</span>
+                        <IconButton aria-label="Close completed visits weekday detail" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyDrilldownWeekday}
+                        onChange={(_, value) => setWeeklyDrilldownWeekday(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        {weekdayNames.map((weekday) => (
+                            <Tab key={weekday} label={weekday} value={weekday} />
+                        ))}
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <WeeklyWeekdayDrilldownChart rows={weeklyWeekdayDrilldownRows} metric="attendance" />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_occupancy_weekday"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Occupancy by Weekday</span>
+                        <IconButton aria-label="Close occupancy weekday detail" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyDrilldownWeekday}
+                        onChange={(_, value) => setWeeklyDrilldownWeekday(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        {weekdayNames.map((weekday) => (
+                            <Tab key={weekday} label={weekday} value={weekday} />
+                        ))}
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <WeeklyWeekdayDrilldownChart rows={weeklyWeekdayDrilldownRows} metric="occupancy" />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_booking_quality_weekday"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Booking Quality by Weekday</span>
+                        <IconButton aria-label="Close booking quality weekday detail" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyDrilldownWeekday}
+                        onChange={(_, value) => setWeeklyDrilldownWeekday(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        {weekdayNames.map((weekday) => (
+                            <Tab key={weekday} label={weekday} value={weekday} />
+                        ))}
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <BookingQualityWeekdayHistoryChart rows={weeklyWeekdayDrilldownRows} />
+                    )}
+                </DialogContent>
+            </Dialog>
         </MainPage>
     );
 }
