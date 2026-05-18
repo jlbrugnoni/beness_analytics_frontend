@@ -448,6 +448,65 @@ const BookingQualityChart = ({ rows, wide = false }) => {
 };
 
 
+const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis tick={chartText} tickFormatter={view === "rates" ? (value) => `${value}%` : undefined} />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "no_show_rate") return [`${formatNumber(value)}%`, "No-show rate"];
+                        if (name === "late_cancel_rate") return [`${formatNumber(value)}%`, "Late cancel rate"];
+                        if (name === "total_bookings") return [formatNumber(value), "Total bookings"];
+                        if (name === "completed_visits") return [formatNumber(value), "Completed visits"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                {view === "visits" ? (
+                    <>
+                        <Bar dataKey="total_bookings" name="Total bookings" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="completed_visits"
+                            name="Completed visits"
+                            stroke="#2f6f73"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <Line
+                            type="monotone"
+                            dataKey="late_cancel_rate"
+                            name="Late cancel rate"
+                            stroke="#d97706"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                        <Line
+                            type="monotone"
+                            dataKey="no_show_rate"
+                            name="No-show rate"
+                            stroke="#b42318"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                )}
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
 const WeeklyOccupancyComparisonChart = ({ rows, wide = false }) => (
     <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
         <h2 style={{ marginTop: 0 }}>Occupancy vs Previous Week</h2>
@@ -1145,6 +1204,9 @@ export default function Dashboard() {
     const [retentionTables, setRetentionTables] = useState(null);
     const [retentionTablesLoading, setRetentionTablesLoading] = useState(false);
     const [activeRetentionTable, setActiveRetentionTable] = useState("not_renewed");
+    const [weeklyTrends, setWeeklyTrends] = useState(null);
+    const [weeklyTrendsLoading, setWeeklyTrendsLoading] = useState(false);
+    const [weeklyAttendanceTrendView, setWeeklyAttendanceTrendView] = useState("visits");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -1211,6 +1273,7 @@ export default function Dashboard() {
                 setAttendance(null);
                 setOccupation(null);
                 setRetentionTables(null);
+                setWeeklyTrends(null);
             } else {
                 const dashboardResponse = await axios.get(`${backendUrl}/api/data/analytics/dashboard/weekly/?${queryString}`, authHeaders);
                 const dashboardData = dashboardResponse.data;
@@ -1223,6 +1286,7 @@ export default function Dashboard() {
                 setComparisonRetention(null);
                 setRetentionTrend(null);
                 setRetentionTables(null);
+                setWeeklyTrends(null);
                 setRevenue(null);
                 setRetention(null);
             }
@@ -1286,6 +1350,18 @@ export default function Dashboard() {
         not_renewed_members: row.not_renewed_members || 0,
         renewal_rate: row.renewal_rate || 0,
     }));
+    const weeklyTrendRows = (weeklyTrends?.weeks || []).map((row) => ({
+        label: formatShortWeekdayDate(row.week_start),
+        total_bookings: row.total_bookings || 0,
+        completed_visits: row.completed_visits || 0,
+        no_show_rate: row.no_show_rate || 0,
+        late_cancel_rate: row.late_cancel_rate || 0,
+        average_revenue_per_attended_visit: row.average_revenue_per_attended_visit || 0,
+        occupation_rate: row.occupation_rate || 0,
+        scheduled_capacity: row.scheduled_capacity || 0,
+        attendance_used: row.attendance_used || 0,
+        scheduled_classes: row.scheduled_classes || 0,
+    }));
     const weeklyAttendanceComparisonRows = weeklyComparisonRows(
         activeDateRange,
         attendance?.attended_by_date,
@@ -1345,6 +1421,30 @@ export default function Dashboard() {
             setError(err.response?.data?.detail || "Error loading retention table.");
         } finally {
             setRetentionTablesLoading(false);
+        }
+    };
+
+    const openWeeklyTrend = async (insightKey) => {
+        setExpandedInsight(insightKey);
+        if (weeklyTrends) return;
+        setWeeklyTrendsLoading(true);
+        try {
+            const dateFilters = selectedDateRange("weekly", periodModes, filters);
+            const params = new URLSearchParams({
+                date_from: dateFilters.date_from,
+                date_to: dateFilters.date_to,
+            });
+            if (filters.site) params.set("site", filters.site);
+            if (filters.studio) params.set("studio", filters.studio);
+            const response = await axios.get(
+                `${backendUrl}/api/data/analytics/dashboard/weekly/trends/?${params.toString()}`,
+                authHeaders,
+            );
+            setWeeklyTrends(response.data);
+        } catch (err) {
+            setError(err.response?.data?.detail || "Error loading weekly trend.");
+        } finally {
+            setWeeklyTrendsLoading(false);
         }
     };
 
@@ -1632,6 +1732,11 @@ export default function Dashboard() {
                                         { label: "No-show rate", value: formatPercent(totals.no_show_rate) },
                                         { label: "Late cancel rate", value: formatPercent(totals.late_cancel_rate) },
                                     ]}
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_attendance_health")}>
+                                            View Trend
+                                        </Button>
+                                    )}
                                 />
                                 <InsightCard
                                     title="Occupancy Health"
@@ -1912,6 +2017,38 @@ export default function Dashboard() {
                             rows={retentionTables?.[activeRetentionTable]?.rows || []}
                             tableKey={activeRetentionTable}
                         />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_attendance_health"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Attendance Health Trend</span>
+                        <IconButton aria-label="Close attendance health trend" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyAttendanceTrendView}
+                        onChange={(_, value) => setWeeklyAttendanceTrendView(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label="Bookings & Visits" value="visits" />
+                        <Tab label="No-show & Late Cancel" value="rates" />
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <WeeklyAttendanceHealthTrendChart rows={weeklyTrendRows} view={weeklyAttendanceTrendView} />
                     )}
                 </DialogContent>
             </Dialog>
