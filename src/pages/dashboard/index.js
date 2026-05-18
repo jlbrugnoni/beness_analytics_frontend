@@ -507,6 +507,56 @@ const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
 );
 
 
+const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis tick={chartText} tickFormatter={view === "rate" ? (value) => `${value}%` : undefined} />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "occupation_rate") return [`${formatNumber(value)}%`, "Occupancy rate"];
+                        if (name === "scheduled_capacity") return [formatNumber(value), "Scheduled capacity"];
+                        if (name === "attendance_used") return [formatNumber(value), "Attendance used"];
+                        if (name === "scheduled_classes") return [formatNumber(value), "Scheduled classes"];
+                        return [formatNumber(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                {view === "capacity" ? (
+                    <>
+                        <Bar dataKey="scheduled_capacity" name="Scheduled capacity" fill="#d8dee4" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="attendance_used"
+                            name="Attendance used"
+                            stroke="#2f6f73"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </>
+                ) : view === "classes" ? (
+                    <Bar dataKey="scheduled_classes" name="Scheduled classes" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                ) : (
+                    <Line
+                        type="monotone"
+                        dataKey="occupation_rate"
+                        name="Occupancy rate"
+                        stroke="#2f6f73"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                    />
+                )}
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
 const WeeklyOccupancyComparisonChart = ({ rows, wide = false }) => (
     <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
         <h2 style={{ marginTop: 0 }}>Occupancy vs Previous Week</h2>
@@ -1207,6 +1257,7 @@ export default function Dashboard() {
     const [weeklyTrends, setWeeklyTrends] = useState(null);
     const [weeklyTrendsLoading, setWeeklyTrendsLoading] = useState(false);
     const [weeklyAttendanceTrendView, setWeeklyAttendanceTrendView] = useState("visits");
+    const [weeklyOccupancyTrendView, setWeeklyOccupancyTrendView] = useState("capacity");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -1752,6 +1803,11 @@ export default function Dashboard() {
                                         { label: "Scheduled capacity", value: formatNumber(occupation?.scheduled_capacity) },
                                         { label: "Scheduled classes", value: formatNumber(occupation?.available_classes) },
                                     ]}
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_health")}>
+                                            View Trend
+                                        </Button>
+                                    )}
                                 />
                                 <InsightCard
                                     title="Studio Activity"
@@ -2049,6 +2105,39 @@ export default function Dashboard() {
                         <LinearProgress />
                     ) : (
                         <WeeklyAttendanceHealthTrendChart rows={weeklyTrendRows} view={weeklyAttendanceTrendView} />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_occupancy_health"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Occupancy Health Trend</span>
+                        <IconButton aria-label="Close occupancy health trend" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyOccupancyTrendView}
+                        onChange={(_, value) => setWeeklyOccupancyTrendView(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label="Capacity Used" value="capacity" />
+                        <Tab label="Occupancy Rate" value="rate" />
+                        <Tab label="Scheduled Classes" value="classes" />
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <WeeklyOccupancyHealthTrendChart rows={weeklyTrendRows} view={weeklyOccupancyTrendView} />
                     )}
                 </DialogContent>
             </Dialog>
