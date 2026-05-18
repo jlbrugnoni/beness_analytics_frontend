@@ -420,7 +420,7 @@ const WeeklyAttendanceComparisonChart = ({ rows, wide = false, action }) => (
 );
 
 
-const BookingQualityChart = ({ rows, wide = false }) => {
+const BookingQualityChart = ({ rows, wide = false, action }) => {
     const chartRows = (rows || []).map((row) => ({
         label: formatShortWeekdayDate(row.date),
         attended: Number(row.attended || 0),
@@ -430,7 +430,10 @@ const BookingQualityChart = ({ rows, wide = false }) => {
 
     return (
         <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
-            <h2 style={{ marginTop: 0 }}>Booking Quality by Day</h2>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
+                <h2 style={{ margin: 0 }}>Booking Quality by Day</h2>
+                {action}
+            </Stack>
             <div style={{ width: "100%", height: 320 }}>
                 <ResponsiveContainer>
                     <RechartsBarChart data={chartRows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
@@ -606,6 +609,24 @@ const WeeklyWeekdayDrilldownChart = ({ rows, metric }) => (
                     </>
                 )}
             </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
+
+
+const BookingQualityWeekdayHistoryChart = ({ rows }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <RechartsBarChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis allowDecimals={false} tick={chartText} />
+                <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={expandedChartTooltipStyle} />
+                <Legend wrapperStyle={chartLegendStyle} />
+                <Bar dataKey="completed_visits" name="Completed visits" stackId="bookings" fill="#2f6f73" />
+                <Bar dataKey="late_cancels" name="Late cancels" stackId="bookings" fill="#d97706" />
+                <Bar dataKey="no_shows" name="No-shows" stackId="bookings" fill="#b42318" radius={[4, 4, 0, 0]} />
+            </RechartsBarChart>
         </ResponsiveContainer>
     </div>
 );
@@ -1480,6 +1501,8 @@ export default function Dashboard() {
             label: formatShortWeekdayDate(row.date),
             total_bookings: row.total_bookings || 0,
             completed_visits: row.completed_visits || 0,
+            no_shows: row.no_shows || 0,
+            late_cancels: row.late_cancels || 0,
             attendance_used: row.attendance_used || 0,
             occupation_rate: row.occupation_rate || 0,
         }));
@@ -1940,7 +1963,15 @@ export default function Dashboard() {
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
                                 <WeeklyAttendanceComparisonChart rows={weeklyAttendanceComparisonRows} wide />
-                                <BookingQualityChart rows={attendance?.booking_quality_by_date} wide />
+                                <BookingQualityChart
+                                    rows={attendance?.booking_quality_by_date}
+                                    wide
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_booking_quality_weekday")}>
+                                            Weekday Detail
+                                        </Button>
+                                    )}
+                                />
                                 <CompletedVisitsByHourChart rows={attendance?.attended_by_hour} wide />
                                 <CompletedVisitsRankingChart title="Completed Visits by Instructor" rows={attendance?.attended_by_instructor} />
                                 <BreakdownTable title="Completed Visits by Studio" rows={attendance?.attended_by_studio} />
@@ -2290,6 +2321,39 @@ export default function Dashboard() {
                         <LinearProgress />
                     ) : (
                         <WeeklyWeekdayDrilldownChart rows={weeklyWeekdayDrilldownRows} metric="occupancy" />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "weekly_booking_quality_weekday"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Booking Quality by Weekday</span>
+                        <IconButton aria-label="Close booking quality weekday detail" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={weeklyDrilldownWeekday}
+                        onChange={(_, value) => setWeeklyDrilldownWeekday(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        {weekdayNames.map((weekday) => (
+                            <Tab key={weekday} label={weekday} value={weekday} />
+                        ))}
+                    </Tabs>
+                    {weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <BookingQualityWeekdayHistoryChart rows={weeklyWeekdayDrilldownRows} />
                     )}
                 </DialogContent>
             </Dialog>
