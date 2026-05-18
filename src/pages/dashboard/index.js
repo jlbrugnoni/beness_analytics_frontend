@@ -22,6 +22,7 @@ import {
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
@@ -1478,7 +1479,7 @@ export default function Dashboard() {
             const response = await axios.get(url, authHeaders);
             const pageRows = response.data.results || response.data;
             rows = [...rows, ...pageRows];
-            url = response.data.next || null;
+            url = normalizeApiNextUrl(response.data.next, backendUrl);
         }
         return rows;
     };

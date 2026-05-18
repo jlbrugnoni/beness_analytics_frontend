@@ -5,6 +5,7 @@ import axios from "axios";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
@@ -68,7 +69,7 @@ const addDays = (date, days) => {
 const shortTime = (value) => (value || "").slice(0, 5);
 
 
-const fetchAll = async (url, authHeaders, params = {}) => {
+const fetchAll = async (url, authHeaders, params = {}, backendUrl) => {
     const rows = [];
     let nextUrl = url;
     let nextParams = params;
@@ -78,7 +79,7 @@ const fetchAll = async (url, authHeaders, params = {}) => {
         const data = response.data;
         if (Array.isArray(data)) return data;
         rows.push(...(data.results || []));
-        nextUrl = data.next;
+        nextUrl = normalizeApiNextUrl(data.next, backendUrl || url);
         nextParams = {};
     }
 
@@ -286,7 +287,7 @@ export default function SchedulePage() {
             };
             if (studio) params.studio = studio;
             if (room) params.room = room;
-            const rows = await fetchAll(`${backendUrl}/api/data/scheduled-classes/`, authHeaders, params);
+            const rows = await fetchAll(`${backendUrl}/api/data/scheduled-classes/`, authHeaders, params, backendUrl);
             rows.sort((a, b) => `${a.class_date} ${a.start_time}`.localeCompare(`${b.class_date} ${b.start_time}`));
             setClasses(rows);
 
@@ -297,7 +298,7 @@ export default function SchedulePage() {
             };
             if (studio) expectedParams.studio = studio;
             if (room) expectedParams.room = room;
-            const expectedRows = await fetchAll(`${backendUrl}/api/data/expected-class-slots/`, authHeaders, expectedParams);
+            const expectedRows = await fetchAll(`${backendUrl}/api/data/expected-class-slots/`, authHeaders, expectedParams, backendUrl);
             expectedRows.sort((a, b) => `${a.slot_date} ${a.start_time}`.localeCompare(`${b.slot_date} ${b.start_time}`));
             setExpectedSlots(expectedRows);
         } catch (err) {

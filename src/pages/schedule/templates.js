@@ -5,6 +5,7 @@ import axios from "axios";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
@@ -21,7 +22,7 @@ const START_HOUR = 6;
 const END_HOUR = 22;
 
 
-const fetchAll = async (url, authHeaders, params = {}) => {
+const fetchAll = async (url, authHeaders, params = {}, backendUrl) => {
     const rows = [];
     let nextUrl = url;
     let nextParams = params;
@@ -31,7 +32,7 @@ const fetchAll = async (url, authHeaders, params = {}) => {
         const data = response.data;
         if (Array.isArray(data)) return data;
         rows.push(...(data.results || []));
-        nextUrl = data.next;
+        nextUrl = normalizeApiNextUrl(data.next, backendUrl || url);
         nextParams = {};
     }
 
@@ -119,10 +120,10 @@ export default function WeeklyTemplateBuilder() {
         const loadLookups = async () => {
             if (!token) return;
             const [siteRows, studioRows, roomRows, staffRows] = await Promise.all([
-                fetchAll(`${backendUrl}/api/data/sites/`, authHeaders),
-                fetchAll(`${backendUrl}/api/data/studios/`, authHeaders),
-                fetchAll(`${backendUrl}/api/data/rooms/`, authHeaders),
-                fetchAll(`${backendUrl}/api/data/staff-members/`, authHeaders),
+                fetchAll(`${backendUrl}/api/data/sites/`, authHeaders, {}, backendUrl),
+                fetchAll(`${backendUrl}/api/data/studios/`, authHeaders, {}, backendUrl),
+                fetchAll(`${backendUrl}/api/data/rooms/`, authHeaders, {}, backendUrl),
+                fetchAll(`${backendUrl}/api/data/staff-members/`, authHeaders, {}, backendUrl),
             ]);
             setSites(siteRows);
             setStudios(studioRows);
@@ -164,7 +165,7 @@ export default function WeeklyTemplateBuilder() {
         const params = { site, active: "true" };
         if (studio) params.studio = studio;
         if (room) params.room = room;
-        const rows = await fetchAll(`${backendUrl}/api/data/weekly-room-templates/`, authHeaders, params);
+        const rows = await fetchAll(`${backendUrl}/api/data/weekly-room-templates/`, authHeaders, params, backendUrl);
         rows.sort((a, b) => `${a.weekday} ${a.start_time}`.localeCompare(`${b.weekday} ${b.start_time}`));
         setTemplates(rows);
     };
