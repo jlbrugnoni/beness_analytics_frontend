@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import CloseIcon from "@mui/icons-material/Close";
 import {
     Bar,
     BarChart as RechartsBarChart,
@@ -23,6 +24,9 @@ import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import LinearProgress from "@mui/material/LinearProgress";
 import MenuItem from "@mui/material/MenuItem";
@@ -42,6 +46,7 @@ import Tooltip from "@mui/material/Tooltip";
 
 const chartText = { fontSize: 15 };
 const chartTooltipStyle = { fontSize: 14, borderRadius: 6, borderColor: "#d8dee4" };
+const expandedChartTooltipStyle = { fontSize: 17, borderRadius: 8, borderColor: "#d8dee4", padding: "12px 14px" };
 const chartLegendStyle = { fontSize: 15, paddingTop: 8 };
 
 
@@ -186,6 +191,40 @@ const RevenueItemChart = ({ rows }) => {
         </Paper>
     );
 };
+
+
+const RevenueHealthTrendChart = ({ rows }) => (
+    <div style={{ width: "100%", height: 420 }}>
+        <ResponsiveContainer>
+            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                <CartesianGrid stroke="#eef1f4" vertical={false} />
+                <XAxis dataKey="label" tick={chartText} />
+                <YAxis yAxisId="money" tick={chartText} tickFormatter={formatCompactMoney} />
+                <YAxis yAxisId="ticket" orientation="right" tick={chartText} tickFormatter={formatCompactMoney} />
+                <ChartTooltip
+                    formatter={(value, name) => {
+                        if (name === "sales_revenue") return [formatMoney(value), "Sales revenue"];
+                        if (name === "average_ticket") return [formatMoney(value), "Average ticket"];
+                        return [formatMoney(value), name];
+                    }}
+                    contentStyle={expandedChartTooltipStyle}
+                />
+                <Legend wrapperStyle={chartLegendStyle} />
+                <Bar yAxisId="money" dataKey="sales_revenue" name="Sales revenue" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                <Line
+                    yAxisId="ticket"
+                    type="monotone"
+                    dataKey="average_ticket"
+                    name="Average ticket"
+                    stroke="#8a5cf6"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                />
+            </ComposedChart>
+        </ResponsiveContainer>
+    </div>
+);
 
 
 const CompletedVisitsRankingChart = ({ title, rows, limit = 10, wide = false }) => {
@@ -914,6 +953,7 @@ export default function Dashboard() {
     const [retentionTrend, setRetentionTrend] = useState(null);
     const [dashboardMode, setDashboardMode] = useState("monthly");
     const [activeTab, setActiveTab] = useState("monthly_overview");
+    const [expandedInsight, setExpandedInsight] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -1032,6 +1072,11 @@ export default function Dashboard() {
         label: formatMonthLabel(row.month),
         current_members: row.current_members || 0,
         not_renewed: row.not_renewed_members || 0,
+    }));
+    const revenueTrendRows = (retentionTrend?.months || []).map((row) => ({
+        label: formatMonthLabel(row.month),
+        sales_revenue: row.sales_revenue || 0,
+        average_ticket: row.average_ticket || 0,
     }));
     const weeklyAttendanceComparisonRows = weeklyComparisonRows(
         activeDateRange,
@@ -1289,6 +1334,11 @@ export default function Dashboard() {
                                         { label: "Average ticket", value: formatMoney(totals.average_ticket) },
                                         { label: "Sales by studio", value: formatNumber(revenue?.by_studio?.length) },
                                     ]}
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={() => setExpandedInsight("revenue_health")}>
+                                            View Trend
+                                        </Button>
+                                    )}
                                 />
                                 <InsightCard
                                     title="Retention Health"
@@ -1498,6 +1548,24 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
+            <Dialog
+                open={expandedInsight === "revenue_health"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Revenue Health Trend</span>
+                        <IconButton aria-label="Close revenue trend" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <RevenueHealthTrendChart rows={revenueTrendRows} />
+                </DialogContent>
+            </Dialog>
         </MainPage>
     );
 }
