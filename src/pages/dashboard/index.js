@@ -289,11 +289,11 @@ const MemberMixHistoryChart = ({ rows, view }) => (
                 <Legend wrapperStyle={chartLegendStyle} />
                 {view === "members" && (
                     <>
-                        <Bar dataKey="retained_members" name="Retained" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="current_members" name="Current members" fill="#2f6f73" radius={[4, 4, 0, 0]} />
                         <Line
                             type="monotone"
-                            dataKey="current_members"
-                            name="Current members"
+                            dataKey="retained_members"
+                            name="Retained"
                             stroke="#215b63"
                             strokeWidth={3}
                             dot={{ r: 4 }}
@@ -596,6 +596,95 @@ const RetentionTable = ({ title, rows }) => (
                 </TableBody>
             </Table>
         </TableContainer>
+    </Paper>
+);
+
+
+const retentionTableColumns = {
+    not_renewed: [
+        { key: "client", label: "Client" },
+        { key: "studio", label: "Studio" },
+        { key: "service", label: "Service" },
+        { key: "status", label: "Status", format: (row) => row.status || "N/A" },
+        { key: "activity", label: "Activity", format: (row) => formatActivityStatus(row.not_renewed_activity_status) },
+        { key: "sale_date", label: "Last Purchase" },
+        { key: "expiration_date", label: "Expiration" },
+        { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+        { key: "tracked_membership_purchase_count", label: "Purchases", align: "right", format: (row) => formatNumber(row.tracked_membership_purchase_count) },
+        { key: "lifetime_membership_value", label: "Lifetime", align: "right", format: (row) => formatMoney(row.lifetime_membership_value) },
+    ],
+    retained: [
+        { key: "client", label: "Client" },
+        { key: "studio", label: "Studio" },
+        { key: "service", label: "Service" },
+        { key: "sale_date", label: "Last Purchase" },
+        { key: "expiration_date", label: "Expiration" },
+        { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+        { key: "tracked_membership_purchase_count", label: "Purchases", align: "right", format: (row) => formatNumber(row.tracked_membership_purchase_count) },
+        { key: "lifetime_membership_value", label: "Lifetime", align: "right", format: (row) => formatMoney(row.lifetime_membership_value) },
+    ],
+    new_members: [
+        { key: "month", label: "Month" },
+        { key: "client", label: "Client" },
+        { key: "studio", label: "Studio" },
+        { key: "service", label: "Service Purchased" },
+        { key: "sale_date", label: "Purchase Date" },
+        { key: "expiration_date", label: "Expiration" },
+        { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+    ],
+    reactivated: [
+        { key: "client", label: "Client" },
+        { key: "studio", label: "Studio" },
+        { key: "service", label: "Service" },
+        { key: "sale_date", label: "Reactivation Purchase" },
+        { key: "expiration_date", label: "Expiration" },
+        { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+        { key: "last_membership_purchase_date", label: "Previous Purchase" },
+    ],
+};
+
+
+const RetentionDetailTable = ({ rows, tableKey }) => {
+    const columns = retentionTableColumns[tableKey] || retentionTableColumns.not_renewed;
+    return (
+        <TableContainer style={{ maxHeight: 520 }}>
+            <Table size="small" stickyHeader>
+                <TableHead>
+                    <TableRow>
+                        {columns.map((column) => (
+                            <TableCell key={column.key} align={column.align || "left"}>{column.label}</TableCell>
+                        ))}
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {(rows || []).map((row, index) => (
+                        <TableRow key={`${tableKey}-${row.id || index}`}>
+                            {columns.map((column) => (
+                                <TableCell key={column.key} align={column.align || "left"}>
+                                    {column.format ? column.format(row) : row[column.key] || "N/A"}
+                                </TableCell>
+                            ))}
+                        </TableRow>
+                    ))}
+                    {!rows?.length && (
+                        <TableRow>
+                            <TableCell colSpan={columns.length}>No data</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+};
+
+
+const RetentionSummaryTableCard = ({ title, rows, tableKey, onExpand }) => (
+    <Paper style={{ padding: "16px" }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
+            <h2 style={{ margin: 0 }}>{title}</h2>
+            <Button size="small" variant="outlined" onClick={onExpand}>Open Table</Button>
+        </Stack>
+        <RetentionDetailTable rows={(rows || []).slice(0, 5)} tableKey={tableKey} />
     </Paper>
 );
 
@@ -1053,6 +1142,9 @@ export default function Dashboard() {
     const [activeTab, setActiveTab] = useState("monthly_overview");
     const [expandedInsight, setExpandedInsight] = useState(null);
     const [memberMixTrendView, setMemberMixTrendView] = useState("members");
+    const [retentionTables, setRetentionTables] = useState(null);
+    const [retentionTablesLoading, setRetentionTablesLoading] = useState(false);
+    const [activeRetentionTable, setActiveRetentionTable] = useState("not_renewed");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -1118,6 +1210,7 @@ export default function Dashboard() {
                 setComparisonOccupation(null);
                 setAttendance(null);
                 setOccupation(null);
+                setRetentionTables(null);
             } else {
                 const dashboardResponse = await axios.get(`${backendUrl}/api/data/analytics/dashboard/weekly/?${queryString}`, authHeaders);
                 const dashboardData = dashboardResponse.data;
@@ -1129,6 +1222,7 @@ export default function Dashboard() {
                 setComparisonOccupation(dashboardData.comparison.occupation);
                 setComparisonRetention(null);
                 setRetentionTrend(null);
+                setRetentionTables(null);
                 setRevenue(null);
                 setRetention(null);
             }
@@ -1226,6 +1320,32 @@ export default function Dashboard() {
     const handleStudioChange = (event) => {
         setFilters({ ...filters, studio: event.target.value });
         setPeriodNavigationVersion((current) => current + 1);
+    };
+
+    const openRetentionTable = async (tableKey) => {
+        setActiveRetentionTable(tableKey);
+        setExpandedInsight("retention_tables");
+        if (retentionTables) return;
+        setRetentionTablesLoading(true);
+        try {
+            const dateFilters = selectedDateRange("monthly", periodModes, filters);
+            const params = new URLSearchParams({
+                date_from: dateFilters.date_from,
+                date_to: dateFilters.date_to,
+                limit: "500",
+            });
+            if (filters.site) params.set("site", filters.site);
+            if (filters.studio) params.set("studio", filters.studio);
+            const response = await axios.get(
+                `${backendUrl}/api/data/analytics/dashboard/monthly/retention-tables/?${params.toString()}`,
+                authHeaders,
+            );
+            setRetentionTables(response.data.tables);
+        } catch (err) {
+            setError(err.response?.data?.detail || "Error loading retention table.");
+        } finally {
+            setRetentionTablesLoading(false);
+        }
     };
 
     const navigatePeriod = (direction) => {
@@ -1642,10 +1762,30 @@ export default function Dashboard() {
                             )}
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
-                                <RetentionTable title="Not Renewed Clients" rows={retention?.not_renewed_clients} />
-                                <RetentionTable title="Retained Samples" rows={retention?.retained_samples} />
-                                <RetentionTable title="New Member Samples" rows={retention?.new_member_samples} />
-                                <RetentionTable title="Reactivated Samples" rows={retention?.reactivated_samples} />
+                                <RetentionSummaryTableCard
+                                    title="Not Renewed Clients"
+                                    rows={retention?.not_renewed_clients}
+                                    tableKey="not_renewed"
+                                    onExpand={() => openRetentionTable("not_renewed")}
+                                />
+                                <RetentionSummaryTableCard
+                                    title="Retained Members"
+                                    rows={retention?.retained_samples}
+                                    tableKey="retained"
+                                    onExpand={() => openRetentionTable("retained")}
+                                />
+                                <RetentionSummaryTableCard
+                                    title="New Members"
+                                    rows={retention?.new_member_samples}
+                                    tableKey="new_members"
+                                    onExpand={() => openRetentionTable("new_members")}
+                                />
+                                <RetentionSummaryTableCard
+                                    title="Reactivated Members"
+                                    rows={retention?.reactivated_samples}
+                                    tableKey="reactivated"
+                                    onExpand={() => openRetentionTable("reactivated")}
+                                />
                             </div>
 
                             <div>
@@ -1736,6 +1876,43 @@ export default function Dashboard() {
                         <Tab label="Movement" value="movement" />
                     </Tabs>
                     <MemberMixHistoryChart rows={memberMixTrendRows} view={memberMixTrendView} />
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "retention_tables"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="xl"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Retention Detail Tables</span>
+                        <IconButton aria-label="Close retention tables" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={activeRetentionTable}
+                        onChange={(_, value) => setActiveRetentionTable(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label={`Not Renewed (${formatNumber(retentionTables?.not_renewed?.count || 0)})`} value="not_renewed" />
+                        <Tab label={`Retained (${formatNumber(retentionTables?.retained?.count || 0)})`} value="retained" />
+                        <Tab label={`New (${formatNumber(retentionTables?.new_members?.count || 0)})`} value="new_members" />
+                        <Tab label={`Reactivated (${formatNumber(retentionTables?.reactivated?.count || 0)})`} value="reactivated" />
+                    </Tabs>
+                    {retentionTablesLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <RetentionDetailTable
+                            rows={retentionTables?.[activeRetentionTable]?.rows || []}
+                            tableKey={activeRetentionTable}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
         </MainPage>
