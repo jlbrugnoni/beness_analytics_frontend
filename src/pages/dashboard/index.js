@@ -50,9 +50,12 @@ const expandedChartTooltipStyle = { fontSize: 17, borderRadius: 8, borderColor: 
 const chartLegendStyle = { fontSize: 15, paddingTop: 8 };
 
 
-const KpiCard = ({ label, value }) => (
-    <Paper style={{ padding: "18px", minHeight: "96px" }}>
-        <div style={{ color: "#555", fontSize: "15px", fontWeight: 700 }}>{label}</div>
+const KpiCard = ({ label, value, action }) => (
+    <Paper style={{ padding: "18px", minHeight: "96px", display: "grid", gap: "10px" }}>
+        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1.5}>
+            <div style={{ color: "#555", fontSize: "15px", fontWeight: 700 }}>{label}</div>
+            {action}
+        </Stack>
         <div style={{ fontSize: "32px", fontWeight: 800, marginTop: "4px" }}>{value}</div>
     </Paper>
 );
@@ -457,16 +460,33 @@ const BookingQualityChart = ({ rows, wide = false, action }) => {
 const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
     <div style={{ width: "100%", height: 420 }}>
         <ResponsiveContainer>
-            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+            <ComposedChart
+                data={rows.map((row) => ({
+                    ...row,
+                    not_completed_bookings: Math.max(0, Number(row.total_bookings || 0) - Number(row.completed_visits || 0)),
+                }))}
+                margin={{ top: 16, right: 24, bottom: 8, left: 8 }}
+            >
                 <CartesianGrid stroke="#eef1f4" vertical={false} />
                 <XAxis dataKey="label" tick={chartText} />
-                <YAxis tick={chartText} tickFormatter={view === "rates" ? (value) => `${value}%` : undefined} />
+                <YAxis
+                    tick={chartText}
+                    tickFormatter={
+                        view === "rates"
+                            ? (value) => `${value}%`
+                            : view === "revenue"
+                                ? formatCompactMoney
+                                : undefined
+                    }
+                />
                 <ChartTooltip
                     formatter={(value, name) => {
                         if (name === "no_show_rate") return [`${formatNumber(value)}%`, "No-show rate"];
                         if (name === "late_cancel_rate") return [`${formatNumber(value)}%`, "Late cancel rate"];
+                        if (name === "average_revenue_per_attended_visit") return [formatMoney(value), "Avg revenue / visit"];
                         if (name === "total_bookings") return [formatNumber(value), "Total bookings"];
                         if (name === "completed_visits") return [formatNumber(value), "Completed visits"];
+                        if (name === "not_completed_bookings") return [formatNumber(value), "Booked but not completed"];
                         return [formatNumber(value), name];
                     }}
                     contentStyle={expandedChartTooltipStyle}
@@ -474,18 +494,10 @@ const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
                 <Legend wrapperStyle={chartLegendStyle} />
                 {view === "visits" ? (
                     <>
-                        <Bar dataKey="total_bookings" name="Total bookings" fill="#8a5cf6" radius={[4, 4, 0, 0]} />
-                        <Line
-                            type="monotone"
-                            dataKey="completed_visits"
-                            name="Completed visits"
-                            stroke="#2f6f73"
-                            strokeWidth={3}
-                            dot={{ r: 4 }}
-                            activeDot={{ r: 6 }}
-                        />
+                        <Bar dataKey="completed_visits" name="Completed visits" stackId="bookings" fill="#2f6f73" />
+                        <Bar dataKey="not_completed_bookings" name="Booked but not completed" stackId="bookings" fill="#f2c94c" radius={[4, 4, 0, 0]} />
                     </>
-                ) : (
+                ) : view === "rates" ? (
                     <>
                         <Line
                             type="monotone"
@@ -506,6 +518,16 @@ const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
                             activeDot={{ r: 6 }}
                         />
                     </>
+                ) : (
+                    <Line
+                        type="monotone"
+                        dataKey="average_revenue_per_attended_visit"
+                        name="Avg revenue / visit"
+                        stroke="#2f6f73"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                    />
                 )}
             </ComposedChart>
         </ResponsiveContainer>
@@ -1598,6 +1620,11 @@ export default function Dashboard() {
         }
     };
 
+    const openWeeklyAttendanceTrend = (view) => {
+        setWeeklyAttendanceTrendView(view);
+        openWeeklyTrend("weekly_attendance_health");
+    };
+
     const navigatePeriod = (direction) => {
         if (dashboardMode === "monthly") {
             const activeMonth = activeDateRange.date_from.slice(0, 7);
@@ -1960,11 +1987,31 @@ export default function Dashboard() {
                     {activeTab === "attendance" && (
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Total Bookings" value={formatNumber(totals.attendance_visits)} />
-                                <KpiCard label="Completed Visits" value={formatNumber(totals.attended_visits)} />
-                                <KpiCard label="Avg Revenue / Visit" value={formatMoney(totals.average_revenue_per_attended_visit)} />
-                                <KpiCard label="No-show Rate" value={`${formatNumber(totals.no_show_rate)}%`} />
-                                <KpiCard label="Late Cancel Rate" value={`${formatNumber(totals.late_cancel_rate)}%`} />
+                                <KpiCard
+                                    label="Total Bookings"
+                                    value={formatNumber(totals.attendance_visits)}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("visits")}>Trend</Button>}
+                                />
+                                <KpiCard
+                                    label="Completed Visits"
+                                    value={formatNumber(totals.attended_visits)}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("visits")}>Trend</Button>}
+                                />
+                                <KpiCard
+                                    label="Avg Revenue / Visit"
+                                    value={formatMoney(totals.average_revenue_per_attended_visit)}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("revenue")}>Trend</Button>}
+                                />
+                                <KpiCard
+                                    label="No-show Rate"
+                                    value={`${formatNumber(totals.no_show_rate)}%`}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("rates")}>Trend</Button>}
+                                />
+                                <KpiCard
+                                    label="Late Cancel Rate"
+                                    value={`${formatNumber(totals.late_cancel_rate)}%`}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("rates")}>Trend</Button>}
+                                />
                                 <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
@@ -2237,6 +2284,7 @@ export default function Dashboard() {
                     >
                         <Tab label="Bookings & Visits" value="visits" />
                         <Tab label="No-show & Late Cancel" value="rates" />
+                        <Tab label="Avg Revenue / Visit" value="revenue" />
                     </Tabs>
                     {weeklyTrendsLoading ? (
                         <LinearProgress />
