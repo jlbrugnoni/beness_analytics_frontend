@@ -179,6 +179,10 @@ export const dataResources = {
             { label: "Type", field: "session_type" },
             { label: "Capacity", field: "capacity" },
             { label: "Status", field: "status" },
+            { label: "Schedule Status", field: "schedule_status_label" },
+            { label: "Source", field: "source_label" },
+            { label: "Template", field: "template_name" },
+            { label: "Expected", field: "expected_from_template" },
             { label: "Reason", field: "reason" },
         ],
         fields: [

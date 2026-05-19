@@ -63,6 +63,8 @@ export default function ImportedResourcePage() {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
+    const [rollingBackId, setRollingBackId] = useState(null);
     const [detailOpen, setDetailOpen] = useState(false);
     const [detail, setDetail] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
@@ -75,6 +77,7 @@ export default function ImportedResourcePage() {
         if (!token || !config) return;
         setLoading(true);
         setError("");
+        setSuccess("");
         try {
             const params = new URLSearchParams();
             params.set("page", nextPage);
@@ -136,6 +139,48 @@ export default function ImportedResourcePage() {
         }
     };
 
+    const rollbackImport = async (row) => {
+        if (!row?.id) return;
+        setError("");
+        setSuccess("");
+        setRollingBackId(row.id);
+        try {
+            const payload = {
+                confirmation: "DELETE REPORT DATA",
+                dry_run: true,
+                include_schedule_data: true,
+            };
+            const dryRun = await axios.post(
+                `${backendUrl}/api/data/report-imports/${row.id}/rollback/`,
+                payload,
+                authHeaders,
+            );
+            const deletedCounts = dryRun.data.deleted_counts || {};
+            const summary = Object.entries(deletedCounts)
+                .map(([key, value]) => `${key.replaceAll("_", " ")}: ${value}`)
+                .join("\n");
+            const confirmation = window.prompt(
+                `This will delete the imported report data for:\n${row.file_name}\n\n${summary}\n\nType DELETE REPORT DATA to continue.`
+            );
+            if (confirmation !== "DELETE REPORT DATA") return;
+            const response = await axios.post(
+                `${backendUrl}/api/data/report-imports/${row.id}/rollback/`,
+                {
+                    ...payload,
+                    dry_run: false,
+                },
+                authHeaders,
+            );
+            const removed = response.data.deleted_counts || {};
+            setSuccess(`Rollback complete. Report removed: ${removed.report_import || 0}.`);
+            await fetchRows(page);
+        } catch (err) {
+            setError(err.response?.data?.error || err.response?.data?.detail || "Error rolling back import.");
+        } finally {
+            setRollingBackId(null);
+        }
+    };
+
     return (
         <MainPage>
             <Head>
@@ -147,6 +192,7 @@ export default function ImportedResourcePage() {
                 </div>
 
                 {error && <Alert severity="error" style={{ width: "90%", marginBottom: "12px" }}>{error}</Alert>}
+                {success && <Alert severity="success" style={{ width: "90%", marginBottom: "12px" }}>{success}</Alert>}
 
                 <Paper style={{ width: "90%", padding: "16px", display: "grid", gap: "12px", marginBottom: "12px" }}>
                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
@@ -240,6 +286,16 @@ export default function ImportedResourcePage() {
                                         <TableCell>
                                             <Button size="small" variant="outlined" onClick={() => openImportDetail(row)}>
                                                 Details
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                color="error"
+                                                onClick={() => rollbackImport(row)}
+                                                disabled={rollingBackId === row.id}
+                                                style={{ marginLeft: "8px" }}
+                                            >
+                                                {rollingBackId === row.id ? "Rolling Back..." : "Rollback"}
                                             </Button>
                                         </TableCell>
                                     )}

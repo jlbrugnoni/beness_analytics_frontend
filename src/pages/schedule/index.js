@@ -26,14 +26,22 @@ const statusColors = {
     unavailable: { background: "#e8edf7", border: "#7f96c8", color: "#2b477f" },
 };
 
-const expectedColors = {
+const scheduleStatusColors = {
     matched: { background: "#e7f3ec", border: "#72a987", color: "#24533a" },
-    missing: { background: "#fde8e8", border: "#df6b6b", color: "#7d1f1f" },
-    cancelled: { background: "#f0f1f3", border: "#b6bcc4", color: "#4e5965" },
-    unavailable: { background: "#e8edf7", border: "#7f96c8", color: "#2b477f" },
-    manually_created: { background: "#eaf4ff", border: "#5b93d3", color: "#1f4d7d" },
-    ignored: { background: "#f7f7f7", border: "#cccccc", color: "#555555" },
+    missing_from_report: { background: "#fff5df", border: "#e0ac42", color: "#79520c" },
+    unexpected_from_report: { background: "#fde8e8", border: "#df6b6b", color: "#7d1f1f" },
+    manual: { background: "#eaf4ff", border: "#5b93d3", color: "#1f4d7d" },
+    unreconciled: { background: "#f7f7f7", border: "#cccccc", color: "#555555" },
 };
+
+const scheduleStatusOptions = [
+    { value: "", label: "All statuses" },
+    { value: "matched", label: "Matched" },
+    { value: "missing_from_report", label: "Missing from report" },
+    { value: "unexpected_from_report", label: "Unexpected from report" },
+    { value: "unreconciled", label: "Unreconciled" },
+    { value: "manual", label: "Manual" },
+];
 
 
 const formatDate = (date) => {
@@ -102,8 +110,10 @@ const WarningCard = ({ label, value }) => (
 );
 
 
-const ClassCard = ({ item }) => {
-    const colors = statusColors[item.status] || statusColors.scheduled;
+const ClassCard = ({ item, onResolve }) => {
+    const colors = scheduleStatusColors[item.schedule_status] || statusColors[item.status] || statusColors.scheduled;
+    const scheduleLabel = item.schedule_status_label || item.schedule_status?.replaceAll("_", " ") || "Scheduled";
+    const isClosed = ["cancelled", "unavailable"].includes(item.status);
     return (
         <div
             style={{
@@ -119,102 +129,38 @@ const ClassCard = ({ item }) => {
         >
             <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "baseline" }}>
                 <strong>{shortTime(item.start_time)}-{shortTime(item.end_time)}</strong>
-                <span style={{ fontSize: "12px", textTransform: "capitalize" }}>{item.status?.replaceAll("_", " ")}</span>
+                <span style={{ fontSize: "12px", textTransform: "capitalize" }}>{scheduleLabel}</span>
             </div>
             <div style={{ fontWeight: 700 }}>{item.name}</div>
             <div style={{ fontSize: "13px" }}>{item.studio_name}</div>
             <div style={{ fontSize: "13px" }}>{item.room_name || "No room"} · {item.staff_member_name || "No instructor"}</div>
+            {item.template_name && (
+                <div style={{ fontSize: "12px" }}>Template: {item.template_name}</div>
+            )}
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                 <Chip size="small" label={`Cap. ${item.capacity || 0}`} />
                 <Chip size="small" label={`Att. ${item.attended_count || 0}`} />
                 {(item.no_show_count || item.late_cancel_count) ? (
                     <Chip size="small" label={`NS/LC ${(item.no_show_count || 0) + (item.late_cancel_count || 0)}`} />
                 ) : null}
+                <Chip size="small" label={item.source_label || item.source || "Source N/A"} />
+                {isClosed && <Chip size="small" color="warning" label={item.status?.replaceAll("_", " ")} />}
             </div>
             {item.reason && <div style={{ fontSize: "12px" }}>{item.reason}</div>}
-        </div>
-    );
-};
-
-const ExpectedSlotCard = ({ item, onCreateClass, onResolve }) => {
-    const colors = expectedColors[item.status] || expectedColors.missing;
-    const detectedStaff = item.scheduled_class_staff_member_name || item.staff_member_name;
-    const attended = item.scheduled_class_attended_count || 0;
-    const noShows = item.scheduled_class_no_show_count || 0;
-    const lateCancels = item.scheduled_class_late_cancel_count || 0;
-    const isResolvedAway = ["cancelled", "unavailable", "ignored"].includes(item.status);
-    const hasDetectedClass = Boolean(item.scheduled_class);
-    const hasCapacityMismatch = hasDetectedClass && Number(item.capacity || 0) !== Number(item.scheduled_class_capacity || 0);
-    const hasNoMatchedAttendance = hasDetectedClass && attended === 0 && noShows === 0 && lateCancels === 0;
-    return (
-        <div
-            style={{
-                border: `1px dashed ${colors.border}`,
-                borderLeft: `5px solid ${colors.border}`,
-                background: colors.background,
-                color: colors.color,
-                borderRadius: "8px",
-                padding: "10px",
-                display: "grid",
-                gap: "6px",
-            }}
-        >
-            <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "baseline" }}>
-                <strong>{shortTime(item.start_time)}-{shortTime(item.end_time)}</strong>
-                <span style={{ fontSize: "12px", textTransform: "capitalize" }}>{item.status?.replaceAll("_", " ")}</span>
-            </div>
-            <div style={{ fontWeight: 700 }}>{item.name}</div>
-            <div style={{ fontSize: "13px" }}>{item.room_name} · Expected: {item.staff_member_name || "No fixed instructor"}</div>
-            {hasDetectedClass && (
-                <div style={{ fontSize: "13px" }}>
-                    Detected: {item.scheduled_class_name} · {detectedStaff || "No instructor"}
-                </div>
-            )}
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                <Chip size="small" label={`Cap. ${item.capacity || 0}`} />
-                {hasDetectedClass && (
-                    <Chip
-                        size="small"
-                        color={hasCapacityMismatch ? "warning" : "default"}
-                        label={`Detected cap. ${item.scheduled_class_capacity || 0}`}
-                    />
-                )}
-                {hasDetectedClass && <Chip size="small" label={`Att. ${attended}`} />}
-                {hasDetectedClass && (noShows || lateCancels) ? (
-                    <Chip size="small" label={`NS/LC ${noShows + lateCancels}`} />
-                ) : null}
-            </div>
-            {hasCapacityMismatch && (
-                <Alert severity="warning" style={{ padding: "0 8px" }}>
-                    Expected capacity differs from detected capacity.
-                </Alert>
-            )}
-            {hasNoMatchedAttendance && (
-                <Alert severity="info" style={{ padding: "0 8px" }}>
-                    No attendance matched yet. Rebuild matches after imports.
-                </Alert>
-            )}
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                {!hasDetectedClass && item.status === "missing" && (
-                    <Button size="small" variant="contained" onClick={() => onCreateClass(item)}>Create Class</Button>
-                )}
-                {!isResolvedAway && (
+                {!isClosed && (
                     <>
                         <Button size="small" variant="outlined" onClick={() => onResolve(item, "cancelled")}>Cancel</Button>
                         <Button size="small" variant="outlined" onClick={() => onResolve(item, "unavailable")}>Unavailable</Button>
                     </>
                 )}
-                {!hasDetectedClass && item.status === "missing" && (
-                    <Button size="small" variant="text" onClick={() => onResolve(item, "ignored")}>Ignore</Button>
-                )}
-                {isResolvedAway && (
-                    <Button size="small" variant="outlined" onClick={() => onResolve(item, "missing")}>Reopen</Button>
+                {isClosed && (
+                    <Button size="small" variant="outlined" onClick={() => onResolve(item, "scheduled")}>Reopen</Button>
                 )}
             </div>
         </div>
     );
 };
-
 
 export default function SchedulePage() {
     const token = useFetchToken();
@@ -226,19 +172,15 @@ export default function SchedulePage() {
     const [site, setSite] = useState("");
     const [studio, setStudio] = useState("");
     const [room, setRoom] = useState("");
+    const [scheduleStatus, setScheduleStatus] = useState("");
     const [weekStart, setWeekStart] = useState(formatDate(startOfWeek(new Date())));
     const [classes, setClasses] = useState([]);
-    const [expectedSlots, setExpectedSlots] = useState([]);
     const [loading, setLoading] = useState(false);
     const [matching, setMatching] = useState(false);
-    const [generating, setGenerating] = useState(false);
-    const [resetting, setResetting] = useState(false);
-    const [rematchingSlots, setRematchingSlots] = useState(false);
+    const [reconcilingClasses, setReconcilingClasses] = useState(false);
     const [syncingCapacity, setSyncingCapacity] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
-    const [generateResult, setGenerateResult] = useState(null);
-    const [rematchResult, setRematchResult] = useState(null);
-    const [resetResult, setResetResult] = useState(null);
+    const [classReconcileResult, setClassReconcileResult] = useState(null);
     const [capacitySyncResult, setCapacitySyncResult] = useState(null);
     const [error, setError] = useState("");
 
@@ -290,17 +232,6 @@ export default function SchedulePage() {
             const rows = await fetchAll(`${backendUrl}/api/data/scheduled-classes/`, authHeaders, params, backendUrl);
             rows.sort((a, b) => `${a.class_date} ${a.start_time}`.localeCompare(`${b.class_date} ${b.start_time}`));
             setClasses(rows);
-
-            const expectedParams = {
-                site,
-                date_from: weekStart,
-                date_to: weekDays[6].value,
-            };
-            if (studio) expectedParams.studio = studio;
-            if (room) expectedParams.room = room;
-            const expectedRows = await fetchAll(`${backendUrl}/api/data/expected-class-slots/`, authHeaders, expectedParams, backendUrl);
-            expectedRows.sort((a, b) => `${a.slot_date} ${a.start_time}`.localeCompare(`${b.slot_date} ${b.start_time}`));
-            setExpectedSlots(expectedRows);
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading schedule.");
         } finally {
@@ -308,15 +239,11 @@ export default function SchedulePage() {
         }
     };
 
-    useEffect(() => {
-        loadClasses();
-    }, [token, site, studio, room, weekStart]);
-
-    const handleGenerateExpectedSlots = async () => {
+    const handleReconcileScheduledClasses = async () => {
         if (!site) return;
-        setGenerating(true);
+        setReconcilingClasses(true);
         setError("");
-        setGenerateResult(null);
+        setClassReconcileResult(null);
         try {
             const payload = {
                 site,
@@ -326,18 +253,22 @@ export default function SchedulePage() {
             if (studio) payload.studio = studio;
             if (room) payload.room = room;
             const response = await axios.post(
-                `${backendUrl}/api/data/expected-class-slots/generate/`,
+                `${backendUrl}/api/data/scheduled-classes/reconcile-from-templates/`,
                 payload,
                 authHeaders,
             );
-            setGenerateResult(response.data);
+            setClassReconcileResult(response.data);
             await loadClasses();
         } catch (err) {
-            setError(err.response?.data?.error || "Error generating expected slots.");
+            setError(err.response?.data?.error || "Error reconciling scheduled classes.");
         } finally {
-            setGenerating(false);
+            setReconcilingClasses(false);
         }
     };
+
+    useEffect(() => {
+        loadClasses();
+    }, [token, site, studio, room, weekStart]);
 
     const handleRebuildMatches = async () => {
         if (!site) return;
@@ -360,33 +291,6 @@ export default function SchedulePage() {
             setError(err.response?.data?.error || "Error rebuilding class matches.");
         } finally {
             setMatching(false);
-        }
-    };
-
-    const handleRematchExpectedSlots = async () => {
-        if (!site) return;
-        setRematchingSlots(true);
-        setError("");
-        setRematchResult(null);
-        try {
-            const payload = {
-                site,
-                date_from: weekStart,
-                date_to: weekDays[6].value,
-            };
-            if (studio) payload.studio = studio;
-            if (room) payload.room = room;
-            const response = await axios.post(
-                `${backendUrl}/api/data/expected-class-slots/rematch/`,
-                payload,
-                authHeaders,
-            );
-            setRematchResult(response.data);
-            await loadClasses();
-        } catch (err) {
-            setError(err.response?.data?.error || "Error rematching expected slots.");
-        } finally {
-            setRematchingSlots(false);
         }
     };
 
@@ -413,71 +317,17 @@ export default function SchedulePage() {
         }
     };
 
-    const handleResetScopedSchedule = async () => {
-        if (!site) return;
-        const scopeLabel = [
-            sites.find((item) => String(item.id) === String(site))?.name,
-            studio ? studios.find((item) => String(item.id) === String(studio))?.name : "all studios",
-            room ? rooms.find((item) => String(item.id) === String(room))?.name : "all rooms",
-            `${weekStart} to ${weekDays[6].value}`,
-        ].filter(Boolean).join(" / ");
-        const confirmation = window.prompt(
-            `This will delete expected slots and manually-created scheduled classes for: ${scopeLabel}.\nImported MindBody classes and attendance reports will be preserved.\n\nType RESET SCHEDULE DATA to continue.`
-        );
-        if (confirmation !== "RESET SCHEDULE DATA") return;
-        setResetting(true);
-        setError("");
-        setResetResult(null);
-        try {
-            const payload = {
-                site,
-                date_from: weekStart,
-                date_to: weekDays[6].value,
-                include_manual_classes: true,
-                confirmation,
-            };
-            if (studio) payload.studio = studio;
-            if (room) payload.room = room;
-            const response = await axios.post(
-                `${backendUrl}/api/data/expected-class-slots/reset-scoped/`,
-                payload,
-                authHeaders,
-            );
-            setResetResult(response.data);
-            await loadClasses();
-        } catch (err) {
-            setError(err.response?.data?.error || "Error resetting schedule data.");
-        } finally {
-            setResetting(false);
-        }
-    };
-
-    const handleCreateClassFromSlot = async (slot) => {
-        if (!window.confirm("Create this scheduled class from the expected slot?")) return;
+    const handleResolveClass = async (scheduledClass, statusValue) => {
         setError("");
         try {
-            await axios.post(
-                `${backendUrl}/api/data/expected-class-slots/${slot.id}/create-scheduled-class/`,
-                {},
-                authHeaders,
-            );
-            await loadClasses();
-        } catch (err) {
-            setError(err.response?.data?.error || "Error creating scheduled class.");
-        }
-    };
-
-    const handleResolveSlot = async (slot, statusValue) => {
-        setError("");
-        try {
-            await axios.post(
-                `${backendUrl}/api/data/expected-class-slots/${slot.id}/resolve/`,
+            await axios.patch(
+                `${backendUrl}/api/data/scheduled-classes/${scheduledClass.id}/`,
                 { status: statusValue },
                 authHeaders,
             );
             await loadClasses();
         } catch (err) {
-            setError(err.response?.data?.error || "Error resolving expected slot.");
+            setError(err.response?.data?.error || "Error updating scheduled class.");
         }
     };
 
@@ -487,41 +337,33 @@ export default function SchedulePage() {
         if (studio && String(item.studio) !== String(studio)) return false;
         return true;
     });
+    const visibleClasses = scheduleStatus
+        ? classes.filter((item) => item.schedule_status === scheduleStatus)
+        : classes;
     const classesByDate = weekDays.reduce((acc, day) => {
-        acc[day.value] = classes.filter((item) => item.class_date === day.value);
+        acc[day.value] = visibleClasses.filter((item) => item.class_date === day.value);
         return acc;
     }, {});
-    const expectedByDate = weekDays.reduce((acc, day) => {
-        acc[day.value] = expectedSlots.filter((item) => item.slot_date === day.value);
-        return acc;
-    }, {});
-    const expectedScheduledClassIds = new Set(expectedSlots.map((item) => item.scheduled_class).filter(Boolean));
-    const summary = classes.reduce((acc, item) => {
+    const summary = visibleClasses.reduce((acc, item) => {
         acc.total += 1;
         acc.capacity += Number(item.capacity || 0);
         acc.attended += Number(item.attended_count || 0);
         acc.needsReview += item.status === "needs_review" ? 1 : 0;
         acc.conflicts += item.status === "conflict" ? 1 : 0;
-        return acc;
-    }, { total: 0, capacity: 0, attended: 0, needsReview: 0, conflicts: 0 });
-    const expectedSummary = expectedSlots.reduce((acc, item) => {
-        acc.total += 1;
-        acc.matched += item.status === "matched" ? 1 : 0;
-        acc.missing += item.status === "missing" ? 1 : 0;
-        if (item.scheduled_class && Number(item.capacity || 0) !== Number(item.scheduled_class_capacity || 0)) {
-            acc.capacityMismatch += 1;
-        }
+        acc.matched += item.schedule_status === "matched" ? 1 : 0;
+        acc.missing += item.schedule_status === "missing_from_report" ? 1 : 0;
+        acc.unexpected += item.schedule_status === "unexpected_from_report" ? 1 : 0;
+        acc.unreconciled += item.schedule_status === "unreconciled" ? 1 : 0;
         if (
-            item.scheduled_class
-            && Number(item.scheduled_class_attended_count || 0) === 0
-            && Number(item.scheduled_class_no_show_count || 0) === 0
-            && Number(item.scheduled_class_late_cancel_count || 0) === 0
+            item.expected_from_template
+            && Number(item.attended_count || 0) === 0
+            && Number(item.no_show_count || 0) === 0
+            && Number(item.late_cancel_count || 0) === 0
         ) {
             acc.zeroMatchedAttendance += 1;
         }
         return acc;
-    }, { total: 0, matched: 0, missing: 0, capacityMismatch: 0, zeroMatchedAttendance: 0 });
-    const unexpectedCount = classes.filter((item) => !expectedScheduledClassIds.has(item.id)).length;
+    }, { total: 0, capacity: 0, attended: 0, needsReview: 0, conflicts: 0, matched: 0, missing: 0, unexpected: 0, unreconciled: 0, zeroMatchedAttendance: 0 });
 
     const moveWeek = (days) => setWeekStart(formatDate(addDays(parseDate(weekStart), days)));
 
@@ -564,6 +406,11 @@ export default function SchedulePage() {
                                     <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
                                 ))}
                             </TextField>
+                            <TextField select label="Schedule Status" value={scheduleStatus} onChange={(event) => setScheduleStatus(event.target.value)}>
+                                {scheduleStatusOptions.map((item) => (
+                                    <MenuItem key={item.value || "all"} value={item.value}>{item.label}</MenuItem>
+                                ))}
+                            </TextField>
                             <TextField
                                 label="Week Starts"
                                 type="date"
@@ -588,20 +435,14 @@ export default function SchedulePage() {
                             <Link href="/schedule/unmatched-attendance">
                                 <Button variant="outlined">Review Unmatched Attendance</Button>
                             </Link>
-                            <Button variant="outlined" onClick={handleGenerateExpectedSlots} disabled={generating || !site}>
-                                {generating ? "Generating..." : "Generate Expected Slots"}
+                            <Button variant="outlined" onClick={handleReconcileScheduledClasses} disabled={reconcilingClasses || !site}>
+                                {reconcilingClasses ? "Reconciling..." : "Reconcile Scheduled Classes"}
                             </Button>
                             <Button variant="contained" onClick={handleRebuildMatches} disabled={matching || !site}>
                                 {matching ? "Matching..." : "Rebuild Attendance Matches"}
                             </Button>
-                            <Button variant="outlined" onClick={handleRematchExpectedSlots} disabled={rematchingSlots || !site}>
-                                {rematchingSlots ? "Rematching..." : "Rematch Expected Slots"}
-                            </Button>
                             <Button variant="outlined" onClick={handleSyncTemplateCapacities} disabled={syncingCapacity || !site}>
                                 {syncingCapacity ? "Updating..." : "Sync Template Capacities"}
-                            </Button>
-                            <Button variant="outlined" color="error" onClick={handleResetScopedSchedule} disabled={resetting || !site}>
-                                {resetting ? "Resetting..." : "Reset Expected/Manual"}
                             </Button>
                         </div>
                     </Paper>
@@ -612,15 +453,9 @@ export default function SchedulePage() {
                         </Alert>
                     )}
 
-                    {generateResult && (
+                    {classReconcileResult && (
                         <Alert severity="success">
-                            Expected slots generated: {generateResult.created} created, {generateResult.updated} updated, {generateResult.matched} matched, {generateResult.missing} missing. Manual classes created: {generateResult.manual_classes_created || 0}.
-                        </Alert>
-                    )}
-
-                    {rematchResult && (
-                        <Alert severity="success">
-                            Expected slots rematched: {rematchResult.expected_slots_relinked} relinked, {rematchResult.manual_classes_removed} manual duplicates removed, {rematchResult.attendance_matches_transferred} attendance matches transferred. Attendance unmatched: {rematchResult.attendance_matches?.unmatched || 0}.
+                            Scheduled classes reconciled: {classReconcileResult.classes_matched} matched, {(classReconcileResult.missing_classes_created || 0) + (classReconcileResult.missing_classes_existing || 0)} missing, {classReconcileResult.unexpected_classes} unexpected.
                         </Alert>
                     )}
 
@@ -630,32 +465,26 @@ export default function SchedulePage() {
                         </Alert>
                     )}
 
-                    {resetResult && (
-                        <Alert severity="success">
-                            Schedule reset complete: {resetResult.expected_slots_deleted} expected slots deleted, {resetResult.manual_classes_deleted} manually-created classes deleted. Imported MindBody classes were preserved.
-                        </Alert>
-                    )}
-
                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
                         <SummaryCard label="Classes" value={summary.total} />
                         <SummaryCard label="Capacity" value={summary.capacity} />
                         <SummaryCard label="Attended" value={summary.attended} />
                         <SummaryCard label="Needs Review" value={summary.needsReview} />
                         <SummaryCard label="Conflicts" value={summary.conflicts} />
-                        <SummaryCard label="Expected Slots" value={expectedSummary.total} />
-                        <SummaryCard label="Missing Expected" value={expectedSummary.missing} />
-                        <SummaryCard label="Unexpected Detected" value={unexpectedCount} />
-                        {expectedSummary.capacityMismatch > 0 && (
-                            <WarningCard label="Capacity Mismatch" value={expectedSummary.capacityMismatch} />
+                        <SummaryCard label="Matched Schedule" value={summary.matched} />
+                        <SummaryCard label="Missing From Report" value={summary.missing} />
+                        <SummaryCard label="Unexpected From Report" value={summary.unexpected} />
+                        {summary.unreconciled > 0 && (
+                            <WarningCard label="Unreconciled" value={summary.unreconciled} />
                         )}
-                        {expectedSummary.zeroMatchedAttendance > 0 && (
-                            <WarningCard label="Zero Matched Attendance" value={expectedSummary.zeroMatchedAttendance} />
+                        {summary.zeroMatchedAttendance > 0 && (
+                            <WarningCard label="Zero Attendance" value={summary.zeroMatchedAttendance} />
                         )}
                     </div>
 
-                    {(expectedSummary.capacityMismatch > 0 || expectedSummary.zeroMatchedAttendance > 0) && (
+                    {(summary.unreconciled > 0 || summary.zeroMatchedAttendance > 0) && (
                         <Alert severity="warning">
-                            Review the highlighted schedule cards before trusting occupancy. Capacity mismatches usually come from old templates; zero matched attendance usually means the attendance matches need to be rebuilt or the MindBody attendance time/studio does not align with the scheduled class.
+                            Review highlighted schedule cards before trusting occupancy. Unreconciled classes need template reconciliation; zero attendance usually means attendance matches need to be rebuilt or the MindBody attendance time/studio does not align with the scheduled class.
                         </Alert>
                     )}
 
@@ -674,18 +503,10 @@ export default function SchedulePage() {
                                     <span style={{ color: "#666", fontSize: "13px" }}>{day.value}</span>
                                 </div>
                                 <div style={{ display: "grid", gap: "10px" }}>
-                                    {(expectedByDate[day.value] || []).map((item) => (
-                                        <ExpectedSlotCard
-                                            key={`expected-${item.id}`}
-                                            item={item}
-                                            onCreateClass={handleCreateClassFromSlot}
-                                            onResolve={handleResolveSlot}
-                                        />
-                                    ))}
                                     {(classesByDate[day.value] || []).map((item) => (
-                                        expectedScheduledClassIds.has(item.id) ? null : <ClassCard key={`detected-${item.id}`} item={item} />
+                                        <ClassCard key={`class-${item.id}`} item={item} onResolve={handleResolveClass} />
                                     ))}
-                                    {!classesByDate[day.value]?.length && !expectedByDate[day.value]?.length && (
+                                    {!classesByDate[day.value]?.length && (
                                         <div style={{ color: "#777", fontSize: "14px" }}>No classes</div>
                                     )}
                                 </div>
