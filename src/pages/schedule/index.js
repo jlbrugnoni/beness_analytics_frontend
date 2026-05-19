@@ -34,6 +34,15 @@ const scheduleStatusColors = {
     unreconciled: { background: "#f7f7f7", border: "#cccccc", color: "#555555" },
 };
 
+const scheduleStatusOptions = [
+    { value: "", label: "All statuses" },
+    { value: "matched", label: "Matched" },
+    { value: "missing_from_report", label: "Missing from report" },
+    { value: "unexpected_from_report", label: "Unexpected from report" },
+    { value: "unreconciled", label: "Unreconciled" },
+    { value: "manual", label: "Manual" },
+];
+
 
 const formatDate = (date) => {
     const year = date.getFullYear();
@@ -163,6 +172,7 @@ export default function SchedulePage() {
     const [site, setSite] = useState("");
     const [studio, setStudio] = useState("");
     const [room, setRoom] = useState("");
+    const [scheduleStatus, setScheduleStatus] = useState("");
     const [weekStart, setWeekStart] = useState(formatDate(startOfWeek(new Date())));
     const [classes, setClasses] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -327,11 +337,14 @@ export default function SchedulePage() {
         if (studio && String(item.studio) !== String(studio)) return false;
         return true;
     });
+    const visibleClasses = scheduleStatus
+        ? classes.filter((item) => item.schedule_status === scheduleStatus)
+        : classes;
     const classesByDate = weekDays.reduce((acc, day) => {
-        acc[day.value] = classes.filter((item) => item.class_date === day.value);
+        acc[day.value] = visibleClasses.filter((item) => item.class_date === day.value);
         return acc;
     }, {});
-    const summary = classes.reduce((acc, item) => {
+    const summary = visibleClasses.reduce((acc, item) => {
         acc.total += 1;
         acc.capacity += Number(item.capacity || 0);
         acc.attended += Number(item.attended_count || 0);
@@ -391,6 +404,11 @@ export default function SchedulePage() {
                                 <MenuItem value="">All rooms</MenuItem>
                                 {filteredRooms.map((item) => (
                                     <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
+                                ))}
+                            </TextField>
+                            <TextField select label="Schedule Status" value={scheduleStatus} onChange={(event) => setScheduleStatus(event.target.value)}>
+                                {scheduleStatusOptions.map((item) => (
+                                    <MenuItem key={item.value || "all"} value={item.value}>{item.label}</MenuItem>
                                 ))}
                             </TextField>
                             <TextField
