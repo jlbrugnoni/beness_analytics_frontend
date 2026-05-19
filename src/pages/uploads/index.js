@@ -750,12 +750,15 @@ export default function Uploads() {
                                                 <SummaryBox label="Expected Matched" value={scheduleAutomation.expected_slots?.matched || 0} />
                                                 <SummaryBox label="Expected Missing" value={scheduleAutomation.expected_slots?.missing || 0} />
                                                 <SummaryBox label="Manual Classes Created" value={scheduleAutomation.manual_classes?.manual_classes_created || 0} />
+                                                <SummaryBox label="Schedule Matched" value={scheduleAutomation.scheduled_class_reconciliation?.classes_matched || 0} />
+                                                <SummaryBox label="Schedule Missing" value={(scheduleAutomation.scheduled_class_reconciliation?.missing_classes_created || 0) + (scheduleAutomation.scheduled_class_reconciliation?.missing_classes_existing || 0)} />
+                                                <SummaryBox label="Unexpected Classes" value={scheduleAutomation.scheduled_class_reconciliation?.unexpected_classes || 0} />
                                                 <SummaryBox label="Attendance Matches" value={scheduleAutomation.attendance_matches?.matches_created || 0} />
                                                 <SummaryBox label="Attendance Updated" value={scheduleAutomation.attendance_matches?.matches_updated || 0} />
                                                 <SummaryBox label="Unmatched Attendance" value={scheduleAutomation.attendance_matches?.unmatched || 0} />
                                             </div>
                                             <Alert severity="info" style={{ marginTop: "16px" }}>
-                                                Expected slots, missing scheduled classes, and attendance matches were rebuilt automatically for this report range.
+                                                Expected slots, scheduled class reconciliation, and attendance matches were rebuilt automatically for this report range.
                                             </Alert>
                                         </>
                                     )}
