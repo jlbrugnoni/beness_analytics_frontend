@@ -167,16 +167,10 @@ export default function SchedulePage() {
     const [classes, setClasses] = useState([]);
     const [loading, setLoading] = useState(false);
     const [matching, setMatching] = useState(false);
-    const [generating, setGenerating] = useState(false);
-    const [resetting, setResetting] = useState(false);
-    const [rematchingSlots, setRematchingSlots] = useState(false);
     const [reconcilingClasses, setReconcilingClasses] = useState(false);
     const [syncingCapacity, setSyncingCapacity] = useState(false);
     const [matchResult, setMatchResult] = useState(null);
-    const [generateResult, setGenerateResult] = useState(null);
-    const [rematchResult, setRematchResult] = useState(null);
     const [classReconcileResult, setClassReconcileResult] = useState(null);
-    const [resetResult, setResetResult] = useState(null);
     const [capacitySyncResult, setCapacitySyncResult] = useState(null);
     const [error, setError] = useState("");
 
@@ -266,33 +260,6 @@ export default function SchedulePage() {
         loadClasses();
     }, [token, site, studio, room, weekStart]);
 
-    const handleGenerateExpectedSlots = async () => {
-        if (!site) return;
-        setGenerating(true);
-        setError("");
-        setGenerateResult(null);
-        try {
-            const payload = {
-                site,
-                date_from: weekStart,
-                date_to: weekDays[6].value,
-            };
-            if (studio) payload.studio = studio;
-            if (room) payload.room = room;
-            const response = await axios.post(
-                `${backendUrl}/api/data/expected-class-slots/generate/`,
-                payload,
-                authHeaders,
-            );
-            setGenerateResult(response.data);
-            await loadClasses();
-        } catch (err) {
-            setError(err.response?.data?.error || "Error generating expected slots.");
-        } finally {
-            setGenerating(false);
-        }
-    };
-
     const handleRebuildMatches = async () => {
         if (!site) return;
         setMatching(true);
@@ -317,33 +284,6 @@ export default function SchedulePage() {
         }
     };
 
-    const handleRematchExpectedSlots = async () => {
-        if (!site) return;
-        setRematchingSlots(true);
-        setError("");
-        setRematchResult(null);
-        try {
-            const payload = {
-                site,
-                date_from: weekStart,
-                date_to: weekDays[6].value,
-            };
-            if (studio) payload.studio = studio;
-            if (room) payload.room = room;
-            const response = await axios.post(
-                `${backendUrl}/api/data/expected-class-slots/rematch/`,
-                payload,
-                authHeaders,
-            );
-            setRematchResult(response.data);
-            await loadClasses();
-        } catch (err) {
-            setError(err.response?.data?.error || "Error rematching expected slots.");
-        } finally {
-            setRematchingSlots(false);
-        }
-    };
-
     const handleSyncTemplateCapacities = async () => {
         if (!site) return;
         if (!window.confirm("Update active weekly templates in the current filters using each room's current capacity?")) return;
@@ -364,45 +304,6 @@ export default function SchedulePage() {
             setError(err.response?.data?.error || "Error syncing template capacities.");
         } finally {
             setSyncingCapacity(false);
-        }
-    };
-
-    const handleResetScopedSchedule = async () => {
-        if (!site) return;
-        const scopeLabel = [
-            sites.find((item) => String(item.id) === String(site))?.name,
-            studio ? studios.find((item) => String(item.id) === String(studio))?.name : "all studios",
-            room ? rooms.find((item) => String(item.id) === String(room))?.name : "all rooms",
-            `${weekStart} to ${weekDays[6].value}`,
-        ].filter(Boolean).join(" / ");
-        const confirmation = window.prompt(
-            `This will delete expected slots and manually-created scheduled classes for: ${scopeLabel}.\nImported MindBody classes and attendance reports will be preserved.\n\nType RESET SCHEDULE DATA to continue.`
-        );
-        if (confirmation !== "RESET SCHEDULE DATA") return;
-        setResetting(true);
-        setError("");
-        setResetResult(null);
-        try {
-            const payload = {
-                site,
-                date_from: weekStart,
-                date_to: weekDays[6].value,
-                include_manual_classes: true,
-                confirmation,
-            };
-            if (studio) payload.studio = studio;
-            if (room) payload.room = room;
-            const response = await axios.post(
-                `${backendUrl}/api/data/expected-class-slots/reset-scoped/`,
-                payload,
-                authHeaders,
-            );
-            setResetResult(response.data);
-            await loadClasses();
-        } catch (err) {
-            setError(err.response?.data?.error || "Error resetting schedule data.");
-        } finally {
-            setResetting(false);
         }
     };
 
@@ -516,23 +417,14 @@ export default function SchedulePage() {
                             <Link href="/schedule/unmatched-attendance">
                                 <Button variant="outlined">Review Unmatched Attendance</Button>
                             </Link>
-                            <Button variant="outlined" onClick={handleGenerateExpectedSlots} disabled={generating || !site}>
-                                {generating ? "Generating..." : "Generate Expected Slots"}
-                            </Button>
                             <Button variant="outlined" onClick={handleReconcileScheduledClasses} disabled={reconcilingClasses || !site}>
                                 {reconcilingClasses ? "Reconciling..." : "Reconcile Scheduled Classes"}
                             </Button>
                             <Button variant="contained" onClick={handleRebuildMatches} disabled={matching || !site}>
                                 {matching ? "Matching..." : "Rebuild Attendance Matches"}
                             </Button>
-                            <Button variant="outlined" onClick={handleRematchExpectedSlots} disabled={rematchingSlots || !site}>
-                                {rematchingSlots ? "Rematching..." : "Rematch Expected Slots"}
-                            </Button>
                             <Button variant="outlined" onClick={handleSyncTemplateCapacities} disabled={syncingCapacity || !site}>
                                 {syncingCapacity ? "Updating..." : "Sync Template Capacities"}
-                            </Button>
-                            <Button variant="outlined" color="error" onClick={handleResetScopedSchedule} disabled={resetting || !site}>
-                                {resetting ? "Resetting..." : "Reset Expected/Manual"}
                             </Button>
                         </div>
                     </Paper>
@@ -540,18 +432,6 @@ export default function SchedulePage() {
                     {matchResult && (
                         <Alert severity="success">
                             Matches rebuilt: {matchResult.exact_instructor_time} exact, {matchResult.single_class_same_time} by time, {matchResult.ambiguous} ambiguous, {matchResult.unmatched} unmatched.
-                        </Alert>
-                    )}
-
-                    {generateResult && (
-                        <Alert severity="success">
-                            Expected slots generated: {generateResult.created} created, {generateResult.updated} updated, {generateResult.matched} matched, {generateResult.missing} missing. Manual classes created: {generateResult.manual_classes_created || 0}.
-                        </Alert>
-                    )}
-
-                    {rematchResult && (
-                        <Alert severity="success">
-                            Expected slots rematched: {rematchResult.expected_slots_relinked} relinked, {rematchResult.manual_classes_removed} manual duplicates removed, {rematchResult.attendance_matches_transferred} attendance matches transferred. Attendance unmatched: {rematchResult.attendance_matches?.unmatched || 0}.
                         </Alert>
                     )}
 
@@ -564,12 +444,6 @@ export default function SchedulePage() {
                     {capacitySyncResult && (
                         <Alert severity="success">
                             Template capacities updated: {capacitySyncResult.updated}. Skipped without room capacity: {capacitySyncResult.skipped_without_capacity}.
-                        </Alert>
-                    )}
-
-                    {resetResult && (
-                        <Alert severity="success">
-                            Schedule reset complete: {resetResult.expected_slots_deleted} expected slots deleted, {resetResult.manual_classes_deleted} manually-created classes deleted. Imported MindBody classes were preserved.
                         </Alert>
                     )}
 
