@@ -1170,6 +1170,331 @@ const OccupancyHourMatrix = ({ data, view, weekday }) => {
 };
 
 
+const TrialConversionFunnelChart = ({ conversion }) => {
+    const trialClients = Number(conversion?.unique_trial_clients || 0);
+    const chartRows = [
+        { label: "Trial Clients", total: trialClients },
+        { label: "Members", total: Number(conversion?.converted_members || 0) },
+        { label: "Non-member Clients", total: Number(conversion?.converted_non_members || 0) },
+        { label: "Not Converted", total: Number(conversion?.not_converted_clients || 0) },
+    ].map((row) => ({
+        ...row,
+        percent: trialClients ? (row.total / trialClients) * 100 : 0,
+    }));
+
+    return (
+        <Paper style={{ padding: "16px", gridColumn: "span 2" }}>
+            <h2 style={{ marginTop: 0 }}>Trial Conversion Funnel</h2>
+            <div style={{ width: "100%", height: 320 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 20, right: 24, bottom: 8, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis dataKey="label" tick={chartText} />
+                        <YAxis allowDecimals={false} tick={chartText} />
+                        <ChartTooltip
+                            formatter={(value, name, item) => [
+                                `${formatNumber(value)} (${formatPercentOneDecimal(item?.payload?.percent || 0)})`,
+                                "Clients",
+                            ]}
+                            contentStyle={chartTooltipStyle}
+                        />
+                        <Bar dataKey="total" name="Clients" fill="#2f6f73" radius={[4, 4, 0, 0]}>
+                            <LabelList dataKey="total" position="top" style={chartLabelStyle} formatter={formatNumber} />
+                        </Bar>
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!trialClients && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const TrialActivityByDateChart = ({ rows }) => {
+    const chartRows = (rows || []).map((row) => ({
+        label: formatShortWeekdayDate(row.date),
+        attended: Number(row.attended || 0),
+        late_cancels: Number(row.late_cancels || 0),
+        no_shows: Number(row.no_shows || 0),
+    }));
+
+    return (
+        <Paper style={{ padding: "16px", gridColumn: "span 2" }}>
+            <h2 style={{ marginTop: 0 }}>Trial Activity by Date</h2>
+            <div style={{ width: "100%", height: 320 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 16, bottom: 8, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis dataKey="label" tick={chartText} />
+                        <YAxis allowDecimals={false} tick={chartText} />
+                        <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={chartTooltipStyle} />
+                        <Legend wrapperStyle={chartLegendStyle} />
+                        <Bar dataKey="attended" name="Attended" stackId="trial" fill={completedColor} />
+                        <Bar dataKey="late_cancels" name="Late cancels" stackId="trial" fill={attentionColor} />
+                        <Bar dataKey="no_shows" name="No-shows" stackId="trial" fill="#b42318" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const TrialConversionRankingChart = ({ title, rows }) => {
+    const chartRows = (rows || []).slice(0, 10).map((row) => ({
+        label: row.name || "N/A",
+        trial_clients: Number(row.trial_clients || 0),
+        converted_clients: Number(row.converted_clients || 0),
+        converted_members: Number(row.converted_members || 0),
+        converted_non_members: Number(row.converted_non_members || 0),
+        not_converted_clients: Number(row.not_converted_clients || 0),
+        member_conversion_rate: Number(row.member_conversion_rate || 0),
+    }));
+    const renderTooltip = ({ active, payload, label }) => {
+        if (!active || !payload?.length) return null;
+        const row = payload[0]?.payload || {};
+        return (
+            <div style={{ ...chartTooltipStyle, background: "#fff", padding: "10px 12px", boxShadow: "0 8px 24px rgba(15, 23, 42, 0.12)" }}>
+                <div style={{ fontWeight: 900, marginBottom: 6 }}>{label}</div>
+                <div style={{ display: "grid", gap: 4 }}>
+                    <div><strong>Member conversion:</strong> {formatPercentOneDecimal(row.member_conversion_rate)}</div>
+                    <div><strong>Member conversions:</strong> {formatNumber(row.converted_members)}</div>
+                    <div><strong>Non-member conversions:</strong> {formatNumber(row.converted_non_members)}</div>
+                    <div><strong>Not converted:</strong> {formatNumber(row.not_converted_clients)}</div>
+                    <div><strong>Attended trials:</strong> {formatNumber(row.trial_clients)}</div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <Paper style={{ padding: "16px" }}>
+            <h2 style={{ marginTop: 0 }}>{title}</h2>
+            <div style={{ width: "100%", height: 340 }}>
+                <ResponsiveContainer>
+                    <RechartsBarChart data={chartRows} margin={{ top: 12, right: 8, bottom: 48, left: 0 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis
+                            dataKey="label"
+                            interval={0}
+                            angle={-28}
+                            textAnchor="end"
+                            height={58}
+                            tick={chartText}
+                            tickFormatter={(value) => truncateLabel(value, 12)}
+                        />
+                        <YAxis tick={chartText} tickFormatter={(value) => `${value}%`} />
+                        <ChartTooltip content={renderTooltip} />
+                        <Bar dataKey="member_conversion_rate" name="Member conversion" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                    </RechartsBarChart>
+                </ResponsiveContainer>
+            </div>
+            {!chartRows.length && <div>No data</div>}
+        </Paper>
+    );
+};
+
+
+const ConversionTrendChart = ({ rows, view }) => {
+    const [showTrend, setShowTrend] = useState(false);
+    const chartRows = view === "rates" && showTrend
+        ? addLinearTrendLines(rows, ["member_conversion_rate", "non_member_conversion_rate"])
+        : rows;
+    return (
+        <>
+            {view === "rates" && <TrendToggle checked={showTrend} onChange={setShowTrend} />}
+            <div style={{ width: "100%", height: 420 }}>
+                <ResponsiveContainer>
+                    <ComposedChart data={chartRows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis dataKey="label" tick={chartText} />
+                        {view === "rates" ? (
+                            <YAxis tick={chartText} tickFormatter={(value) => `${value}%`} />
+                        ) : (
+                            <YAxis allowDecimals={false} tick={chartText} />
+                        )}
+                        <ChartTooltip
+                            formatter={(value, name, item) => {
+                                if (String(item?.dataKey || "").includes("rate")) return [formatPercentOneDecimal(value), name];
+                                return [formatNumber(value), name];
+                            }}
+                            contentStyle={expandedChartTooltipStyle}
+                        />
+                        <Legend wrapperStyle={chartLegendStyle} />
+                        {view === "activity" ? (
+                            <>
+                                <Bar dataKey="attended_trials" name="Attended trials" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                            </>
+                        ) : (
+                            <>
+                                <Line
+                                    type="monotone"
+                                    dataKey="member_conversion_rate"
+                                    name="Member conversion rate"
+                                    stroke="#2f6f73"
+                                    strokeWidth={3}
+                                    dot={{ r: 4 }}
+                                    activeDot={{ r: 6 }}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="non_member_conversion_rate"
+                                    name="Non-member conversion rate"
+                                    stroke="#d97706"
+                                    strokeWidth={3}
+                                    dot={{ r: 4 }}
+                                    activeDot={{ r: 6 }}
+                                />
+                                {showTrend && (
+                                    <>
+                                        <Line
+                                            type="monotone"
+                                            dataKey="member_conversion_rate_trend"
+                                            name="Member conversion trend"
+                                            stroke="#184e52"
+                                            {...trendStrokeStyle}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="non_member_conversion_rate_trend"
+                                            name="Non-member conversion trend"
+                                            stroke="#92400e"
+                                            {...trendStrokeStyle}
+                                        />
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
+        </>
+    );
+};
+
+
+const TrialConversionTable = ({ rows }) => (
+    <Paper style={{ padding: "16px", gridColumn: "1 / -1" }}>
+        <h2 style={{ marginTop: 0 }}>Trial Client Follow-up</h2>
+        <TableContainer style={{ maxHeight: 460 }}>
+            <Table stickyHeader size="small">
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Client</TableCell>
+                        <TableCell>Trial Date</TableCell>
+                        <TableCell>Studio</TableCell>
+                        <TableCell>Instructor</TableCell>
+                        <TableCell>Trial Service</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Conversion Service</TableCell>
+                        <TableCell align="right">Days</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {(rows || []).map((row, index) => (
+                        <TableRow key={`${row.client_id}-${row.trial_date}-${index}`}>
+                            <TableCell>{row.client || "N/A"}</TableCell>
+                            <TableCell>{formatShortWeekdayDate(row.trial_date)}</TableCell>
+                            <TableCell>{row.studio || "N/A"}</TableCell>
+                            <TableCell>{row.instructor || "N/A"}</TableCell>
+                            <TableCell>{row.trial_service || "N/A"}</TableCell>
+                            <TableCell>
+                                {row.converted_to_member
+                                    ? "Member"
+                                    : row.converted_to_client
+                                        ? "Paid client"
+                                        : "Pending"}
+                            </TableCell>
+                            <TableCell>{row.membership_service || row.conversion_service || "N/A"}</TableCell>
+                            <TableCell align="right">
+                                {row.days_to_conversion === null || row.days_to_conversion === undefined
+                                    ? ""
+                                    : formatNumber(row.days_to_conversion)}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                    {!rows?.length && (
+                        <TableRow>
+                            <TableCell colSpan={8}>No data</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    </Paper>
+);
+
+
+const ConversionDashboardSection = ({ conversion, comparisonConversion, periodLabel, mode, onOpenTrend }) => {
+    const trialClients = Number(conversion?.unique_trial_clients || 0);
+    const memberRate = conversion?.member_conversion_rate || 0;
+    const nonMemberRate = conversion?.non_member_conversion_rate || 0;
+    return (
+        <>
+            {Number(conversion?.tracked_trial_options || 0) === 0 && (
+                <Alert severity="warning">
+                    No trial-class price options are marked yet. Mark them in Data &gt; Pricing Options.
+                </Alert>
+            )}
+            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <KpiCard
+                    label="Attended Trials"
+                    value={formatNumber(conversion?.attended_trials)}
+                    action={<Button variant="outlined" size="small" onClick={() => onOpenTrend("activity")}>Trend</Button>}
+                />
+                <KpiCard label="Trial Clients" value={formatNumber(trialClients)} />
+                <KpiCard
+                    label="Member Conversion"
+                    value={formatPercent(memberRate)}
+                    action={(
+                        <Stack spacing={0.5} alignItems="flex-end">
+                            <Button variant="outlined" size="small" onClick={() => onOpenTrend("rates")}>Trend</Button>
+                            {comparisonConversion && (
+                                <span style={{ fontSize: 12, fontWeight: 800, color: "#64748b" }}>
+                                    {comparisonDelta(memberRate, comparisonConversion.member_conversion_rate, {
+                                        periodLabel,
+                                        decimals: 1,
+                                        suffix: " pts",
+                                    }).label}
+                                </span>
+                            )}
+                        </Stack>
+                    )}
+                />
+                <KpiCard
+                    label="Non-member Conversion"
+                    value={formatPercent(nonMemberRate)}
+                    action={(
+                        <Stack spacing={0.5} alignItems="flex-end">
+                            <Button variant="outlined" size="small" onClick={() => onOpenTrend("rates")}>Trend</Button>
+                            {comparisonConversion && (
+                                <span style={{ fontSize: 12, fontWeight: 800, color: "#64748b" }}>
+                                    {comparisonDelta(nonMemberRate, comparisonConversion.non_member_conversion_rate, {
+                                        periodLabel,
+                                        decimals: 1,
+                                        suffix: " pts",
+                                    }).label}
+                                </span>
+                            )}
+                        </Stack>
+                    )}
+                />
+                <KpiCard label="Not Converted" value={formatNumber(conversion?.not_converted_clients)} />
+                <KpiCard label="Avg Days to Convert" value={formatNumber(Number(conversion?.average_days_to_conversion || 0).toFixed(1))} />
+            </div>
+            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+                <TrialConversionFunnelChart conversion={conversion} />
+                {mode === "weekly" && <TrialActivityByDateChart rows={conversion?.by_date} />}
+                <TrialConversionRankingChart title="Trial Conversion by Instructor" rows={conversion?.by_instructor} />
+                <TrialConversionRankingChart title="Trial Conversion by Studio" rows={conversion?.by_studio} />
+                <TrialConversionTable rows={conversion?.rows} />
+            </div>
+        </>
+    );
+};
+
+
 const BarChart = ({ title, rows, labelKey = "date", valueKey = "total", money = false, limit = 31 }) => {
     const chartRows = (rows || []).slice(-limit);
     const maxValue = Math.max(...chartRows.map((row) => Number(row[valueKey] || 0)), 0);
@@ -1762,11 +2087,13 @@ const dashboardTabs = {
         { label: "Summary", value: "monthly_overview" },
         { label: "Revenue", value: "revenue" },
         { label: "Retention", value: "retention" },
+        { label: "Conversion", value: "conversion" },
     ],
     weekly: [
         { label: "Summary", value: "weekly_overview" },
         { label: "Attendance", value: "attendance" },
         { label: "Occupancy", value: "occupancy" },
+        { label: "Conversion", value: "conversion" },
     ],
 };
 
@@ -1888,10 +2215,12 @@ export default function Dashboard() {
     const [attendance, setAttendance] = useState(null);
     const [retention, setRetention] = useState(null);
     const [occupation, setOccupation] = useState(null);
+    const [conversion, setConversion] = useState(null);
     const [comparisonSummary, setComparisonSummary] = useState(null);
     const [comparisonRetention, setComparisonRetention] = useState(null);
     const [comparisonAttendance, setComparisonAttendance] = useState(null);
     const [comparisonOccupation, setComparisonOccupation] = useState(null);
+    const [comparisonConversion, setComparisonConversion] = useState(null);
     const [retentionTrend, setRetentionTrend] = useState(null);
     const [dashboardMode, setDashboardMode] = useState(initialDashboardState.dashboardMode);
     const [activeTab, setActiveTab] = useState(initialDashboardState.activeTab);
@@ -1904,6 +2233,7 @@ export default function Dashboard() {
     const [weeklyTrendsLoading, setWeeklyTrendsLoading] = useState(false);
     const [weeklyAttendanceTrendView, setWeeklyAttendanceTrendView] = useState("visits");
     const [weeklyOccupancyTrendView, setWeeklyOccupancyTrendView] = useState("capacity");
+    const [conversionTrendView, setConversionTrendView] = useState("activity");
     const [occupancyHourMatrix, setOccupancyHourMatrix] = useState(null);
     const [occupancyHourMatrixLoading, setOccupancyHourMatrixLoading] = useState(false);
     const [occupancyHourMatrixView, setOccupancyHourMatrixView] = useState("current_week");
@@ -1966,8 +2296,10 @@ export default function Dashboard() {
                 setSummary(dashboardData.current.summary);
                 setRevenue(dashboardData.current.revenue);
                 setRetention(dashboardData.current.retention);
+                setConversion(dashboardData.current.conversion);
                 setComparisonSummary(dashboardData.comparison.summary);
                 setComparisonRetention(dashboardData.comparison.retention);
+                setComparisonConversion(dashboardData.comparison.conversion);
                 setRetentionTrend(trendResponse.data);
                 setComparisonAttendance(null);
                 setComparisonOccupation(null);
@@ -1982,9 +2314,11 @@ export default function Dashboard() {
                 setSummary(dashboardData.current.summary);
                 setAttendance(dashboardData.current.attendance);
                 setOccupation(dashboardData.current.occupation);
+                setConversion(dashboardData.current.conversion);
                 setComparisonSummary(dashboardData.comparison.summary);
                 setComparisonAttendance(dashboardData.comparison.attendance);
                 setComparisonOccupation(dashboardData.comparison.occupation);
+                setComparisonConversion(dashboardData.comparison.conversion);
                 setComparisonRetention(null);
                 setRetentionTrend(null);
                 setRetentionTables(null);
@@ -2121,7 +2455,20 @@ export default function Dashboard() {
         attendance_used: row.attendance_used || 0,
         unused_capacity: Math.max(0, Number(row.scheduled_capacity || 0) - Number(row.attendance_used || 0)),
         scheduled_classes: row.scheduled_classes || 0,
+        trial_bookings: row.trial_bookings || 0,
+        attended_trials: row.attended_trials || 0,
+        member_conversion_rate: row.member_conversion_rate || 0,
+        non_member_conversion_rate: row.non_member_conversion_rate || 0,
     }));
+    const conversionTrendRows = dashboardMode === "monthly"
+        ? (retentionTrend?.months || []).map((row) => ({
+            label: formatMonthLabel(row.month),
+            trial_bookings: row.trial_bookings || 0,
+            attended_trials: row.attended_trials || 0,
+            member_conversion_rate: row.member_conversion_rate || 0,
+            non_member_conversion_rate: row.non_member_conversion_rate || 0,
+        }))
+        : weeklyTrendRows;
     const weeklyWeekdayDrilldownRows = (weeklyTrends?.weekday_rows || [])
         .filter((row) => row.weekday === weeklyDrilldownWeekday)
         .map((row) => ({
@@ -2249,6 +2596,15 @@ export default function Dashboard() {
     const openWeeklyAttendanceTrend = (view) => {
         setWeeklyAttendanceTrendView(view);
         openWeeklyTrend("weekly_attendance_health");
+    };
+
+    const openConversionTrend = (view) => {
+        setConversionTrendView(view);
+        if (dashboardMode === "weekly") {
+            openWeeklyTrend("conversion_trend");
+            return;
+        }
+        setExpandedInsight("conversion_trend");
     };
 
     const navigatePeriod = (direction) => {
@@ -2769,6 +3125,16 @@ export default function Dashboard() {
                         </>
                     )}
 
+                    {activeTab === "conversion" && (
+                        <ConversionDashboardSection
+                            conversion={conversion}
+                            comparisonConversion={comparisonConversion}
+                            periodLabel={periodLabel}
+                            mode={dashboardMode}
+                            onOpenTrend={openConversionTrend}
+                        />
+                    )}
+
                     {activeTab === "occupancy" && (
                         <>
                             <CapacityUsageCard
@@ -3036,6 +3402,38 @@ export default function Dashboard() {
                         <LinearProgress />
                     ) : (
                         <WeeklyWeekdayDrilldownChart rows={weeklyWeekdayDrilldownRows} metric="occupancy" />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "conversion_trend"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="lg"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Trial Conversion Trend</span>
+                        <IconButton aria-label="Close trial conversion trend" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={conversionTrendView}
+                        onChange={(_, value) => setConversionTrendView(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label="Trial Activity" value="activity" />
+                        <Tab label="Conversion Rates" value="rates" />
+                    </Tabs>
+                    {dashboardMode === "weekly" && weeklyTrendsLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <ConversionTrendChart rows={conversionTrendRows} view={conversionTrendView} />
                     )}
                 </DialogContent>
             </Dialog>
