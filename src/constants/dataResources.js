@@ -145,12 +145,14 @@ export const dataResources = {
             { label: "Service Category", field: "service_category_name" },
             { label: "MindBody Name", field: "mindbody_name" },
             { label: "Track Retention", field: "track_retention" },
+            { label: "Trial Class", field: "is_trial_class" },
             { label: "Active", field: "active" },
         ],
         fields: [
             ...siteScopedFields,
             { name: "service_category", label: "Service Category", type: "serviceCategory" },
             { name: "track_retention", label: "Track Retention", type: "boolean", default: false },
+            { name: "is_trial_class", label: "Trial Class", type: "boolean", default: false },
         ],
     },
     "payment-methods": {
