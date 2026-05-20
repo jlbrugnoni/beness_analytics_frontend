@@ -30,11 +30,13 @@ import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import LinearProgress from "@mui/material/LinearProgress";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
+import Switch from "@mui/material/Switch";
 import Tab from "@mui/material/Tab";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -55,6 +57,113 @@ const completedColor = "#2f6f73";
 const attentionColor = "#d97706";
 const unusedCapacityColor = "#d8dee4";
 const chartLabelStyle = { fill: "#2f3a45", fontSize: 14, fontWeight: 700 };
+const trendStrokeStyle = { strokeDasharray: "6 5", dot: false, activeDot: false, strokeWidth: 2.5 };
+const occupancyEmptyColor = "#f6f8fa";
+const memberMixColors = ["#2f6f73", "#8a5cf6", "#d97706", "#64748b"];
+
+
+const occupancyHeatColor = (value) => {
+    const rate = Math.max(0, Math.min(100, Number(value || 0)));
+    if (rate === 0) return "#fecaca";
+    if (rate < 35) return "#fef2f2";
+    if (rate < 55) return "#ffedd5";
+    if (rate < 75) return "#fef3c7";
+    if (rate < 90) return "#dcfce7";
+    return "#bbf7d0";
+};
+
+
+const trendKey = (key) => `${key}_trend`;
+
+
+const addLinearTrendLines = (rows, keys) => {
+    const nextRows = (rows || []).map((row) => ({ ...row }));
+    keys.forEach((key) => {
+        const points = nextRows
+            .map((row, index) => ({ index, value: Number(row[key]) }))
+            .filter((point) => Number.isFinite(point.value));
+        if (points.length < 2) return;
+        const count = points.length;
+        const sumX = points.reduce((sum, point) => sum + point.index, 0);
+        const sumY = points.reduce((sum, point) => sum + point.value, 0);
+        const sumXY = points.reduce((sum, point) => sum + point.index * point.value, 0);
+        const sumXX = points.reduce((sum, point) => sum + point.index * point.index, 0);
+        const denominator = count * sumXX - sumX * sumX;
+        const slope = denominator ? (count * sumXY - sumX * sumY) / denominator : 0;
+        const intercept = (sumY - slope * sumX) / count;
+        nextRows.forEach((row, index) => {
+            row[trendKey(key)] = Number((intercept + slope * index).toFixed(2));
+        });
+    });
+    return nextRows;
+};
+
+
+const TrendToggle = ({ checked, onChange }) => (
+    <Stack direction="row" justifyContent="flex-end">
+        <FormControlLabel
+            control={<Switch size="small" checked={checked} onChange={(event) => onChange(event.target.checked)} />}
+            label="Trend line"
+            sx={{
+                marginRight: 0,
+                ".MuiFormControlLabel-label": { fontSize: 15, fontWeight: 700, color: "#2f3a45" },
+            }}
+        />
+    </Stack>
+);
+
+
+const StackedPercentLabel = ({ x, y, width, height, value, payload }) => {
+    const total = Number(payload?.current_members || 0);
+    const percent = total ? (Number(value || 0) / total) * 100 : 0;
+    if (!value || !total || percent < 1 || width < 34) return null;
+    const label = formatPercentOneDecimal(percent);
+    const labelWidth = Math.max(34, label.length * 9 + 10);
+    const labelHeight = 20;
+    const labelX = x + width / 2;
+    const labelY = y + height / 2;
+    return (
+        <g>
+            <rect
+                x={labelX - labelWidth / 2}
+                y={labelY - labelHeight / 2}
+                width={labelWidth}
+                height={labelHeight}
+                rx={4}
+                fill="#ffffff"
+                opacity={0.92}
+            />
+            <text
+                x={labelX}
+                y={labelY}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#111827"
+                fontSize={13}
+                fontWeight={900}
+            >
+                {label}
+            </text>
+        </g>
+    );
+};
+
+
+const StackedTotalLabel = ({ x, y, width, value }) => {
+    if (!value) return null;
+    return (
+        <text
+            x={x + width / 2}
+            y={Math.max(14, y - 8)}
+            textAnchor="middle"
+            fill="#172033"
+            fontSize={14}
+            fontWeight={900}
+        >
+            {formatNumber(value)}
+        </text>
+    );
+};
 
 
 const KpiCard = ({ label, value, action }) => (
@@ -136,51 +245,100 @@ const BreakdownTable = ({ title, rows, nameKey = "name", valueKey = "total", mon
 );
 
 
-const MemberTrendChart = ({ rows }) => (
-    <Paper style={{ padding: "16px" }}>
-        <h2 style={{ marginTop: 0 }}>Member Trend</h2>
-        <div style={{ width: "100%", height: 320 }}>
-            <ResponsiveContainer>
-                <ComposedChart data={rows} margin={{ top: 16, right: 20, bottom: 8, left: 8 }}>
-                    <CartesianGrid stroke="#eef1f4" vertical={false} />
-                    <XAxis dataKey="label" tick={chartText} />
-                    <YAxis allowDecimals={false} tick={chartText} />
-                    <ChartTooltip formatter={(value) => formatNumber(value)} contentStyle={chartTooltipStyle} />
-                    <Legend wrapperStyle={chartLegendStyle} />
-                    <Bar dataKey="not_renewed" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
-                    <Line
-                        type="monotone"
-                        dataKey="current_members"
-                        name="Current members"
-                        stroke="#2f6f73"
-                        strokeWidth={3}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                    />
-                </ComposedChart>
-            </ResponsiveContainer>
-        </div>
-        {!rows.length && <div>No data</div>}
-    </Paper>
-);
+const MemberTrendChart = ({ rows }) => {
+    const [showTrend, setShowTrend] = useState(false);
+    const chartRows = showTrend ? addLinearTrendLines(rows, ["current_members"]) : rows;
+
+    return (
+        <Paper style={{ padding: "16px" }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap">
+                <h2 style={{ margin: 0 }}>Member Trend</h2>
+                <TrendToggle checked={showTrend} onChange={setShowTrend} />
+            </Stack>
+            <div style={{ width: "100%", height: 320 }}>
+                <ResponsiveContainer>
+                    <ComposedChart data={chartRows} margin={{ top: 16, right: 20, bottom: 8, left: 8 }}>
+                        <CartesianGrid stroke="#eef1f4" vertical={false} />
+                        <XAxis dataKey="label" tick={chartText} />
+                        <YAxis allowDecimals={false} tick={chartText} />
+                        <ChartTooltip
+                            formatter={(value, name) => {
+                                if (name === "current_members_trend") return [formatNumber(value), "Current members trend"];
+                                return [formatNumber(value), name];
+                            }}
+                            contentStyle={chartTooltipStyle}
+                        />
+                        <Legend wrapperStyle={chartLegendStyle} />
+                        <Bar dataKey="not_renewed" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
+                        <Line
+                            type="monotone"
+                            dataKey="current_members"
+                            name="Current members"
+                            stroke="#2f6f73"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                        {showTrend && (
+                            <Line
+                                type="linear"
+                                dataKey={trendKey("current_members")}
+                                name="Current members trend"
+                                stroke="#184e52"
+                                {...trendStrokeStyle}
+                            />
+                        )}
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
+            {!rows.length && <div>No data</div>}
+        </Paper>
+    );
+};
 
 
 const RevenueItemChart = ({ rows }) => {
-    const chartRows = (rows || []).slice(0, 10).map((row) => ({
-        label: row.name || "N/A",
-        total: Number(row.total || 0),
-        count: Number(row.count || 0),
-    }));
+    const [mode, setMode] = useState("revenue");
+    const valueKey = mode === "units" ? "units" : "total";
+    const modeLabel = mode === "units" ? "Units sold" : "Revenue";
+    const modeTotal = (rows || []).reduce((sum, row) => sum + Number(row[valueKey] || 0), 0);
+    const chartRows = (rows || [])
+        .map((row) => ({
+            label: row.name || "N/A",
+            total: Number(row.total || 0),
+            count: Number(row.count || 0),
+            units: Number(row.units || row.count || 0),
+            percentage: modeTotal ? Number(row[valueKey] || 0) / modeTotal * 100 : 0,
+        }))
+        .sort((a, b) => Number(b[valueKey] || 0) - Number(a[valueKey] || 0))
+        .slice(0, 10);
     const chartHeight = Math.max(360, chartRows.length * 54 + 90);
 
     return (
         <Paper style={{ padding: "16px" }}>
-            <h2 style={{ marginTop: 0 }}>Revenue by Item</h2>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap" style={{ marginBottom: "8px" }}>
+                <h2 style={{ margin: 0 }}>{mode === "units" ? "Units Sold by Item" : "Revenue by Item"}</h2>
+                <TextField
+                    select
+                    size="small"
+                    label="View"
+                    value={mode}
+                    onChange={(event) => setMode(event.target.value)}
+                    style={{ minWidth: 150 }}
+                >
+                    <MenuItem value="revenue">Revenue</MenuItem>
+                    <MenuItem value="units">Units sold</MenuItem>
+                </TextField>
+            </Stack>
             <div style={{ width: "100%", height: chartHeight }}>
                 <ResponsiveContainer>
                     <RechartsBarChart data={chartRows} layout="vertical" margin={{ top: 8, right: 32, bottom: 16, left: 12 }}>
                         <CartesianGrid stroke="#eef1f4" horizontal={false} />
-                        <XAxis type="number" tickFormatter={formatCompactMoney} tick={chartText} />
+                        <XAxis
+                            type="number"
+                            tickFormatter={mode === "units" ? formatNumber : formatCompactMoney}
+                            tick={chartText}
+                        />
                         <YAxis
                             type="category"
                             dataKey="label"
@@ -189,11 +347,15 @@ const RevenueItemChart = ({ rows }) => {
                             tickFormatter={(value) => truncateLabel(value, 32)}
                         />
                         <ChartTooltip
-                            formatter={(value) => [formatMoney(value), "Revenue"]}
+                            formatter={(value, name, item) => {
+                                const percent = formatPercentOneDecimal(Number(item?.payload?.percentage || 0));
+                                const formattedValue = mode === "units" ? formatNumber(value) : formatMoney(value);
+                                return [`${formattedValue} (${percent})`, modeLabel];
+                            }}
                             labelFormatter={(value) => value}
                             contentStyle={chartTooltipStyle}
                         />
-                        <Bar dataKey="total" name="Revenue" fill="#2f6f73" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey={valueKey} name={modeLabel} fill="#2f6f73" radius={[0, 4, 4, 0]} />
                     </RechartsBarChart>
                 </ResponsiveContainer>
             </div>
@@ -203,18 +365,24 @@ const RevenueItemChart = ({ rows }) => {
 };
 
 
-const RevenueHealthTrendChart = ({ rows }) => (
-    <div style={{ width: "100%", height: 420 }}>
-        <ResponsiveContainer>
-            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+const RevenueHealthTrendChart = ({ rows }) => {
+    const [showTrend, setShowTrend] = useState(false);
+    const chartRows = showTrend ? addLinearTrendLines(rows, ["average_ticket"]) : rows;
+    return (
+        <>
+            <TrendToggle checked={showTrend} onChange={setShowTrend} />
+            <div style={{ width: "100%", height: 420 }}>
+                <ResponsiveContainer>
+                    <ComposedChart data={chartRows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
                 <CartesianGrid stroke="#eef1f4" vertical={false} />
                 <XAxis dataKey="label" tick={chartText} />
                 <YAxis yAxisId="money" tick={chartText} tickFormatter={formatCompactMoney} />
                 <YAxis yAxisId="ticket" orientation="right" tick={chartText} tickFormatter={formatCompactMoney} />
                 <ChartTooltip
-                    formatter={(value, name) => {
+                    formatter={(value, name, item) => {
                         if (name === "sales_revenue") return [formatMoney(value), "Sales revenue"];
                         if (name === "average_ticket") return [formatMoney(value), "Average ticket"];
+                        if (name === "average_ticket_trend") return [formatMoney(value), "Average ticket trend"];
                         return [formatMoney(value), name];
                     }}
                     contentStyle={expandedChartTooltipStyle}
@@ -231,16 +399,33 @@ const RevenueHealthTrendChart = ({ rows }) => (
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}
                 />
-            </ComposedChart>
-        </ResponsiveContainer>
-    </div>
-);
+                {showTrend && (
+                    <Line
+                        yAxisId="ticket"
+                        type="monotone"
+                        dataKey="average_ticket_trend"
+                        name="Average ticket trend"
+                        stroke="#4b5563"
+                        {...trendStrokeStyle}
+                    />
+                )}
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
+        </>
+    );
+};
 
 
-const RetentionHealthTrendChart = ({ rows }) => (
-    <div style={{ width: "100%", height: 420 }}>
-        <ResponsiveContainer>
-            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+const RetentionHealthTrendChart = ({ rows }) => {
+    const [showTrend, setShowTrend] = useState(false);
+    const chartRows = showTrend ? addLinearTrendLines(rows, ["renewal_rate"]) : rows;
+    return (
+        <>
+            <TrendToggle checked={showTrend} onChange={setShowTrend} />
+            <div style={{ width: "100%", height: 420 }}>
+                <ResponsiveContainer>
+                    <ComposedChart data={chartRows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
                 <CartesianGrid stroke="#eef1f4" vertical={false} />
                 <XAxis dataKey="label" tick={chartText} />
                 <YAxis yAxisId="rate" tick={chartText} tickFormatter={(value) => `${value}%`} />
@@ -248,6 +433,7 @@ const RetentionHealthTrendChart = ({ rows }) => (
                 <ChartTooltip
                     formatter={(value, name) => {
                         if (name === "renewal_rate") return [`${formatNumber(value)}%`, "Renewal rate"];
+                        if (name === "renewal_rate_trend") return [`${formatNumber(value)}%`, "Renewal rate trend"];
                         if (name === "not_renewed_members") return [formatNumber(value), "Not renewed"];
                         if (name === "not_renewed_unassigned_studio") return [formatNumber(value), "Unassigned studio"];
                         return [formatNumber(value), name];
@@ -267,16 +453,68 @@ const RetentionHealthTrendChart = ({ rows }) => (
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}
                 />
-            </ComposedChart>
-        </ResponsiveContainer>
-    </div>
-);
+                {showTrend && (
+                    <Line
+                        yAxisId="rate"
+                        type="monotone"
+                        dataKey="renewal_rate_trend"
+                        name="Renewal rate trend"
+                        stroke="#4b5563"
+                        {...trendStrokeStyle}
+                    />
+                )}
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
+        </>
+    );
+};
 
 
-const MemberMixHistoryChart = ({ rows, view }) => (
-    <div style={{ width: "100%", height: 420 }}>
-        <ResponsiveContainer>
-            <ComposedChart data={rows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
+const MemberMixHistoryChart = ({ rows, view }) => {
+    const trendKeys = view === "renewal" ? ["renewal_rate"] : [];
+    const [showTrend, setShowTrend] = useState(false);
+    const mixTotals = {};
+    (rows || []).forEach((row) => {
+        (row.current_member_mix || []).forEach((item) => {
+            const name = item.name || "N/A";
+            mixTotals[name] = (mixTotals[name] || 0) + Number(item.total || 0);
+        });
+    });
+    const topMixNames = Object.entries(mixTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name]) => name);
+    const mixKeys = [...topMixNames, "Others"].map((name, index) => ({
+        key: `member_mix_${index}`,
+        name,
+        color: memberMixColors[index],
+    }));
+    const memberMixRows = (rows || []).map((row) => {
+        const nextRow = { ...row };
+        const mixLookup = {};
+        (row.current_member_mix || []).forEach((item) => {
+            mixLookup[item.name || "N/A"] = Number(item.total || 0);
+        });
+        topMixNames.forEach((name, index) => {
+            nextRow[`member_mix_${index}`] = mixLookup[name] || 0;
+        });
+        nextRow[`member_mix_${topMixNames.length}`] = Object.entries(mixLookup).reduce((sum, [name, total]) => (
+            topMixNames.includes(name) ? sum : sum + total
+        ), 0);
+        return nextRow;
+    });
+    const chartRows = view === "members"
+        ? memberMixRows
+        : showTrend && trendKeys.length
+            ? addLinearTrendLines(rows, trendKeys)
+            : rows;
+    return (
+        <>
+            {trendKeys.length > 0 && <TrendToggle checked={showTrend} onChange={setShowTrend} />}
+            <div style={{ width: "100%", height: 420 }}>
+                <ResponsiveContainer>
+                    <ComposedChart data={chartRows} margin={{ top: 16, right: 24, bottom: 8, left: 8 }}>
                 <CartesianGrid stroke="#eef1f4" vertical={false} />
                 <XAxis dataKey="label" tick={chartText} />
                 {view === "renewal" ? (
@@ -285,13 +523,18 @@ const MemberMixHistoryChart = ({ rows, view }) => (
                     <YAxis allowDecimals={false} tick={chartText} />
                 )}
                 <ChartTooltip
-                    formatter={(value, name) => {
+                    formatter={(value, name, item) => {
                         if (name === "renewal_rate") return [`${formatNumber(value)}%`, "Renewal rate"];
-                        if (name === "current_members") return [formatNumber(value), "Current members"];
+                        if (name === "renewal_rate_trend") return [`${formatNumber(value)}%`, "Renewal rate trend"];
                         if (name === "retained_members") return [formatNumber(value), "Retained"];
                         if (name === "new_members") return [formatNumber(value), "New"];
                         if (name === "reactivated_members") return [formatNumber(value), "Reactivated"];
                         if (name === "not_renewed_members") return [formatNumber(value), "Not renewed"];
+                        if (String(item?.dataKey || "").startsWith("member_mix_")) {
+                            const total = item?.payload?.current_members || 0;
+                            const percent = total ? (Number(value || 0) / Number(total)) * 100 : 0;
+                            return [`${formatNumber(value)} (${formatPercentOneDecimal(percent)})`, name];
+                        }
                         return [formatNumber(value), name];
                     }}
                     contentStyle={expandedChartTooltipStyle}
@@ -299,28 +542,44 @@ const MemberMixHistoryChart = ({ rows, view }) => (
                 <Legend wrapperStyle={chartLegendStyle} />
                 {view === "members" && (
                     <>
-                        <Bar dataKey="current_members" name="Current members" fill="#2f6f73" radius={[4, 4, 0, 0]} />
+                        {mixKeys.map((item, index) => (
+                            <Bar
+                                key={item.key}
+                                dataKey={item.key}
+                                name={item.name}
+                                stackId="members"
+                                fill={item.color}
+                                radius={index === mixKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                                label={(props) => <StackedPercentLabel {...props} />}
+                            >
+                                {index === mixKeys.length - 1 && (
+                                    <LabelList dataKey="current_members" content={<StackedTotalLabel />} />
+                                )}
+                            </Bar>
+                        ))}
+                    </>
+                )}
+                {view === "renewal" && (
+                    <>
                         <Line
                             type="monotone"
-                            dataKey="retained_members"
-                            name="Retained"
-                            stroke="#215b63"
+                            dataKey="renewal_rate"
+                            name="Renewal rate"
+                            stroke="#2f6f73"
                             strokeWidth={3}
                             dot={{ r: 4 }}
                             activeDot={{ r: 6 }}
                         />
+                        {showTrend && (
+                            <Line
+                                type="monotone"
+                                dataKey="renewal_rate_trend"
+                                name="Renewal rate trend"
+                                stroke="#4b5563"
+                                {...trendStrokeStyle}
+                            />
+                        )}
                     </>
-                )}
-                {view === "renewal" && (
-                    <Line
-                        type="monotone"
-                        dataKey="renewal_rate"
-                        name="Renewal rate"
-                        stroke="#2f6f73"
-                        strokeWidth={3}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                    />
                 )}
                 {view === "movement" && (
                     <>
@@ -329,10 +588,12 @@ const MemberMixHistoryChart = ({ rows, view }) => (
                         <Bar dataKey="not_renewed_members" name="Not renewed" fill="#b42318" radius={[4, 4, 0, 0]} />
                     </>
                 )}
-            </ComposedChart>
-        </ResponsiveContainer>
-    </div>
-);
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
+        </>
+    );
+};
 
 
 const CompletedVisitsRankingChart = ({ title, rows, limit = 10, wide = false }) => {
@@ -373,7 +634,7 @@ const CompletedVisitsRankingChart = ({ title, rows, limit = 10, wide = false }) 
 };
 
 
-const CompletedVisitsByHourChart = ({ rows, wide = false }) => {
+const CompletedVisitsByHourChart = ({ rows, wide = false, action }) => {
     const chartRows = (rows || []).map((row) => ({
         hour: row.hour || "N/A",
         total: Number(row.total || 0),
@@ -381,7 +642,10 @@ const CompletedVisitsByHourChart = ({ rows, wide = false }) => {
 
     return (
         <Paper style={{ padding: "16px", gridColumn: wide ? "span 2" : "auto" }}>
-            <h2 style={{ marginTop: 0 }}>Completed Visits by Hour</h2>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap" style={{ marginBottom: "8px" }}>
+                <h2 style={{ margin: 0 }}>Completed Visits by Hour</h2>
+                {action}
+            </Stack>
             <div style={{ width: "100%", height: 340 }}>
                 <ResponsiveContainer>
                     <RechartsBarChart data={chartRows} margin={{ top: 12, right: 8, bottom: 28, left: 0 }}>
@@ -464,14 +728,25 @@ const BookingQualityChart = ({ rows, wide = false, action }) => {
 };
 
 
-const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
-    <div style={{ width: "100%", height: 420 }}>
-        <ResponsiveContainer>
-            <ComposedChart
-                data={rows.map((row) => ({
+const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => {
+    const trendKeys = view === "rates"
+        ? ["late_cancel_rate", "no_show_rate"]
+        : view === "revenue"
+            ? ["average_revenue_per_attended_visit"]
+            : [];
+    const [showTrend, setShowTrend] = useState(false);
+    const baseRows = rows.map((row) => ({
                     ...row,
                     not_completed_bookings: Math.max(0, Number(row.total_bookings || 0) - Number(row.completed_visits || 0)),
-                }))}
+    }));
+    const chartRows = showTrend && trendKeys.length ? addLinearTrendLines(baseRows, trendKeys) : baseRows;
+    return (
+        <>
+            {trendKeys.length > 0 && <TrendToggle checked={showTrend} onChange={setShowTrend} />}
+            <div style={{ width: "100%", height: 420 }}>
+                <ResponsiveContainer>
+                    <ComposedChart
+                data={chartRows}
                 margin={{ top: 16, right: 24, bottom: 8, left: 8 }}
             >
                 <CartesianGrid stroke="#eef1f4" vertical={false} />
@@ -489,8 +764,11 @@ const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
                 <ChartTooltip
                     formatter={(value, name) => {
                         if (name === "no_show_rate") return [`${formatNumber(value)}%`, "No-show rate"];
+                        if (name === "no_show_rate_trend") return [`${formatNumber(value)}%`, "No-show rate trend"];
                         if (name === "late_cancel_rate") return [`${formatNumber(value)}%`, "Late cancel rate"];
+                        if (name === "late_cancel_rate_trend") return [`${formatNumber(value)}%`, "Late cancel rate trend"];
                         if (name === "average_revenue_per_attended_visit") return [formatMoney(value), "Avg revenue / visit"];
+                        if (name === "average_revenue_per_attended_visit_trend") return [formatMoney(value), "Avg revenue / visit trend"];
                         if (name === "total_bookings") return [formatNumber(value), "Total bookings"];
                         if (name === "completed_visits") return [formatNumber(value), "Completed visits"];
                         if (name === "not_completed_bookings") return [formatNumber(value), "Booked but not completed"];
@@ -515,6 +793,15 @@ const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
                             dot={{ r: 4 }}
                             activeDot={{ r: 6 }}
                         />
+                        {showTrend && (
+                            <Line
+                                type="monotone"
+                                dataKey="late_cancel_rate_trend"
+                                name="Late cancel rate trend"
+                                stroke="#92400e"
+                                {...trendStrokeStyle}
+                            />
+                        )}
                         <Line
                             type="monotone"
                             dataKey="no_show_rate"
@@ -524,33 +811,61 @@ const WeeklyAttendanceHealthTrendChart = ({ rows, view }) => (
                             dot={{ r: 4 }}
                             activeDot={{ r: 6 }}
                         />
+                        {showTrend && (
+                            <Line
+                                type="monotone"
+                                dataKey="no_show_rate_trend"
+                                name="No-show rate trend"
+                                stroke="#7f1d1d"
+                                {...trendStrokeStyle}
+                            />
+                        )}
                     </>
                 ) : (
-                    <Line
-                        type="monotone"
-                        dataKey="average_revenue_per_attended_visit"
-                        name="Avg revenue / visit"
-                        stroke="#2f6f73"
-                        strokeWidth={3}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                    />
+                    <>
+                        <Line
+                            type="monotone"
+                            dataKey="average_revenue_per_attended_visit"
+                            name="Avg revenue / visit"
+                            stroke="#2f6f73"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                        {showTrend && (
+                            <Line
+                                type="monotone"
+                                dataKey="average_revenue_per_attended_visit_trend"
+                                name="Avg revenue / visit trend"
+                                stroke="#4b5563"
+                                {...trendStrokeStyle}
+                            />
+                        )}
+                    </>
                 )}
-            </ComposedChart>
-        </ResponsiveContainer>
-    </div>
-);
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
+        </>
+    );
+};
 
 
-const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
-    <div style={{ width: "100%", height: 420 }}>
-        <ResponsiveContainer>
-            <ComposedChart
-                data={rows.map((row) => ({
+const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => {
+    const [showTrend, setShowTrend] = useState(false);
+    const baseRows = rows.map((row) => ({
                     ...row,
                     unused_capacity: Math.max(0, Number(row.scheduled_capacity || 0) - Number(row.attendance_used || 0)),
                     occupation_label: formatPercent(row.occupation_rate),
-                }))}
+    }));
+    const chartRows = showTrend && view === "rate" ? addLinearTrendLines(baseRows, ["occupation_rate"]) : baseRows;
+    return (
+        <>
+            {view === "rate" && <TrendToggle checked={showTrend} onChange={setShowTrend} />}
+            <div style={{ width: "100%", height: 420 }}>
+                <ResponsiveContainer>
+                    <ComposedChart
+                data={chartRows}
                 margin={{ top: 28, right: 24, bottom: 8, left: 8 }}
             >
                 <CartesianGrid stroke="#eef1f4" vertical={false} />
@@ -559,6 +874,7 @@ const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
                 <ChartTooltip
                     formatter={(value, name) => {
                         if (name === "occupation_rate") return [`${formatNumber(value)}%`, "Occupancy rate"];
+                        if (name === "occupation_rate_trend") return [`${formatNumber(value)}%`, "Occupancy rate trend"];
                         if (name === "scheduled_capacity") return [formatNumber(value), "Scheduled capacity"];
                         if (name === "attendance_used") return [formatNumber(value), "Attendance used"];
                         if (name === "unused_capacity") return [formatNumber(value), "Unused capacity"];
@@ -578,20 +894,33 @@ const WeeklyOccupancyHealthTrendChart = ({ rows, view }) => (
                 ) : view === "classes" ? (
                     <Bar dataKey="scheduled_classes" name="Scheduled classes" fill="#2f6f73" radius={[4, 4, 0, 0]} />
                 ) : (
-                    <Line
-                        type="monotone"
-                        dataKey="occupation_rate"
-                        name="Occupancy rate"
-                        stroke="#2f6f73"
-                        strokeWidth={3}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                    />
+                    <>
+                        <Line
+                            type="monotone"
+                            dataKey="occupation_rate"
+                            name="Occupancy rate"
+                            stroke="#2f6f73"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                        {showTrend && (
+                            <Line
+                                type="monotone"
+                                dataKey="occupation_rate_trend"
+                                name="Occupancy rate trend"
+                                stroke="#4b5563"
+                                {...trendStrokeStyle}
+                            />
+                        )}
+                    </>
                 )}
-            </ComposedChart>
-        </ResponsiveContainer>
-    </div>
-);
+                    </ComposedChart>
+                </ResponsiveContainer>
+            </div>
+        </>
+    );
+};
 
 
 const WeeklyWeekdayDrilldownChart = ({ rows, metric }) => (
@@ -730,6 +1059,113 @@ const OccupancyCapacityByDayChart = ({ rows, action }) => {
             </div>
             {!chartRows.length && <div>No data</div>}
         </Paper>
+    );
+};
+
+
+const OccupancyHourMatrix = ({ data, view, weekday }) => {
+    const source = view === "history" ? data?.weekday_history : data?.current_week;
+    const selectedDays = (source?.days || []).filter((day) => view !== "history" || day.weekday === weekday);
+    const selectedDates = new Set(selectedDays.map((day) => day.date));
+    const cells = (source?.cells || []).filter((cell) => selectedDates.has(cell.date));
+    const activeHours = (source?.hours || []).filter((hour) => cells.some((cell) => cell.hour === hour));
+    const cellLookup = cells.reduce((lookup, cell) => {
+        lookup[`${cell.date}-${cell.hour}`] = cell;
+        return lookup;
+    }, {});
+
+    if (!selectedDays.length || !activeHours.length) {
+        return <div style={{ padding: "24px 0", color: "#64748b" }}>No scheduled classes for this selection.</div>;
+    }
+
+    return (
+        <div style={{ overflowX: "auto" }}>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: `minmax(150px, 1.2fr) repeat(${activeHours.length}, minmax(96px, 1fr))`,
+                    minWidth: Math.max(720, 150 + activeHours.length * 96),
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 8,
+                    overflow: "hidden",
+                }}
+            >
+                <div style={{ padding: "12px", background: "#f8fafc", fontWeight: 800, borderBottom: "1px solid #e2e8f0" }}>
+                    Day
+                </div>
+                {activeHours.map((hour) => (
+                    <div
+                        key={hour}
+                        style={{
+                            padding: "12px 10px",
+                            background: "#f8fafc",
+                            fontWeight: 800,
+                            textAlign: "center",
+                            borderBottom: "1px solid #e2e8f0",
+                            borderLeft: "1px solid #e2e8f0",
+                        }}
+                    >
+                        {hour}
+                    </div>
+                ))}
+                {selectedDays.map((day) => (
+                    <div key={day.date} style={{ display: "contents" }}>
+                        <div
+                            style={{
+                                padding: "12px",
+                                fontWeight: 800,
+                                borderTop: "1px solid #e2e8f0",
+                                background: "#fff",
+                                display: "flex",
+                                alignItems: "center",
+                            }}
+                        >
+                            {day.label || formatShortWeekdayDate(day.date)}
+                        </div>
+                        {activeHours.map((hour) => {
+                            const cell = cellLookup[`${day.date}-${hour}`];
+                            return (
+                                <div
+                                    key={`${day.date}-${hour}`}
+                                    title={cell ? `${formatPercent(cell.occupation_rate)} occupancy - ${formatNumber(cell.attended)} / ${formatNumber(cell.scheduled_capacity)}` : "No scheduled class"}
+                                    style={{
+                                        minHeight: 74,
+                                        padding: "10px 8px",
+                                        textAlign: "center",
+                                        borderTop: "1px solid #e2e8f0",
+                                        borderLeft: "1px solid #e2e8f0",
+                                        background: cell ? occupancyHeatColor(cell.occupation_rate) : occupancyEmptyColor,
+                                        color: cell ? "#172033" : "#94a3b8",
+                                        display: "grid",
+                                        alignContent: "center",
+                                        gap: 4,
+                                    }}
+                                >
+                                    {cell ? (
+                                        <>
+                                            <div style={{ fontSize: 19, fontWeight: 900 }}>{formatPercent(cell.occupation_rate)}</div>
+                                            <div style={{ fontSize: 13, fontWeight: 700 }}>
+                                                {formatNumber(cell.attended)} / {formatNumber(cell.scheduled_capacity)}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: "#475569" }}>
+                                                {formatNumber(cell.scheduled_classes)} class{Number(cell.scheduled_classes) === 1 ? "" : "es"}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div style={{ fontSize: 13, fontWeight: 700 }}>-</div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                ))}
+            </div>
+            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap style={{ marginTop: 12, color: "#475569", fontSize: 13 }}>
+                <span><strong>Cell:</strong> occupancy percentage</span>
+                <span><strong>Detail:</strong> attended / scheduled capacity</span>
+                <span><strong>Blank:</strong> no class scheduled</span>
+            </Stack>
+        </div>
     );
 };
 
@@ -1075,6 +1511,10 @@ const truncateLabel = (value, maxLength = 24) => {
     return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text;
 };
 const formatPercent = (value) => `${formatNumber(value)}%`;
+const formatPercentOneDecimal = (value) => `${Number(value || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+})}%`;
 const numericValue = (value) => Number(value || 0);
 const comparisonDelta = (current, previous, options = {}) => {
     const difference = numericValue(current) - numericValue(previous);
@@ -1464,6 +1904,9 @@ export default function Dashboard() {
     const [weeklyTrendsLoading, setWeeklyTrendsLoading] = useState(false);
     const [weeklyAttendanceTrendView, setWeeklyAttendanceTrendView] = useState("visits");
     const [weeklyOccupancyTrendView, setWeeklyOccupancyTrendView] = useState("capacity");
+    const [occupancyHourMatrix, setOccupancyHourMatrix] = useState(null);
+    const [occupancyHourMatrixLoading, setOccupancyHourMatrixLoading] = useState(false);
+    const [occupancyHourMatrixView, setOccupancyHourMatrixView] = useState("current_week");
     const [weeklyDrilldownWeekday, setWeeklyDrilldownWeekday] = useState("Monday");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -1532,6 +1975,7 @@ export default function Dashboard() {
                 setOccupation(null);
                 setRetentionTables(null);
                 setWeeklyTrends(null);
+                setOccupancyHourMatrix(null);
             } else {
                 const dashboardResponse = await axios.get(`${backendUrl}/api/data/analytics/dashboard/weekly/?${queryString}`, authHeaders);
                 const dashboardData = dashboardResponse.data;
@@ -1545,6 +1989,7 @@ export default function Dashboard() {
                 setRetentionTrend(null);
                 setRetentionTables(null);
                 setWeeklyTrends(null);
+                setOccupancyHourMatrix(null);
                 setRevenue(null);
                 setRetention(null);
             }
@@ -1657,6 +2102,7 @@ export default function Dashboard() {
     const memberMixTrendRows = (retentionTrend?.months || []).map((row) => ({
         label: formatMonthLabel(row.month),
         current_members: row.current_members || 0,
+        current_member_mix: row.current_member_mix || [],
         retained_members: row.retained_members || 0,
         new_members: row.new_members || 0,
         reactivated_members: row.reactivated_members || 0,
@@ -1772,6 +2218,31 @@ export default function Dashboard() {
             setError(err.response?.data?.detail || "Error loading weekly trend.");
         } finally {
             setWeeklyTrendsLoading(false);
+        }
+    };
+
+    const openOccupancyHourMatrix = async () => {
+        setExpandedInsight("occupancy_hour_matrix");
+        if (occupancyHourMatrix) return;
+        setOccupancyHourMatrixLoading(true);
+        try {
+            const dateFilters = selectedDateRange("weekly", periodModes, filters);
+            const params = new URLSearchParams({
+                date_from: dateFilters.date_from,
+                date_to: dateFilters.date_to,
+                weeks: "6",
+            });
+            if (filters.site) params.set("site", filters.site);
+            if (filters.studio) params.set("studio", filters.studio);
+            const response = await axios.get(
+                `${backendUrl}/api/data/analytics/dashboard/weekly/occupancy-hour-matrix/?${params.toString()}`,
+                authHeaders,
+            );
+            setOccupancyHourMatrix(response.data);
+        } catch (err) {
+            setError(err.response?.data?.detail || "Error loading occupancy matrix.");
+        } finally {
+            setOccupancyHourMatrixLoading(false);
         }
     };
 
@@ -2188,7 +2659,15 @@ export default function Dashboard() {
                                         </Button>
                                     )}
                                 />
-                                <CompletedVisitsByHourChart rows={attendance?.attended_by_hour} wide />
+                                <CompletedVisitsByHourChart
+                                    rows={attendance?.attended_by_hour}
+                                    wide
+                                    action={(
+                                        <Button variant="outlined" size="small" onClick={openOccupancyHourMatrix}>
+                                            Hour Matrix
+                                        </Button>
+                                    )}
+                                />
                                 <CompletedVisitsRankingChart title="Completed Visits by Instructor" rows={attendance?.attended_by_instructor} />
                                 <BreakdownTable title="Completed Visits by Studio" rows={attendance?.attended_by_studio} />
                                 <CompletedVisitsRankingChart title="Completed Visits by Service" rows={attendance?.attended_by_service} wide />
@@ -2304,9 +2783,14 @@ export default function Dashboard() {
                                 <OccupancyCapacityByDayChart
                                     rows={occupation?.by_day}
                                     action={
-                                        <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
-                                            Weekday Detail
-                                        </Button>
+                                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                            <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
+                                                Weekday Detail
+                                            </Button>
+                                            <Button variant="outlined" size="small" onClick={openOccupancyHourMatrix}>
+                                                Hour Matrix
+                                            </Button>
+                                        </Stack>
                                     }
                                 />
                                 <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} />
@@ -2552,6 +3036,55 @@ export default function Dashboard() {
                         <LinearProgress />
                     ) : (
                         <WeeklyWeekdayDrilldownChart rows={weeklyWeekdayDrilldownRows} metric="occupancy" />
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={expandedInsight === "occupancy_hour_matrix"}
+                onClose={() => setExpandedInsight(null)}
+                fullWidth
+                maxWidth="xl"
+            >
+                <DialogTitle>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                        <span>Occupancy by Hour Matrix</span>
+                        <IconButton aria-label="Close occupancy hour matrix" onClick={() => setExpandedInsight(null)} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={occupancyHourMatrixView}
+                        onChange={(_, value) => setOccupancyHourMatrixView(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        style={{ marginBottom: "16px" }}
+                    >
+                        <Tab label="Current Week" value="current_week" />
+                        <Tab label="Weekday History" value="history" />
+                    </Tabs>
+                    {occupancyHourMatrixView === "history" && (
+                        <Tabs
+                            value={weeklyDrilldownWeekday}
+                            onChange={(_, value) => setWeeklyDrilldownWeekday(value)}
+                            variant="scrollable"
+                            scrollButtons="auto"
+                            style={{ marginBottom: "16px" }}
+                        >
+                            {weekdayNames.map((weekday) => (
+                                <Tab key={weekday} label={weekday} value={weekday} />
+                            ))}
+                        </Tabs>
+                    )}
+                    {occupancyHourMatrixLoading ? (
+                        <LinearProgress />
+                    ) : (
+                        <OccupancyHourMatrix
+                            data={occupancyHourMatrix}
+                            view={occupancyHourMatrixView}
+                            weekday={weeklyDrilldownWeekday}
+                        />
                     )}
                 </DialogContent>
             </Dialog>
