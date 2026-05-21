@@ -66,6 +66,11 @@ export default function MainPage({ children }) {
             try {
                 const response = await axios.post(`${backendUrl}/api/data/validate-token`, { token });
                 if (response.data.valid) {
+                    const accessResponse = await axios.get(`${backendUrl}/api/data/me/permissions/`, {
+                        headers: { Authorization: `Token ${token}` },
+                    });
+                    sessionStorage.setItem("access", JSON.stringify(accessResponse.data));
+                    sessionStorage.setItem("permissions", JSON.stringify(accessResponse.data.django_permissions || []));
                     setShowPage(true);
                 } else {
                     router.push("/loginPage");
