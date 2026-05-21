@@ -22,6 +22,7 @@ import {
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
+import useAccess from "@/hooks/useAccess";
 import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
@@ -1824,7 +1825,10 @@ const InstructorQualityTable = ({ rows }) => (
 
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
-const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatMoney = (value) => {
+    if (value === null || value === undefined) return "Restricted";
+    return `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 const formatCompactMoney = (value) => {
     const numberValue = Number(value || 0);
     if (Math.abs(numberValue) >= 1000000) return `${(numberValue / 1000000).toFixed(1)}M`;
@@ -2199,9 +2203,11 @@ const sameQuery = (currentQuery, nextQuery) => {
 
 export default function Dashboard() {
     const token = useFetchToken();
+    const access = useAccess();
     const router = useRouter();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const initialDashboardState = useMemo(() => dashboardDefaultState(), []);
+    const canViewMoney = Boolean(access.capabilities?.can_view_money);
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
@@ -2407,7 +2413,19 @@ export default function Dashboard() {
         },
     };
     const selectedMonthParts = monthParts(filters.month);
-    const activeDashboardTabs = dashboardTabs[dashboardMode];
+    const activeDashboardTabs = dashboardTabs[dashboardMode].filter((tab) => canViewMoney || tab.value !== "revenue");
+    useEffect(() => {
+        if (activeDashboardTabs.some((tab) => tab.value === activeTab)) return;
+        setActiveTab(dashboardModes[dashboardMode].defaultTab);
+    }, [activeDashboardTabs, activeTab, dashboardMode]);
+    useEffect(() => {
+        if (!canViewMoney && weeklyAttendanceTrendView === "revenue") {
+            setWeeklyAttendanceTrendView("visits");
+        }
+        if (!canViewMoney && expandedInsight === "revenue_health") {
+            setExpandedInsight(null);
+        }
+    }, [canViewMoney, weeklyAttendanceTrendView, expandedInsight]);
     const occupancySlots = occupation?.by_slot || [];
     const lowOccupancySlots = [...occupancySlots]
         .filter((row) => Number(row.capacity || 0) > 0)
@@ -2813,26 +2831,28 @@ export default function Dashboard() {
                     {activeTab === "monthly_overview" && (
                         <>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-                                <InsightCard
-                                    title="Revenue Health"
-                                    value={formatMoney(totals.sales_revenue)}
-                                    delta={comparisonDelta(totals.sales_revenue, comparisonTotals.sales_revenue, {
-                                        periodLabel,
-                                        decimals: 2,
-                                        money: true,
-                                    })}
-                                    caption="Sales revenue for the selected month."
-                                    details={[
-                                        { label: "Visit revenue", value: formatMoney(totals.visit_revenue) },
-                                        { label: "Average ticket", value: formatMoney(totals.average_ticket) },
-                                        { label: "Sales by studio", value: formatNumber(revenue?.by_studio?.length) },
-                                    ]}
-                                    action={(
-                                        <Button variant="outlined" size="small" onClick={() => setExpandedInsight("revenue_health")}>
-                                            View Trend
-                                        </Button>
-                                    )}
-                                />
+                                {canViewMoney && (
+                                    <InsightCard
+                                        title="Revenue Health"
+                                        value={formatMoney(totals.sales_revenue)}
+                                        delta={comparisonDelta(totals.sales_revenue, comparisonTotals.sales_revenue, {
+                                            periodLabel,
+                                            decimals: 2,
+                                            money: true,
+                                        })}
+                                        caption="Sales revenue for the selected month."
+                                        details={[
+                                            { label: "Visit revenue", value: formatMoney(totals.visit_revenue) },
+                                            { label: "Average ticket", value: formatMoney(totals.average_ticket) },
+                                            { label: "Sales by studio", value: formatNumber(revenue?.by_studio?.length) },
+                                        ]}
+                                        action={(
+                                            <Button variant="outlined" size="small" onClick={() => setExpandedInsight("revenue_health")}>
+                                                View Trend
+                                            </Button>
+                                        )}
+                                    />
+                                )}
                                 <InsightCard
                                     title="Retention Health"
                                     value={formatPercent(retention?.renewal_rate)}
@@ -2869,7 +2889,7 @@ export default function Dashboard() {
                                     )}
                                     caption="Members who did not renew in the selected month."
                                     details={[
-                                        { label: "Value at risk", value: formatMoney(retention?.not_renewed_value) },
+                                        ...(canViewMoney ? [{ label: "Value at risk", value: formatMoney(retention?.not_renewed_value) }] : []),
                                         { label: "Attending unpaid", value: formatNumber(retention?.not_renewed_attending_unpaid) },
                                         { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
                                     ]}
@@ -2979,11 +2999,13 @@ export default function Dashboard() {
                                     value={formatNumber(totals.attended_visits)}
                                     action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("visits")}>Trend</Button>}
                                 />
-                                <KpiCard
-                                    label="Avg Revenue / Visit"
-                                    value={formatMoney(totals.average_revenue_per_attended_visit)}
-                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("revenue")}>Trend</Button>}
-                                />
+                                {canViewMoney && (
+                                    <KpiCard
+                                        label="Avg Revenue / Visit"
+                                        value={formatMoney(totals.average_revenue_per_attended_visit)}
+                                        action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("revenue")}>Trend</Button>}
+                                    />
+                                )}
                                 <KpiCard
                                     label="No-show Rate"
                                     value={`${formatNumber(totals.no_show_rate)}%`}
@@ -3066,16 +3088,18 @@ export default function Dashboard() {
                                         </Link>
                                     )}
                                 />
-                                <InsightCard
-                                    title="Value at Risk"
-                                    value={formatMoney(retention?.not_renewed_value)}
-                                    caption="Estimated membership value from not-renewed clients."
-                                    details={[
-                                        { label: "Post-expiration visits", value: formatNumber(retention?.not_renewed_post_expiration_attendance) },
-                                        { label: "Paid visits", value: formatNumber(retention?.not_renewed_post_expiration_paid_attendance) },
-                                        { label: "Unpaid visits", value: formatNumber(retention?.not_renewed_post_expiration_unpaid_attendance) },
-                                    ]}
-                                />
+                                {canViewMoney && (
+                                    <InsightCard
+                                        title="Value at Risk"
+                                        value={formatMoney(retention?.not_renewed_value)}
+                                        caption="Estimated membership value from not-renewed clients."
+                                        details={[
+                                            { label: "Post-expiration visits", value: formatNumber(retention?.not_renewed_post_expiration_attendance) },
+                                            { label: "Paid visits", value: formatNumber(retention?.not_renewed_post_expiration_paid_attendance) },
+                                            { label: "Unpaid visits", value: formatNumber(retention?.not_renewed_post_expiration_unpaid_attendance) },
+                                        ]}
+                                    />
+                                )}
                             </div>
                             <MemberTrendChart rows={retentionTrendRows} />
 
@@ -3297,7 +3321,7 @@ export default function Dashboard() {
                     >
                         <Tab label="Bookings & Visits" value="visits" />
                         <Tab label="No-show & Late Cancel" value="rates" />
-                        <Tab label="Avg Revenue / Visit" value="revenue" />
+                        {canViewMoney && <Tab label="Avg Revenue / Visit" value="revenue" />}
                     </Tabs>
                     {weeklyTrendsLoading ? (
                         <LinearProgress />
