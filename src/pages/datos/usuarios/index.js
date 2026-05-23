@@ -9,12 +9,15 @@ import responsiveStyles from "@/styles/responsive.module.css";;
 import Button from "@mui/material/Button";
 import Head from "next/head";
 import usePermissions from "@/hooks/usePermissions";
+import useAccess from "@/hooks/useAccess";
 export default function UsersTable() {
     const router = useRouter();
     const [usersData, setUsersData] = useState([]);
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const permissions = usePermissions();
+    const access = useAccess();
+    const canManageUsers = Boolean(access.capabilities?.can_manage_users);
     const [totalCount, setTotalCount] = useState(0);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(15);
@@ -61,7 +64,7 @@ export default function UsersTable() {
             </Head>
             <div className={styles.titleContainer}>
                 <h1 className={styles.title}>Usuarios</h1>
-                {permissions.includes("core_data.add_customuser") &&
+                {canManageUsers &&
                     <Button className={styles.addButton} onClick={() => router.push("usuarios/add")}>
                         + Añadir
                     </Button>
@@ -92,8 +95,8 @@ export default function UsersTable() {
                 ]}
                 onAdd={() => router.push("usuarios/add")}
                 onInfo={(id) => router.push(`/datos/usuarios/info?id=${id}`)}
-                onEdit={permissions.includes("core_data.change_customuser") ? (id) => router.push(`/datos/usuarios/edit?id=${id}`) : null}
-                onDelete={permissions.includes("core_data.delete_customuser") ? handleDelete : null}
+                onEdit={canManageUsers ? (id) => router.push(`/datos/usuarios/edit?id=${id}`) : null}
+                onDelete={canManageUsers ? handleDelete : null}
 
                 totalCount={totalCount} 
                 page={page}

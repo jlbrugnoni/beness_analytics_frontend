@@ -5,6 +5,7 @@ import axios from "axios";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
+import useAccess from "@/hooks/useAccess";
 import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
@@ -130,7 +131,10 @@ const roomCapacityKey = (row) => row.room_key || `${row.studio}::${row.room}`;
 
 export default function Uploads() {
     const token = useFetchToken();
+    const access = useAccess();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const canViewMoney = Boolean(access.capabilities?.can_view_money);
+    const canResetData = Boolean(access.capabilities?.can_reset_data);
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
@@ -423,14 +427,16 @@ export default function Uploads() {
                             <Link href="/data">
                                 <Button variant="text">Manage Data Tables</Button>
                             </Link>
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                onClick={handleResetAnalyticsData}
-                                disabled={resetting}
-                            >
-                                {resetting ? "Resetting..." : "Reset Analytics Data"}
-                            </Button>
+                            {canResetData && (
+                                <Button
+                                    variant="outlined"
+                                    color="error"
+                                    onClick={handleResetAnalyticsData}
+                                    disabled={resetting}
+                                >
+                                    {resetting ? "Resetting..." : "Reset Analytics Data"}
+                                </Button>
+                            )}
                         </div>
                     </Paper>
 
@@ -465,7 +471,7 @@ export default function Uploads() {
                                 <SummaryBox label="Valid Rows" value={preview.row_counts.valid_rows} />
                                 <SummaryBox label="Invalid Rows" value={preview.row_counts.invalid_rows} />
                                 <SummaryBox label="Repeated Rows" value={preview.row_counts.duplicate_extra_rows ?? preview.data_quality?.exact_duplicate_groups ?? 0} />
-                                <SummaryBox label="Revenue" value={formatValue(preview.revenue?.total)} />
+                                {canViewMoney && <SummaryBox label="Revenue" value={formatValue(preview.revenue?.total)} />}
                                 <SummaryBox label="Date From" value={formatValue(preview.date_range?.from)} />
                                 <SummaryBox label="Date To" value={formatValue(preview.date_range?.to)} />
                             </div>
@@ -482,7 +488,7 @@ export default function Uploads() {
                                     <SummaryBox label="Attended" value={preview.attendance.attended_inferred} />
                                     <SummaryBox label="Late Cancels" value={preview.attendance.late_cancel} />
                                     <SummaryBox label="No Shows" value={preview.attendance.no_show} />
-                                    <SummaryBox label="Zero Revenue Rows" value={preview.revenue?.zero_revenue_rows} />
+                                    {canViewMoney && <SummaryBox label="Zero Revenue Rows" value={preview.revenue?.zero_revenue_rows} />}
                                 </div>
                                 </Paper>
                             )}
@@ -492,10 +498,10 @@ export default function Uploads() {
                                     <h2 style={{ marginTop: 0 }}>Sales</h2>
                                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
                                         <SummaryBox label="Sales" value={preview.sales.sale_count} />
-                                        <SummaryBox label="Paid Total" value={formatValue(preview.sales.paid_total)} />
-                                        <SummaryBox label="Gross Item Total" value={formatValue(preview.sales.gross_item_total)} />
-                                        <SummaryBox label="Discount Total" value={formatValue(preview.sales.discount_total)} />
-                                        <SummaryBox label="Tax Total" value={formatValue(preview.sales.tax_total)} />
+                                        {canViewMoney && <SummaryBox label="Paid Total" value={formatValue(preview.sales.paid_total)} />}
+                                        {canViewMoney && <SummaryBox label="Gross Item Total" value={formatValue(preview.sales.gross_item_total)} />}
+                                        {canViewMoney && <SummaryBox label="Discount Total" value={formatValue(preview.sales.discount_total)} />}
+                                        {canViewMoney && <SummaryBox label="Tax Total" value={formatValue(preview.sales.tax_total)} />}
                                     </div>
                                 </Paper>
                             )}
@@ -505,9 +511,9 @@ export default function Uploads() {
                                     <h2 style={{ marginTop: 0 }}>Services</h2>
                                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
                                         <SummaryBox label="Purchases" value={preview.services.purchase_count} />
-                                        <SummaryBox label="Total Amount" value={formatValue(preview.services.total_amount)} />
-                                        <SummaryBox label="Cash Equivalent" value={formatValue(preview.services.cash_equivalent)} />
-                                        <SummaryBox label="Non Cash" value={formatValue(preview.services.non_cash_equivalent)} />
+                                        {canViewMoney && <SummaryBox label="Total Amount" value={formatValue(preview.services.total_amount)} />}
+                                        {canViewMoney && <SummaryBox label="Cash Equivalent" value={formatValue(preview.services.cash_equivalent)} />}
+                                        {canViewMoney && <SummaryBox label="Non Cash" value={formatValue(preview.services.non_cash_equivalent)} />}
                                         <SummaryBox label="Quantity" value={formatValue(preview.services.quantity)} />
                                         <SummaryBox label="Expiration From" value={formatValue(preview.service_expiration_range?.from)} />
                                         <SummaryBox label="Expiration To" value={formatValue(preview.service_expiration_range?.to)} />

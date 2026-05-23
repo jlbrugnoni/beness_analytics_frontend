@@ -5,6 +5,7 @@ import axios from "axios";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
+import useAccess from "@/hooks/useAccess";
 import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
@@ -110,7 +111,7 @@ const WarningCard = ({ label, value }) => (
 );
 
 
-const ClassCard = ({ item, onResolve }) => {
+const ClassCard = ({ item, onResolve, canEditData }) => {
     const colors = scheduleStatusColors[item.schedule_status] || statusColors[item.status] || statusColors.scheduled;
     const scheduleLabel = item.schedule_status_label || item.schedule_status?.replaceAll("_", " ") || "Scheduled";
     const isClosed = ["cancelled", "unavailable"].includes(item.status);
@@ -147,7 +148,7 @@ const ClassCard = ({ item, onResolve }) => {
                 {isClosed && <Chip size="small" color="warning" label={item.status?.replaceAll("_", " ")} />}
             </div>
             {item.reason && <div style={{ fontSize: "12px" }}>{item.reason}</div>}
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            {canEditData && <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                 {!isClosed && (
                     <>
                         <Button size="small" variant="outlined" onClick={() => onResolve(item, "cancelled")}>Cancel</Button>
@@ -157,14 +158,16 @@ const ClassCard = ({ item, onResolve }) => {
                 {isClosed && (
                     <Button size="small" variant="outlined" onClick={() => onResolve(item, "scheduled")}>Reopen</Button>
                 )}
-            </div>
+            </div>}
         </div>
     );
 };
 
 export default function SchedulePage() {
     const token = useFetchToken();
+    const access = useAccess();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const canEditData = Boolean(access.capabilities?.can_edit_data);
 
     const [sites, setSites] = useState([]);
     const [studios, setStudios] = useState([]);
@@ -423,27 +426,31 @@ export default function SchedulePage() {
                             <Button variant="outlined" onClick={() => moveWeek(-7)}>Previous Week</Button>
                             <Button variant="outlined" onClick={() => setWeekStart(formatDate(startOfWeek(new Date())))}>This Week</Button>
                             <Button variant="outlined" onClick={() => moveWeek(7)}>Next Week</Button>
-                            <Link href="/data/scheduled-classes">
-                                <Button variant="text">Manage Scheduled Classes</Button>
-                            </Link>
-                            <Link href="/data/weekly-room-templates">
-                                <Button variant="text">Manage Templates</Button>
-                            </Link>
-                            <Link href="/schedule/templates">
-                                <Button variant="contained" color="secondary">Visual Template Builder</Button>
-                            </Link>
-                            <Link href="/schedule/unmatched-attendance">
-                                <Button variant="outlined">Review Unmatched Attendance</Button>
-                            </Link>
-                            <Button variant="outlined" onClick={handleReconcileScheduledClasses} disabled={reconcilingClasses || !site}>
-                                {reconcilingClasses ? "Reconciling..." : "Reconcile Scheduled Classes"}
-                            </Button>
-                            <Button variant="contained" onClick={handleRebuildMatches} disabled={matching || !site}>
-                                {matching ? "Matching..." : "Rebuild Attendance Matches"}
-                            </Button>
-                            <Button variant="outlined" onClick={handleSyncTemplateCapacities} disabled={syncingCapacity || !site}>
-                                {syncingCapacity ? "Updating..." : "Sync Template Capacities"}
-                            </Button>
+                            {canEditData && (
+                                <>
+                                    <Link href="/data/scheduled-classes">
+                                        <Button variant="text">Manage Scheduled Classes</Button>
+                                    </Link>
+                                    <Link href="/data/weekly-room-templates">
+                                        <Button variant="text">Manage Templates</Button>
+                                    </Link>
+                                    <Link href="/schedule/templates">
+                                        <Button variant="contained" color="secondary">Visual Template Builder</Button>
+                                    </Link>
+                                    <Link href="/schedule/unmatched-attendance">
+                                        <Button variant="outlined">Review Unmatched Attendance</Button>
+                                    </Link>
+                                    <Button variant="outlined" onClick={handleReconcileScheduledClasses} disabled={reconcilingClasses || !site}>
+                                        {reconcilingClasses ? "Reconciling..." : "Reconcile Scheduled Classes"}
+                                    </Button>
+                                    <Button variant="contained" onClick={handleRebuildMatches} disabled={matching || !site}>
+                                        {matching ? "Matching..." : "Rebuild Attendance Matches"}
+                                    </Button>
+                                    <Button variant="outlined" onClick={handleSyncTemplateCapacities} disabled={syncingCapacity || !site}>
+                                        {syncingCapacity ? "Updating..." : "Sync Template Capacities"}
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </Paper>
 
@@ -504,7 +511,12 @@ export default function SchedulePage() {
                                 </div>
                                 <div style={{ display: "grid", gap: "10px" }}>
                                     {(classesByDate[day.value] || []).map((item) => (
-                                        <ClassCard key={`class-${item.id}`} item={item} onResolve={handleResolveClass} />
+                                        <ClassCard
+                                            key={`class-${item.id}`}
+                                            item={item}
+                                            onResolve={handleResolveClass}
+                                            canEditData={canEditData}
+                                        />
                                     ))}
                                     {!classesByDate[day.value]?.length && (
                                         <div style={{ color: "#777", fontSize: "14px" }}>No classes</div>

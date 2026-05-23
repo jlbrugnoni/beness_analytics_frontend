@@ -52,6 +52,7 @@ export default function ImportedResourcePage() {
     const access = useAccess();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const canViewMoney = Boolean(access.capabilities?.can_view_money);
+    const canResetData = Boolean(access.capabilities?.can_reset_data);
     const visibleColumns = (config?.columns || []).filter((column) => canViewMoney || column.type !== "money");
 
     const [rows, setRows] = useState([]);
@@ -291,16 +292,18 @@ export default function ImportedResourcePage() {
                                             <Button size="small" variant="outlined" onClick={() => openImportDetail(row)}>
                                                 Details
                                             </Button>
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                color="error"
-                                                onClick={() => rollbackImport(row)}
-                                                disabled={rollingBackId === row.id}
-                                                style={{ marginLeft: "8px" }}
-                                            >
-                                                {rollingBackId === row.id ? "Rolling Back..." : "Rollback"}
-                                            </Button>
+                                            {canResetData && (
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color="error"
+                                                    onClick={() => rollbackImport(row)}
+                                                    disabled={rollingBackId === row.id}
+                                                    style={{ marginLeft: "8px" }}
+                                                >
+                                                    {rollingBackId === row.id ? "Rolling Back..." : "Rollback"}
+                                                </Button>
+                                            )}
                                         </TableCell>
                                     )}
                                 </TableRow>
