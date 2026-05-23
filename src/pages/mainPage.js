@@ -26,21 +26,22 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 
 import usePermissions from "@/hooks/usePermissions";
-import useAccess from "@/hooks/useAccess";
+import useAccess, { storeAccess } from "@/hooks/useAccess";
+import useI18n from "@/hooks/useI18n";
 import routePermissions from "@/constants/routePermissions";
 
 
 const navItems = [
-    { href: "/home", label: "Home", key: "home", icon: HomeIcon },
-    { href: "/dashboard", label: "Dashboard", key: "dashboard", icon: DashboardIcon },
-    { href: "/retention", label: "Retention", key: "retention", icon: ReplayIcon },
-    { href: "/schedule", label: "Schedule", key: "schedule", icon: EventNoteIcon },
-    { href: "/uploads", label: "Uploads", key: "uploads", icon: CloudUploadIcon, capability: "can_upload_data" },
-    { href: "/imported", label: "Imported", key: "imported", icon: AssessmentIcon, capability: "can_upload_data" },
-    { href: "/data", label: "Data", key: "data", icon: StorageIcon },
-    { href: "/manual", label: "Manual", key: "manual", icon: MenuBookIcon },
-    { href: "/datos/usuarios", label: "Users", key: "usuarios", icon: PeopleIcon, capability: "can_manage_users" },
-    { href: "/settings", label: "Settings", key: "settings", icon: SettingsIcon },
+    { href: "/home", labelKey: "nav.home", key: "home", icon: HomeIcon },
+    { href: "/dashboard", labelKey: "nav.dashboard", key: "dashboard", icon: DashboardIcon },
+    { href: "/retention", labelKey: "nav.retention", key: "retention", icon: ReplayIcon },
+    { href: "/schedule", labelKey: "nav.schedule", key: "schedule", icon: EventNoteIcon },
+    { href: "/uploads", labelKey: "nav.uploads", key: "uploads", icon: CloudUploadIcon, capability: "can_upload_data" },
+    { href: "/imported", labelKey: "nav.imported", key: "imported", icon: AssessmentIcon, capability: "can_upload_data" },
+    { href: "/data", labelKey: "nav.data", key: "data", icon: StorageIcon },
+    { href: "/manual", labelKey: "nav.manual", key: "manual", icon: MenuBookIcon },
+    { href: "/datos/usuarios", labelKey: "nav.users", key: "usuarios", icon: PeopleIcon, capability: "can_manage_users" },
+    { href: "/settings", labelKey: "nav.settings", key: "settings", icon: SettingsIcon },
 ];
 
 
@@ -54,6 +55,7 @@ export default function MainPage({ children }) {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const permissions = usePermissions();
     const access = useAccess();
+    const { t } = useI18n();
 
     const hasRouteRequirement = (requirement) => {
         if (!requirement) return true;
@@ -79,7 +81,7 @@ export default function MainPage({ children }) {
                     const accessResponse = await axios.get(`${backendUrl}/api/data/me/permissions/`, {
                         headers: { Authorization: `Token ${token}` },
                     });
-                    sessionStorage.setItem("access", JSON.stringify(accessResponse.data));
+                    storeAccess(accessResponse.data);
                     sessionStorage.setItem("permissions", JSON.stringify(accessResponse.data.django_permissions || []));
                     setShowPage(true);
                 } else {
@@ -146,7 +148,7 @@ export default function MainPage({ children }) {
                 />
                 <Image src={benessLogo} alt="Company Logo" className={styles.logo} onClick={() => router.push("/home")} />
                 <Button className={styles.logoutButton} onClick={handleLogout}>
-                    Cerrar Sesion
+                    {t("nav.logout")}
                 </Button>
             </header>
 
@@ -162,7 +164,7 @@ export default function MainPage({ children }) {
                                         <ListItemIcon>
                                             <Icon style={{ color: "var(--beness-gris-oscuro)" }} />
                                         </ListItemIcon>
-                                        <ListItemText primary={item.label} />
+                                        <ListItemText primary={t(item.labelKey)} />
                                     </ListItemButton>
                                 </Link>
                             );

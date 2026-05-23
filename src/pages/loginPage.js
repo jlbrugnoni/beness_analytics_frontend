@@ -1,15 +1,16 @@
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect } from "react";
 import axios from "axios";
 
 import styles from "../styles/LoginPage.module.css"; // Import the CSS Module
 import benessLogo from "../images/beness-logo.png";
 import Image from "next/image";
+import { storeAccess } from "@/hooks/useAccess";
+import useI18n from "@/hooks/useI18n";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
@@ -57,7 +58,7 @@ export default function LoginPage() {
           sessionStorage.setItem("is_staff", is_staff);
           sessionStorage.setItem("id", userId);
           sessionStorage.setItem("permissions", JSON.stringify(permissions));
-          sessionStorage.setItem("access", JSON.stringify(access));
+          storeAccess(access);
           // sessionStorage.setItem("role", userGroups);
           // sessionStorage.setItem("user_id", userId);
           // console.log(token);
@@ -73,12 +74,12 @@ export default function LoginPage() {
         alert("Usuario no existe");
         router.reload();
       } else {
-        alert("Error al iniciar sesión");
+        alert(t("login.error"));
         router.reload();
       }
     } catch (error) {
       console.error("Error occurred during login:", error);
-      alert("Error al iniciar sesión");
+      alert(t("login.error"));
       router.reload();
     }
   };
@@ -90,7 +91,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className={styles.form}>
           <input
             type="text"
-            placeholder="Nombre de usuario"
+            placeholder={t("login.email")}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
@@ -98,14 +99,14 @@ export default function LoginPage() {
           />
           <input
             type="password"
-            placeholder="Contraseña"
+            placeholder={t("login.password")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             className={styles.input}
           />
           <button type="submit" className={styles.button}>
-            Login
+            {t("login.submit")}
           </button>
         </form>
         {/* <Link href="/forgot-password">

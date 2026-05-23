@@ -23,6 +23,7 @@ import {
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
 import useAccess from "@/hooks/useAccess";
+import useI18n from "@/hooks/useI18n";
 import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
@@ -100,11 +101,11 @@ const addLinearTrendLines = (rows, keys) => {
 };
 
 
-const TrendToggle = ({ checked, onChange }) => (
+const TrendToggle = ({ checked, onChange, label = "Trend line" }) => (
     <Stack direction="row" justifyContent="flex-end">
         <FormControlLabel
             control={<Switch size="small" checked={checked} onChange={(event) => onChange(event.target.checked)} />}
-            label="Trend line"
+            label={label}
             sx={{
                 marginRight: 0,
                 ".MuiFormControlLabel-label": { fontSize: 15, fontWeight: 700, color: "#2f3a45" },
@@ -1427,7 +1428,7 @@ const TrialConversionTable = ({ rows }) => (
 );
 
 
-const ConversionDashboardSection = ({ conversion, comparisonConversion, periodLabel, mode, onOpenTrend }) => {
+const ConversionDashboardSection = ({ conversion, comparisonConversion, periodLabel, mode, onOpenTrend, t }) => {
     const trialClients = Number(conversion?.unique_trial_clients || 0);
     const memberRate = conversion?.member_conversion_rate || 0;
     const nonMemberRate = conversion?.non_member_conversion_rate || 0;
@@ -1440,17 +1441,17 @@ const ConversionDashboardSection = ({ conversion, comparisonConversion, periodLa
             )}
             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                 <KpiCard
-                    label="Attended Trials"
+                    label={t("dashboard.kpi.trialVisits")}
                     value={formatNumber(conversion?.attended_trials)}
-                    action={<Button variant="outlined" size="small" onClick={() => onOpenTrend("activity")}>Trend</Button>}
+                    action={<Button variant="outlined" size="small" onClick={() => onOpenTrend("activity")}>{t("common.trend")}</Button>}
                 />
-                <KpiCard label="Trial Clients" value={formatNumber(trialClients)} />
+                <KpiCard label={t("dashboard.kpi.trialClients")} value={formatNumber(trialClients)} />
                 <KpiCard
-                    label="Member Conversion"
+                    label={t("dashboard.kpi.memberConversion")}
                     value={formatPercent(memberRate)}
                     action={(
                         <Stack spacing={0.5} alignItems="flex-end">
-                            <Button variant="outlined" size="small" onClick={() => onOpenTrend("rates")}>Trend</Button>
+                            <Button variant="outlined" size="small" onClick={() => onOpenTrend("rates")}>{t("common.trend")}</Button>
                             {comparisonConversion && (
                                 <span style={{ fontSize: 12, fontWeight: 800, color: "#64748b" }}>
                                     {comparisonDelta(memberRate, comparisonConversion.member_conversion_rate, {
@@ -1464,11 +1465,11 @@ const ConversionDashboardSection = ({ conversion, comparisonConversion, periodLa
                     )}
                 />
                 <KpiCard
-                    label="Non-member Conversion"
+                    label={t("dashboard.kpi.nonMemberConversion")}
                     value={formatPercent(nonMemberRate)}
                     action={(
                         <Stack spacing={0.5} alignItems="flex-end">
-                            <Button variant="outlined" size="small" onClick={() => onOpenTrend("rates")}>Trend</Button>
+                            <Button variant="outlined" size="small" onClick={() => onOpenTrend("rates")}>{t("common.trend")}</Button>
                             {comparisonConversion && (
                                 <span style={{ fontSize: 12, fontWeight: 800, color: "#64748b" }}>
                                     {comparisonDelta(nonMemberRate, comparisonConversion.non_member_conversion_rate, {
@@ -1481,14 +1482,14 @@ const ConversionDashboardSection = ({ conversion, comparisonConversion, periodLa
                         </Stack>
                     )}
                 />
-                <KpiCard label="Not Converted" value={formatNumber(conversion?.not_converted_clients)} />
-                <KpiCard label="Avg Days to Convert" value={formatNumber(Number(conversion?.average_days_to_conversion || 0).toFixed(1))} />
+                <KpiCard label={t("dashboard.kpi.notConverted")} value={formatNumber(conversion?.not_converted_clients)} />
+                <KpiCard label={t("dashboard.kpi.avgDaysToConvert")} value={formatNumber(Number(conversion?.average_days_to_conversion || 0).toFixed(1))} />
             </div>
             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
                 <TrialConversionFunnelChart conversion={conversion} />
                 {mode === "weekly" && <TrialActivityByDateChart rows={conversion?.by_date} />}
-                <TrialConversionRankingChart title="Trial Conversion by Instructor" rows={conversion?.by_instructor} />
-                <TrialConversionRankingChart title="Trial Conversion by Studio" rows={conversion?.by_studio} />
+                <TrialConversionRankingChart title={t("dashboard.charts.trialConversionByInstructor")} rows={conversion?.by_instructor} />
+                <TrialConversionRankingChart title={t("dashboard.charts.trialConversionByStudio")} rows={conversion?.by_studio} />
                 <TrialConversionTable rows={conversion?.rows} />
             </div>
         </>
@@ -2088,16 +2089,16 @@ const dashboardModes = {
 
 const dashboardTabs = {
     monthly: [
-        { label: "Summary", value: "monthly_overview" },
-        { label: "Revenue", value: "revenue" },
-        { label: "Retention", value: "retention" },
-        { label: "Conversion", value: "conversion" },
+        { labelKey: "dashboard.tabs.summary", value: "monthly_overview" },
+        { labelKey: "dashboard.tabs.revenue", value: "revenue" },
+        { labelKey: "dashboard.tabs.retention", value: "retention" },
+        { labelKey: "dashboard.tabs.conversion", value: "conversion" },
     ],
     weekly: [
-        { label: "Summary", value: "weekly_overview" },
-        { label: "Attendance", value: "attendance" },
-        { label: "Occupancy", value: "occupancy" },
-        { label: "Conversion", value: "conversion" },
+        { labelKey: "dashboard.tabs.summary", value: "weekly_overview" },
+        { labelKey: "dashboard.tabs.attendance", value: "attendance" },
+        { labelKey: "dashboard.tabs.occupancy", value: "occupancy" },
+        { labelKey: "dashboard.tabs.conversion", value: "conversion" },
     ],
 };
 
@@ -2205,6 +2206,7 @@ export default function Dashboard() {
     const token = useFetchToken();
     const access = useAccess();
     const router = useRouter();
+    const { t } = useI18n();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const initialDashboardState = useMemo(() => dashboardDefaultState(), []);
     const canViewMoney = Boolean(access.capabilities?.can_view_money);
@@ -2648,11 +2650,11 @@ export default function Dashboard() {
     return (
         <MainPage>
             <Head>
-                <title>Beness Analytics | Dashboard</title>
+                <title>Beness Analytics | {t("dashboard.title")}</title>
             </Head>
             <div className={styles.container}>
                 <div className={styles.titleContainer}>
-                    <h1 className={styles.title}>Dashboard</h1>
+                    <h1 className={styles.title}>{t("dashboard.title")}</h1>
                 </div>
 
                 <div style={{ width: "90%", display: "grid", gap: "16px" }}>
@@ -2665,8 +2667,8 @@ export default function Dashboard() {
                             variant="scrollable"
                             scrollButtons="auto"
                         >
-                            <Tab label="Monthly Performance" value="monthly" />
-                            <Tab label="Weekly Operations" value="weekly" />
+                            <Tab label={t("dashboard.mode.monthly")} value="monthly" />
+                            <Tab label={t("dashboard.mode.weekly")} value="weekly" />
                         </Tabs>
                     </Paper>
 
@@ -2674,26 +2676,26 @@ export default function Dashboard() {
                         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
                             <TextField
                                 select
-                                label="Site"
+                                label={t("common.site")}
                                 size="small"
                                 value={filters.site}
                                 onChange={handleSiteChange}
                                 style={{ minWidth: "220px" }}
                             >
-                                <MenuItem value="">All Sites</MenuItem>
+                                <MenuItem value="">{t("dashboard.allSites")}</MenuItem>
                                 {sites.map((site) => (
                                     <MenuItem key={site.id} value={site.id}>{site.name}</MenuItem>
                                 ))}
                             </TextField>
                             <TextField
                                 select
-                                label="Studio"
+                                label={t("common.studio")}
                                 size="small"
                                 value={filters.studio}
                                 onChange={handleStudioChange}
                                 style={{ minWidth: "220px" }}
                             >
-                                <MenuItem value="">All Studios</MenuItem>
+                                <MenuItem value="">{t("dashboard.allStudios")}</MenuItem>
                                 {visibleStudios.map((studio) => (
                                     <MenuItem key={studio.id} value={studio.id}>{studio.name}</MenuItem>
                                 ))}
@@ -2706,22 +2708,22 @@ export default function Dashboard() {
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                                 <TextField
                                     select
-                                    label="Period"
+                                label={t("common.period")}
                                     value={activePeriodMode}
                                     onChange={handlePeriodModeChange}
                                 >
                                     {dashboardMode === "monthly" ? (
                                         [
-                                            <MenuItem key="last_completed_month" value="last_completed_month">Last Completed Month</MenuItem>,
-                                            <MenuItem key="current_month" value="current_month">Current Month</MenuItem>,
-                                            <MenuItem key="specific_month" value="specific_month">Specific Month</MenuItem>,
+                                            <MenuItem key="last_completed_month" value="last_completed_month">{t("dashboard.period.lastCompletedMonth")}</MenuItem>,
+                                            <MenuItem key="current_month" value="current_month">{t("dashboard.period.currentMonth")}</MenuItem>,
+                                            <MenuItem key="specific_month" value="specific_month">{t("dashboard.period.specificMonth")}</MenuItem>,
                                         ]
                                     ) : (
                                         [
-                                            <MenuItem key="current_week" value="current_week">Current Week</MenuItem>,
-                                            <MenuItem key="previous_week" value="previous_week">Previous Week</MenuItem>,
-                                            <MenuItem key="specific_week" value="specific_week">Specific Week</MenuItem>,
-                                            <MenuItem key="range" value="range">Custom Range</MenuItem>,
+                                            <MenuItem key="current_week" value="current_week">{t("dashboard.period.currentWeek")}</MenuItem>,
+                                            <MenuItem key="previous_week" value="previous_week">{t("dashboard.period.previousWeek")}</MenuItem>,
+                                            <MenuItem key="specific_week" value="specific_week">{t("dashboard.period.specificWeek")}</MenuItem>,
+                                            <MenuItem key="range" value="range">{t("dashboard.period.customRange")}</MenuItem>,
                                         ]
                                     )}
                                 </TextField>
@@ -2729,7 +2731,7 @@ export default function Dashboard() {
                                     <>
                                         <TextField
                                             select
-                                            label="Month"
+                                            label={t("common.month")}
                                             value={selectedMonthParts.month}
                                             onChange={(event) => setFilters({
                                                 ...filters,
@@ -2742,7 +2744,7 @@ export default function Dashboard() {
                                         </TextField>
                                         <TextField
                                             select
-                                            label="Year"
+                                            label={t("common.year")}
                                             value={Number(selectedMonthParts.year)}
                                             onChange={(event) => setFilters({
                                                 ...filters,
@@ -2757,7 +2759,7 @@ export default function Dashboard() {
                                 )}
                                 {dashboardMode === "weekly" && activePeriodMode === "specific_week" && (
                                     <TextField
-                                        label="Week Of"
+                                        label={t("common.weekOf")}
                                         type="date"
                                         value={filters.week_date}
                                         InputLabelProps={{ shrink: true }}
@@ -2767,14 +2769,14 @@ export default function Dashboard() {
                                 {dashboardMode === "weekly" && activePeriodMode === "range" && (
                                     <>
                                         <TextField
-                                            label="Date From"
+                                            label={t("common.dateFrom")}
                                             type="date"
                                             value={filters.date_from}
                                             InputLabelProps={{ shrink: true }}
                                             onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
                                         />
                                         <TextField
-                                            label="Date To"
+                                            label={t("common.dateTo")}
                                             type="date"
                                             value={filters.date_to}
                                             InputLabelProps={{ shrink: true }}
@@ -2792,7 +2794,7 @@ export default function Dashboard() {
 
                     <Paper variant="outlined" style={{ padding: "10px 14px", background: "#fafafa" }}>
                         <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
-                            <Tooltip title={`Previous ${dashboardMode === "monthly" ? "month" : "week"}`}>
+                            <Tooltip title={dashboardMode === "monthly" ? t("dashboard.previousMonth") : t("dashboard.previousWeek")}>
                                 <span>
                                     <IconButton onClick={() => navigatePeriod(-1)} disabled={loading} size="small">
                                         <ChevronLeftIcon />
@@ -2805,7 +2807,7 @@ export default function Dashboard() {
                                     {formatDisplayDate(activeDateRange.date_from)} - {formatDisplayDate(activeDateRange.date_to)}
                                 </div>
                             </div>
-                            <Tooltip title={`Next ${dashboardMode === "monthly" ? "month" : "week"}`}>
+                            <Tooltip title={dashboardMode === "monthly" ? t("dashboard.nextMonth") : t("dashboard.nextWeek")}>
                                 <span>
                                     <IconButton onClick={() => navigatePeriod(1)} disabled={loading} size="small">
                                         <ChevronRightIcon />
@@ -2823,7 +2825,7 @@ export default function Dashboard() {
                             scrollButtons="auto"
                         >
                             {activeDashboardTabs.map((tab) => (
-                                <Tab key={tab.value} label={tab.label} value={tab.value} />
+                                <Tab key={tab.value} label={t(tab.labelKey)} value={tab.value} />
                             ))}
                         </Tabs>
                     </Paper>
@@ -2833,7 +2835,7 @@ export default function Dashboard() {
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
                                 {canViewMoney && (
                                     <InsightCard
-                                        title="Revenue Health"
+                                        title={t("dashboard.cards.revenueHealth")}
                                         value={formatMoney(totals.sales_revenue)}
                                         delta={comparisonDelta(totals.sales_revenue, comparisonTotals.sales_revenue, {
                                             periodLabel,
@@ -2842,19 +2844,19 @@ export default function Dashboard() {
                                         })}
                                         caption="Sales revenue for the selected month."
                                         details={[
-                                            { label: "Visit revenue", value: formatMoney(totals.visit_revenue) },
-                                            { label: "Average ticket", value: formatMoney(totals.average_ticket) },
-                                            { label: "Sales by studio", value: formatNumber(revenue?.by_studio?.length) },
+                                            { label: t("dashboard.kpi.visitRevenue"), value: formatMoney(totals.visit_revenue) },
+                                            { label: t("dashboard.kpi.averageTicket"), value: formatMoney(totals.average_ticket) },
+                                            { label: t("dashboard.kpi.salesByStudio"), value: formatNumber(revenue?.by_studio?.length) },
                                         ]}
                                         action={(
                                             <Button variant="outlined" size="small" onClick={() => setExpandedInsight("revenue_health")}>
-                                                View Trend
+                                                {t("common.trend")}
                                             </Button>
                                         )}
                                     />
                                 )}
                                 <InsightCard
-                                    title="Retention Health"
+                                    title={t("dashboard.cards.retentionHealth")}
                                     value={formatPercent(retention?.renewal_rate)}
                                     delta={comparisonDelta(retention?.renewal_rate, comparisonRetention?.renewal_rate, {
                                         periodLabel,
@@ -2864,14 +2866,14 @@ export default function Dashboard() {
                                     caption="Renewal rate from monthly membership snapshots."
                                     details={[
                                         { label: "Churn rate", value: formatPercent(retention?.churn_rate) },
-                                        { label: "Retained members", value: formatNumber(retention?.retained_members) },
-                                        { label: "Current members", value: formatNumber(retention?.current_month_members) },
-                                        { label: "Unassigned not renewed", value: formatNumber(retention?.not_renewed_unassigned_studio) },
+                                        { label: t("dashboard.kpi.retainedMembers"), value: formatNumber(retention?.retained_members) },
+                                        { label: t("dashboard.kpi.currentMembers"), value: formatNumber(retention?.current_month_members) },
+                                        { label: t("dashboard.kpi.unassignedNotRenewed"), value: formatNumber(retention?.not_renewed_unassigned_studio) },
                                     ]}
                                     action={(
                                         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                             <Button variant="outlined" size="small" onClick={() => setExpandedInsight("retention_health")}>
-                                                View Trend
+                                                {t("common.trend")}
                                             </Button>
                                             <Link href="/retention">
                                                 <Button variant="outlined" size="small">Open Follow-up</Button>
@@ -2880,7 +2882,7 @@ export default function Dashboard() {
                                     )}
                                 />
                                 <InsightCard
-                                    title="Follow-up Focus"
+                                    title={t("dashboard.cards.followUpFocus")}
                                     value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)}
                                     delta={comparisonDelta(
                                         retention?.not_renewed_members ?? retention?.not_renewed_services,
@@ -2889,7 +2891,7 @@ export default function Dashboard() {
                                     )}
                                     caption="Members who did not renew in the selected month."
                                     details={[
-                                        ...(canViewMoney ? [{ label: "Value at risk", value: formatMoney(retention?.not_renewed_value) }] : []),
+                                        ...(canViewMoney ? [{ label: t("dashboard.kpi.valueAtRisk"), value: formatMoney(retention?.not_renewed_value) }] : []),
                                         { label: "Attending unpaid", value: formatNumber(retention?.not_renewed_attending_unpaid) },
                                         { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
                                     ]}
@@ -2902,23 +2904,23 @@ export default function Dashboard() {
                         <>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
                                 <InsightCard
-                                    title="Attendance Health"
+                                    title={t("dashboard.cards.attendanceHealth")}
                                     value={formatNumber(totals.attended_visits)}
                                     delta={comparisonDelta(totals.attended_visits, comparisonTotals.attended_visits, { periodLabel })}
                                     caption="Completed visits for the selected week."
                                     details={[
-                                        { label: "Total bookings", value: formatNumber(totals.attendance_visits) },
-                                        { label: "No-show rate", value: formatPercent(totals.no_show_rate) },
-                                        { label: "Late cancel rate", value: formatPercent(totals.late_cancel_rate) },
+                                        { label: t("dashboard.kpi.totalBookings"), value: formatNumber(totals.attendance_visits) },
+                                        { label: t("dashboard.kpi.noShowRate"), value: formatPercent(totals.no_show_rate) },
+                                        { label: t("dashboard.kpi.lateCancelRate"), value: formatPercent(totals.late_cancel_rate) },
                                     ]}
                                     action={(
                                         <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_attendance_health")}>
-                                            View Trend
+                                            {t("common.trend")}
                                         </Button>
                                     )}
                                 />
                                 <InsightCard
-                                    title="Occupancy Health"
+                                    title={t("dashboard.cards.occupancyHealth")}
                                     value={formatPercent(occupation?.occupation_rate)}
                                     delta={comparisonDelta(occupation?.occupation_rate, comparisonOccupation?.occupation_rate, {
                                         periodLabel,
@@ -2927,25 +2929,25 @@ export default function Dashboard() {
                                     })}
                                     caption="How much scheduled capacity was used."
                                     details={[
-                                        { label: "Attendance used", value: formatNumber(occupation?.matched_attended_visits) },
-                                        { label: "Scheduled capacity", value: formatNumber(occupation?.scheduled_capacity) },
-                                        { label: "Scheduled classes", value: formatNumber(occupation?.available_classes) },
+                                        { label: t("dashboard.kpi.attendanceUsed"), value: formatNumber(occupation?.matched_attended_visits) },
+                                        { label: t("dashboard.kpi.scheduledCapacity"), value: formatNumber(occupation?.scheduled_capacity) },
+                                        { label: t("dashboard.kpi.scheduledClasses"), value: formatNumber(occupation?.available_classes) },
                                     ]}
                                     action={(
                                         <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_health")}>
-                                            View Trend
+                                            {t("common.trend")}
                                         </Button>
                                     )}
                                 />
                                 <InsightCard
-                                    title="Studio Activity"
+                                    title={t("dashboard.cards.studioActivity")}
                                     value={formatNumber(totals.active_clients)}
                                     delta={comparisonDelta(totals.active_clients, comparisonTotals.active_clients, { periodLabel })}
                                     caption="Clients with activity during the selected week."
                                     details={[
-                                        { label: "Scheduled classes", value: formatNumber(occupation?.available_classes) },
-                                        { label: "Closed / unavailable", value: formatNumber(occupation?.closed_or_unavailable_classes) },
-                                        { label: "Tracked time slots", value: formatNumber(occupancySlots.length) },
+                                        { label: t("dashboard.kpi.scheduledClasses"), value: formatNumber(occupation?.available_classes) },
+                                        { label: t("dashboard.kpi.closedUnavailable"), value: formatNumber(occupation?.closed_or_unavailable_classes) },
+                                        { label: t("dashboard.kpi.trackedTimeSlots"), value: formatNumber(occupancySlots.length) },
                                     ]}
                                 />
                             </div>
@@ -2968,7 +2970,7 @@ export default function Dashboard() {
                                         </Button>
                                     )}
                                 />
-                                <OccupationTable title="Occupancy by Studio" rows={occupation?.by_studio} />
+                                <OccupationTable title={t("dashboard.tables.occupancyByStudio")} rows={occupation?.by_studio} />
                             </div>
                         </>
                     )}
@@ -2976,9 +2978,9 @@ export default function Dashboard() {
                     {activeTab === "revenue" && (
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                                <KpiCard label="Sales Revenue" value={formatMoney(totals.sales_revenue)} />
-                                <KpiCard label="Visit Revenue" value={formatMoney(totals.visit_revenue)} />
-                                <KpiCard label="Average Ticket" value={formatMoney(totals.average_ticket)} />
+                                <KpiCard label={t("dashboard.kpi.salesRevenue")} value={formatMoney(totals.sales_revenue)} />
+                                <KpiCard label={t("dashboard.kpi.visitRevenue")} value={formatMoney(totals.visit_revenue)} />
+                                <KpiCard label={t("dashboard.kpi.averageTicket")} value={formatMoney(totals.average_ticket)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
                                 <RevenueItemChart rows={revenue?.by_item} />
@@ -2990,33 +2992,33 @@ export default function Dashboard() {
                         <>
                             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                                 <KpiCard
-                                    label="Total Bookings"
+                                    label={t("dashboard.kpi.totalBookings")}
                                     value={formatNumber(totals.attendance_visits)}
-                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("visits")}>Trend</Button>}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("visits")}>{t("common.trend")}</Button>}
                                 />
                                 <KpiCard
-                                    label="Completed Visits"
+                                    label={t("dashboard.kpi.completedVisits")}
                                     value={formatNumber(totals.attended_visits)}
-                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("visits")}>Trend</Button>}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("visits")}>{t("common.trend")}</Button>}
                                 />
                                 {canViewMoney && (
                                     <KpiCard
-                                        label="Avg Revenue / Visit"
+                                        label={t("dashboard.kpi.avgRevenueVisit")}
                                         value={formatMoney(totals.average_revenue_per_attended_visit)}
-                                        action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("revenue")}>Trend</Button>}
+                                        action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("revenue")}>{t("common.trend")}</Button>}
                                     />
                                 )}
                                 <KpiCard
-                                    label="No-show Rate"
+                                    label={t("dashboard.kpi.noShowRate")}
                                     value={`${formatNumber(totals.no_show_rate)}%`}
-                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("rates")}>Trend</Button>}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("rates")}>{t("common.trend")}</Button>}
                                 />
                                 <KpiCard
-                                    label="Late Cancel Rate"
+                                    label={t("dashboard.kpi.lateCancelRate")}
                                     value={`${formatNumber(totals.late_cancel_rate)}%`}
-                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("rates")}>Trend</Button>}
+                                    action={<Button variant="outlined" size="small" onClick={() => openWeeklyAttendanceTrend("rates")}>{t("common.trend")}</Button>}
                                 />
-                                <KpiCard label="Active Clients" value={formatNumber(totals.active_clients)} />
+                                <KpiCard label={t("dashboard.kpi.activeClients")} value={formatNumber(totals.active_clients)} />
                             </div>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
                                 <WeeklyAttendanceComparisonChart
@@ -3046,9 +3048,9 @@ export default function Dashboard() {
                                         </Button>
                                     )}
                                 />
-                                <CompletedVisitsRankingChart title="Completed Visits by Instructor" rows={attendance?.attended_by_instructor} />
-                                <BreakdownTable title="Completed Visits by Studio" rows={attendance?.attended_by_studio} />
-                                <CompletedVisitsRankingChart title="Completed Visits by Service" rows={attendance?.attended_by_service} wide />
+                                <CompletedVisitsRankingChart title={t("dashboard.charts.completedVisitsByInstructor")} rows={attendance?.attended_by_instructor} />
+                                <BreakdownTable title={t("dashboard.tables.completedVisitsByStudio")} rows={attendance?.attended_by_studio} />
+                                <CompletedVisitsRankingChart title={t("dashboard.charts.completedVisitsByService")} rows={attendance?.attended_by_service} wide />
                                 <InstructorQualityTable rows={attendance?.instructor_quality} />
                             </div>
                         </>
@@ -3058,27 +3060,27 @@ export default function Dashboard() {
                         <>
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
                                 <InsightCard
-                                    title="Current Member Mix"
+                                    title={t("dashboard.cards.currentMemberMix")}
                                     value={formatNumber(retention?.current_month_members)}
                                     caption="How current members are entering the month."
                                     details={[
-                                        { label: "Renewal rate", value: formatPercent(retention?.renewal_rate) },
-                                        { label: "Retained", value: formatNumber(retention?.retained_members) },
-                                        { label: "New", value: formatNumber(retention?.new_members) },
-                                        { label: "Reactivated", value: formatNumber(retention?.reactivated_members) },
+                                        { label: t("dashboard.kpi.renewalRate"), value: formatPercent(retention?.renewal_rate) },
+                                        { label: t("dashboard.kpi.retained"), value: formatNumber(retention?.retained_members) },
+                                        { label: t("dashboard.kpi.new"), value: formatNumber(retention?.new_members) },
+                                        { label: t("dashboard.kpi.reactivated"), value: formatNumber(retention?.reactivated_members) },
                                     ]}
                                     action={(
                                         <Button variant="outlined" size="small" onClick={() => setExpandedInsight("member_mix")}>
-                                            View History
+                                            {t("common.view")}
                                         </Button>
                                     )}
                                 />
                                 <InsightCard
-                                    title="Not Renewed Follow-up"
+                                    title={t("dashboard.cards.notRenewedFollowUp")}
                                     value={formatNumber(retention?.not_renewed_members ?? retention?.not_renewed_services)}
                                     caption="Members who need attention after not renewing."
                                     details={[
-                                        { label: "Inactive", value: formatNumber(retention?.not_renewed_inactive) },
+                                        { label: t("dashboard.kpi.inactive"), value: formatNumber(retention?.not_renewed_inactive) },
                                         { label: "Attending unpaid", value: formatNumber(retention?.not_renewed_attending_unpaid) },
                                         { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
                                     ]}
@@ -3090,13 +3092,13 @@ export default function Dashboard() {
                                 />
                                 {canViewMoney && (
                                     <InsightCard
-                                        title="Value at Risk"
+                                        title={t("dashboard.cards.valueAtRisk")}
                                         value={formatMoney(retention?.not_renewed_value)}
                                         caption="Estimated membership value from not-renewed clients."
                                         details={[
-                                            { label: "Post-expiration visits", value: formatNumber(retention?.not_renewed_post_expiration_attendance) },
-                                            { label: "Paid visits", value: formatNumber(retention?.not_renewed_post_expiration_paid_attendance) },
-                                            { label: "Unpaid visits", value: formatNumber(retention?.not_renewed_post_expiration_unpaid_attendance) },
+                                            { label: t("dashboard.kpi.postExpirationVisits"), value: formatNumber(retention?.not_renewed_post_expiration_attendance) },
+                                            { label: t("dashboard.kpi.paidVisits"), value: formatNumber(retention?.not_renewed_post_expiration_paid_attendance) },
+                                            { label: t("dashboard.kpi.unpaidVisits"), value: formatNumber(retention?.not_renewed_post_expiration_unpaid_attendance) },
                                         ]}
                                     />
                                 )}
@@ -3116,25 +3118,25 @@ export default function Dashboard() {
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
                                 <RetentionSummaryTableCard
-                                    title="Not Renewed Clients"
+                                    title={t("dashboard.tables.notRenewedClients")}
                                     rows={retention?.not_renewed_clients}
                                     tableKey="not_renewed"
                                     onExpand={() => openRetentionTable("not_renewed")}
                                 />
                                 <RetentionSummaryTableCard
-                                    title="Retained Members"
+                                    title={t("dashboard.tables.retainedMembers")}
                                     rows={retention?.retained_samples}
                                     tableKey="retained"
                                     onExpand={() => openRetentionTable("retained")}
                                 />
                                 <RetentionSummaryTableCard
-                                    title="New Members"
+                                    title={t("dashboard.tables.newMembers")}
                                     rows={retention?.new_member_samples}
                                     tableKey="new_members"
                                     onExpand={() => openRetentionTable("new_members")}
                                 />
                                 <RetentionSummaryTableCard
-                                    title="Reactivated Members"
+                                    title={t("dashboard.tables.reactivatedMembers")}
                                     rows={retention?.reactivated_samples}
                                     tableKey="reactivated"
                                     onExpand={() => openRetentionTable("reactivated")}
@@ -3156,6 +3158,7 @@ export default function Dashboard() {
                             periodLabel={periodLabel}
                             mode={dashboardMode}
                             onOpenTrend={openConversionTrend}
+                            t={t}
                         />
                     )}
 
@@ -3165,7 +3168,7 @@ export default function Dashboard() {
                                 occupation={occupation}
                                 action={
                                     <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_health")}>
-                                        View Trend
+                                        {t("common.trend")}
                                     </Button>
                                 }
                             />
@@ -3187,9 +3190,9 @@ export default function Dashboard() {
                             </div>
 
                             <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
-                                <OccupationTable title="Occupancy by Room" rows={occupation?.by_room_capacity} />
-                                <OccupancySlotTable title="Lowest Occupancy Slots" rows={lowOccupancySlots} />
-                                <OccupancySlotTable title="Highest Occupancy Slots" rows={highOccupancySlots} />
+                                <OccupationTable title={t("dashboard.tables.occupancyByRoom")} rows={occupation?.by_room_capacity} />
+                                <OccupancySlotTable title={t("dashboard.tables.lowestOccupancySlots")} rows={lowOccupancySlots} />
+                                <OccupancySlotTable title={t("dashboard.tables.highestOccupancySlots")} rows={highOccupancySlots} />
                             </div>
                         </>
                     )}
@@ -3203,7 +3206,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Revenue Health Trend</span>
+                        <span>{t("dashboard.modal.revenueHealthTrend")}</span>
                         <IconButton aria-label="Close revenue trend" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3221,7 +3224,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Retention Health Trend</span>
+                        <span>{t("dashboard.modal.retentionHealthTrend")}</span>
                         <IconButton aria-label="Close retention trend" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3239,7 +3242,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Current Member Mix History</span>
+                        <span>{t("dashboard.modal.currentMemberMixHistory")}</span>
                         <IconButton aria-label="Close member mix history" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3253,8 +3256,8 @@ export default function Dashboard() {
                         scrollButtons="auto"
                         style={{ marginBottom: "16px" }}
                     >
-                        <Tab label="Members" value="members" />
-                        <Tab label="Renewal Rate" value="renewal" />
+                        <Tab label={t("dashboard.kpi.currentMembers")} value="members" />
+                        <Tab label={t("dashboard.kpi.renewalRate")} value="renewal" />
                         <Tab label="Movement" value="movement" />
                     </Tabs>
                     <MemberMixHistoryChart rows={memberMixTrendRows} view={memberMixTrendView} />
@@ -3268,7 +3271,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Retention Detail Tables</span>
+                        <span>{t("dashboard.modal.retentionDetailTables")}</span>
                         <IconButton aria-label="Close retention tables" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3305,7 +3308,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Attendance Health Trend</span>
+                        <span>{t("dashboard.modal.attendanceHealthTrend")}</span>
                         <IconButton aria-label="Close attendance health trend" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3321,7 +3324,7 @@ export default function Dashboard() {
                     >
                         <Tab label="Bookings & Visits" value="visits" />
                         <Tab label="No-show & Late Cancel" value="rates" />
-                        {canViewMoney && <Tab label="Avg Revenue / Visit" value="revenue" />}
+                        {canViewMoney && <Tab label={t("dashboard.kpi.avgRevenueVisit")} value="revenue" />}
                     </Tabs>
                     {weeklyTrendsLoading ? (
                         <LinearProgress />
@@ -3338,7 +3341,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Occupancy Health Trend</span>
+                        <span>{t("dashboard.modal.occupancyHealthTrend")}</span>
                         <IconButton aria-label="Close occupancy health trend" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3352,9 +3355,9 @@ export default function Dashboard() {
                         scrollButtons="auto"
                         style={{ marginBottom: "16px" }}
                     >
-                        <Tab label="Capacity Used" value="capacity" />
-                        <Tab label="Occupancy Rate" value="rate" />
-                        <Tab label="Scheduled Classes" value="classes" />
+                        <Tab label={t("dashboard.cards.capacityUsed")} value="capacity" />
+                        <Tab label={t("common.occupancy")} value="rate" />
+                        <Tab label={t("dashboard.kpi.scheduledClasses")} value="classes" />
                     </Tabs>
                     {weeklyTrendsLoading ? (
                         <LinearProgress />
@@ -3371,7 +3374,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Completed Visits by Weekday</span>
+                        <span>{t("dashboard.modal.completedVisitsByWeekday")}</span>
                         <IconButton aria-label="Close completed visits weekday detail" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3404,7 +3407,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Occupancy by Weekday</span>
+                        <span>{t("dashboard.modal.occupancyByWeekday")}</span>
                         <IconButton aria-label="Close occupancy weekday detail" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3437,7 +3440,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Trial Conversion Trend</span>
+                        <span>{t("dashboard.modal.trialConversionTrend")}</span>
                         <IconButton aria-label="Close trial conversion trend" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3451,8 +3454,8 @@ export default function Dashboard() {
                         scrollButtons="auto"
                         style={{ marginBottom: "16px" }}
                     >
-                        <Tab label="Trial Activity" value="activity" />
-                        <Tab label="Conversion Rates" value="rates" />
+                        <Tab label={t("dashboard.kpi.trialVisits")} value="activity" />
+                        <Tab label={t("common.conversion")} value="rates" />
                     </Tabs>
                     {dashboardMode === "weekly" && weeklyTrendsLoading ? (
                         <LinearProgress />
@@ -3469,7 +3472,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Occupancy by Hour Matrix</span>
+                        <span>{t("dashboard.modal.occupancyByHourMatrix")}</span>
                         <IconButton aria-label="Close occupancy hour matrix" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
@@ -3483,8 +3486,8 @@ export default function Dashboard() {
                         scrollButtons="auto"
                         style={{ marginBottom: "16px" }}
                     >
-                        <Tab label="Current Week" value="current_week" />
-                        <Tab label="Weekday History" value="history" />
+                        <Tab label={t("dashboard.period.currentWeek")} value="current_week" />
+                        <Tab label={t("dashboard.modal.occupancyByWeekday")} value="history" />
                     </Tabs>
                     {occupancyHourMatrixView === "history" && (
                         <Tabs
@@ -3518,7 +3521,7 @@ export default function Dashboard() {
             >
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                        <span>Booking Quality by Weekday</span>
+                        <span>{t("dashboard.modal.bookingQualityByWeekday")}</span>
                         <IconButton aria-label="Close booking quality weekday detail" onClick={() => setExpandedInsight(null)} size="small">
                             <CloseIcon />
                         </IconButton>
