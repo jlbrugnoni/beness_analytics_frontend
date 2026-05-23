@@ -6,6 +6,7 @@ import useFetchUserInfo from "@/components/useFetchUserInfo";
 import FormComponent from "@/components/FormComponent";
 import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
+import { languages } from "@/i18n/translations";
 
 
 const capabilityFields = [
@@ -19,6 +20,7 @@ const capabilityFields = [
 
 
 const emptyAccessData = {
+    language: "en",
     allowed_sites: [],
     allowed_studios: [],
     can_view_money: false,
@@ -83,6 +85,7 @@ const EditUserPage = () => {
             image: userResponse.data.image || "",
             new_password: "",
             confirm_password: "",
+            language: profile.language || "en",
             allowed_sites: profile.allowed_sites || [],
             allowed_studios: profile.allowed_studios || [],
             can_view_money: Boolean(profile.can_view_money),
@@ -109,6 +112,7 @@ const EditUserPage = () => {
     const saveAccessProfile = async (formData) => {
         const payload = {
             user: Number(id),
+            language: formData.language || "en",
             allowed_sites: formData.allowed_sites || [],
             allowed_studios: formData.allowed_studios || [],
             can_view_money: Boolean(formData.can_view_money),
@@ -172,6 +176,7 @@ const EditUserPage = () => {
                     { label: "Nombre", name: "first_name" },
                     { label: "Apellido", name: "last_name" },
                     { label: "Nombre de Usuario", name: "username" },
+                    { label: "Language", name: "language", type: "select", options: languages },
                     { label: "Groups", name: "groups", type: "multiselect", options: groupOptions },
                     { label: "Allowed Sites", name: "allowed_sites", type: "multiselect", options: siteOptions },
                     { label: "Allowed Studios", name: "allowed_studios", type: "multiselect", options: studioOptions },

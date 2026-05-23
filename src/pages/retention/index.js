@@ -5,6 +5,7 @@ import axios from "axios";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
+import useI18n from "@/hooks/useI18n";
 import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
@@ -22,30 +23,20 @@ import TextField from "@mui/material/TextField";
 
 
 const formatMoney = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const formatActivityStatus = (value) => ({
-    inactive: "Inactive",
-    attending_unpaid: "Attending Unpaid",
-    attending_paid: "Attending Paid",
+const formatActivityStatus = (value, t) => ({
+    inactive: t("dashboard.activity.inactive"),
+    attending_unpaid: t("dashboard.activity.attendingUnpaid"),
+    attending_paid: t("dashboard.activity.attendingPaid"),
 }[value] || "N/A");
 
 
 const csvValue = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
 
 
-const monthOptions = [
-    { value: "01", label: "January" },
-    { value: "02", label: "February" },
-    { value: "03", label: "March" },
-    { value: "04", label: "April" },
-    { value: "05", label: "May" },
-    { value: "06", label: "June" },
-    { value: "07", label: "July" },
-    { value: "08", label: "August" },
-    { value: "09", label: "September" },
-    { value: "10", label: "October" },
-    { value: "11", label: "November" },
-    { value: "12", label: "December" },
-];
+const monthOptions = Array.from({ length: 12 }, (_, index) => {
+    const value = String(index + 1).padStart(2, "0");
+    return { value, labelKey: `months.${value}` };
+});
 
 
 const yearOptions = () => {
@@ -173,20 +164,17 @@ const sameQuery = (currentQuery, nextQuery) => {
 };
 
 
-const formatDisplayDate = (value) => {
+const formatDisplayDate = (value, t) => {
     if (!value) return "N/A";
     const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-    });
+    return `${t(`monthsShort.${String(month).padStart(2, "0")}`)} ${day}, ${year}`;
 };
 
 
 export default function RetentionFollowUp() {
     const token = useFetchToken();
     const router = useRouter();
+    const { t } = useI18n();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const initialRetentionState = useMemo(() => retentionDefaultState(), []);
 
@@ -303,7 +291,7 @@ export default function RetentionFollowUp() {
             row.first_membership_purchase_date,
             row.last_membership_purchase_date,
             row.lifetime_membership_value,
-            formatActivityStatus(row.not_renewed_activity_status),
+            formatActivityStatus(row.not_renewed_activity_status, t),
             row.post_expiration_attendance_count,
             row.post_expiration_unpaid_attendance_count,
             row.post_expiration_paid_attendance_count,
@@ -325,7 +313,7 @@ export default function RetentionFollowUp() {
     };
 
     const rebuildSnapshots = async () => {
-        if (!window.confirm("Rebuild monthly membership snapshots for the selected site and period?")) return;
+        if (!window.confirm(t("retention.rebuildConfirm"))) return;
         setLoading(true);
         setError("");
         try {
@@ -395,11 +383,11 @@ export default function RetentionFollowUp() {
     return (
         <MainPage>
             <Head>
-                <title>Beness Analytics | Retention</title>
+                <title>Beness Analytics | {t("retention.title")}</title>
             </Head>
             <div className={styles.container}>
                 <div className={styles.titleContainer}>
-                    <h1 className={styles.title}>Retention Follow-up</h1>
+                    <h1 className={styles.title}>{t("retention.title")}</h1>
                 </div>
 
                 <div style={{ width: "90%", display: "grid", gap: "16px" }}>
@@ -409,53 +397,53 @@ export default function RetentionFollowUp() {
                         <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                             <TextField
                                 select
-                                label="Site"
+                                label={t("common.site")}
                                 value={filters.site}
                                 onChange={(event) => setFilters({ ...filters, site: event.target.value, studio: "" })}
                             >
-                                <MenuItem value="">All Sites</MenuItem>
+                                <MenuItem value="">{t("dashboard.allSites")}</MenuItem>
                                 {sites.map((site) => (
                                     <MenuItem key={site.id} value={site.id}>{site.name}</MenuItem>
                                 ))}
                             </TextField>
                             <TextField
                                 select
-                                label="Studio"
+                                label={t("common.studio")}
                                 value={filters.studio}
                                 onChange={(event) => setFilters({ ...filters, studio: event.target.value })}
                             >
-                                <MenuItem value="">All Studios</MenuItem>
+                                <MenuItem value="">{t("dashboard.allStudios")}</MenuItem>
                                 {visibleStudios.map((studio) => (
                                     <MenuItem key={studio.id} value={studio.id}>{studio.name}</MenuItem>
                                 ))}
                             </TextField>
                             <TextField
                                 select
-                                label="Status"
+                                label={t("common.status")}
                                 value={filters.status}
                                 onChange={(event) => setFilters({ ...filters, status: event.target.value })}
                             >
-                                <MenuItem value="not_renewed">Not Renewed</MenuItem>
-                                <MenuItem value="retained">Retained</MenuItem>
-                                <MenuItem value="new">New</MenuItem>
-                                <MenuItem value="reactivated">Reactivated</MenuItem>
+                                <MenuItem value="not_renewed">{t("retention.status.notRenewed")}</MenuItem>
+                                <MenuItem value="retained">{t("retention.status.retained")}</MenuItem>
+                                <MenuItem value="new">{t("retention.status.new")}</MenuItem>
+                                <MenuItem value="reactivated">{t("retention.status.reactivated")}</MenuItem>
                             </TextField>
                             <TextField
                                 select
-                                label="Period"
+                                label={t("common.period")}
                                 value={periodMode}
                                 onChange={(event) => setPeriodMode(event.target.value)}
                             >
-                                <MenuItem value="last_completed_month">Last Completed Month</MenuItem>
-                                <MenuItem value="current_month">Current Month</MenuItem>
-                                <MenuItem value="specific_month">Specific Month</MenuItem>
-                                <MenuItem value="range">Date Range</MenuItem>
+                                <MenuItem value="last_completed_month">{t("dashboard.period.lastCompletedMonth")}</MenuItem>
+                                <MenuItem value="current_month">{t("dashboard.period.currentMonth")}</MenuItem>
+                                <MenuItem value="specific_month">{t("dashboard.period.specificMonth")}</MenuItem>
+                                <MenuItem value="range">{t("retention.period.dateRange")}</MenuItem>
                             </TextField>
                             {periodMode === "specific_month" && (
                                 <>
                                     <TextField
                                         select
-                                        label="Month"
+                                        label={t("common.month")}
                                         value={selectedMonthParts.month}
                                         onChange={(event) => setFilters({
                                             ...filters,
@@ -463,12 +451,12 @@ export default function RetentionFollowUp() {
                                         })}
                                     >
                                         {monthOptions.map((month) => (
-                                            <MenuItem key={month.value} value={month.value}>{month.label}</MenuItem>
+                                            <MenuItem key={month.value} value={month.value}>{t(month.labelKey)}</MenuItem>
                                         ))}
                                     </TextField>
                                     <TextField
                                         select
-                                        label="Year"
+                                        label={t("common.year")}
                                         value={Number(selectedMonthParts.year)}
                                         onChange={(event) => setFilters({
                                             ...filters,
@@ -484,14 +472,14 @@ export default function RetentionFollowUp() {
                             {periodMode === "range" && (
                                 <>
                                     <TextField
-                                        label="Date From"
+                                        label={t("common.dateFrom")}
                                         type="date"
                                         value={filters.date_from}
                                         InputLabelProps={{ shrink: true }}
                                         onChange={(event) => setFilters({ ...filters, date_from: event.target.value })}
                                     />
                                     <TextField
-                                        label="Date To"
+                                        label={t("common.dateTo")}
                                         type="date"
                                         value={filters.date_to}
                                         InputLabelProps={{ shrink: true }}
@@ -500,50 +488,48 @@ export default function RetentionFollowUp() {
                                 </>
                             )}
                             <TextField
-                                label="Search"
+                                label={t("common.search")}
                                 value={filters.search}
                                 onChange={(event) => setFilters({ ...filters, search: event.target.value })}
                             />
                         </div>
                         <div style={{ color: "#666", fontSize: "14px" }}>
-                            Showing: {formatDisplayDate(activeDateRange.date_from)} - {formatDisplayDate(activeDateRange.date_to)}
+                            {t("retention.showing")}: {formatDisplayDate(activeDateRange.date_from, t)} - {formatDisplayDate(activeDateRange.date_to, t)}
                         </div>
                         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                             <Button variant="contained" onClick={fetchRows} disabled={loading}>
-                                {loading ? "Loading..." : "Apply Filters"}
+                                {loading ? t("common.loading") : t("retention.applyFilters")}
                             </Button>
                             <Button variant="outlined" onClick={rebuildSnapshots} disabled={loading}>
-                                Rebuild Snapshots
+                                {t("retention.rebuildSnapshots")}
                             </Button>
                             <Button variant="outlined" onClick={exportCsv} disabled={!rows.length}>
-                                Export CSV
+                                {t("retention.exportCsv")}
                             </Button>
                         </div>
                     </Paper>
 
                     <Alert severity="info">
-                        This list uses only Pricing Options marked as Track Retention. Records are based on services
-                        with at least 15 active membership days in the selected month. Not renewed is counted in the
-                        month where the client stopped being a member.
+                        {t("retention.info")}
                     </Alert>
 
                     <Paper style={{ padding: "16px" }}>
-                        <h2 style={{ marginTop: 0 }}>{count.toLocaleString()} records</h2>
+                        <h2 style={{ marginTop: 0 }}>{count.toLocaleString()} {t("common.records")}</h2>
                         <TableContainer style={{ maxHeight: 620 }}>
                             <Table size="small" stickyHeader>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>Client</TableCell>
-                                        <TableCell>Contact</TableCell>
-                                        <TableCell>Month</TableCell>
-                                        <TableCell>Status</TableCell>
-                                        <TableCell>Activity</TableCell>
-                                        <TableCell>Studio</TableCell>
-                                        <TableCell>Service</TableCell>
-                                        <TableCell align="right">Days</TableCell>
-                                        <TableCell align="right">Amount</TableCell>
-                                        <TableCell align="right">Purchases</TableCell>
-                                        <TableCell>History</TableCell>
+                                        <TableCell>{t("common.client")}</TableCell>
+                                        <TableCell>{t("common.contact")}</TableCell>
+                                        <TableCell>{t("common.month")}</TableCell>
+                                        <TableCell>{t("common.status")}</TableCell>
+                                        <TableCell>{t("common.activity")}</TableCell>
+                                        <TableCell>{t("common.studio")}</TableCell>
+                                        <TableCell>{t("common.service")}</TableCell>
+                                        <TableCell align="right">{t("common.days")}</TableCell>
+                                        <TableCell align="right">{t("common.amount")}</TableCell>
+                                        <TableCell align="right">{t("common.purchases")}</TableCell>
+                                        <TableCell>{t("common.history")}</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -560,15 +546,15 @@ export default function RetentionFollowUp() {
                                             <TableCell>{row.month || "N/A"}</TableCell>
                                             <TableCell>{row.status || "N/A"}</TableCell>
                                             <TableCell>
-                                                <div>{formatActivityStatus(row.not_renewed_activity_status)}</div>
+                                                <div>{formatActivityStatus(row.not_renewed_activity_status, t)}</div>
                                                 {!!row.post_expiration_attendance_count && (
                                                     <div style={{ color: "#666", fontSize: "12px" }}>
-                                                        {row.post_expiration_attendance_count} visits / {formatMoney(row.post_expiration_revenue)}
+                                                        {row.post_expiration_attendance_count} {t("retention.visits")} / {formatMoney(row.post_expiration_revenue)}
                                                     </div>
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <div>{row.studio || "Unknown"}</div>
+                                                <div>{row.studio || t("common.unknown")}</div>
                                                 <div style={{ color: "#666", fontSize: "12px" }}>{row.studio_inference_method || ""}</div>
                                             </TableCell>
                                             <TableCell>{row.service || "N/A"}</TableCell>
@@ -585,7 +571,7 @@ export default function RetentionFollowUp() {
                                     ))}
                                     {!rows.length && (
                                         <TableRow>
-                                            <TableCell colSpan={11}>No data</TableCell>
+                                            <TableCell colSpan={11}>{t("common.noData")}</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

@@ -5,6 +5,7 @@ import useFetchToken from "@/components/useFetchUserId";
 import FormComponent from "@/components/FormComponent";
 import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
+import { languages } from "@/i18n/translations";
 
 
 const capabilityFields = [
@@ -18,6 +19,7 @@ const capabilityFields = [
 
 
 const emptyAccessData = {
+    language: "en",
     groups: [],
     allowed_sites: [],
     allowed_studios: [],
@@ -72,6 +74,7 @@ const UserCreatePage = () => {
     const saveAccessProfile = async (userId, formData) => {
         await axios.post(`${backendUrl}/api/data/user-access-profiles/`, {
             user: userId,
+            language: formData.language || "en",
             allowed_sites: formData.allowed_sites || [],
             allowed_studios: formData.allowed_studios || [],
             can_view_money: Boolean(formData.can_view_money),
@@ -125,6 +128,7 @@ const UserCreatePage = () => {
                     { label: "Apellido", name: "last_name" },
                     { label: "Nombre de Usuario", name: "username" },
                     { label: "Correo Electronico", name: "email", type: "email" },
+                    { label: "Language", name: "language", type: "select", options: languages },
                     { label: "Groups", name: "groups", type: "multiselect", options: groupOptions },
                     { label: "Allowed Sites", name: "allowed_sites", type: "multiselect", options: siteOptions },
                     { label: "Allowed Studios", name: "allowed_studios", type: "multiselect", options: studioOptions },

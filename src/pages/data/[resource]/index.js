@@ -6,6 +6,7 @@ import axios from "axios";
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
 import useAccess from "@/hooks/useAccess";
+import useI18n from "@/hooks/useI18n";
 import { dataResources } from "@/constants/dataResources";
 import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
@@ -30,6 +31,82 @@ import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+
+
+const labelTranslationKeys = {
+    Name: "common.name",
+    Site: "common.site",
+    Studio: "common.studio",
+    Room: "common.room",
+    Country: "common.country",
+    Active: "common.active",
+    Date: "common.date",
+    Start: "common.start",
+    End: "common.end",
+    Type: "common.type",
+    Capacity: "common.capacity",
+    Status: "common.status",
+    Source: "common.source",
+    Template: "common.template",
+    Expected: "common.expected",
+    Reason: "common.reason",
+    Notes: "common.notes",
+    Instructor: "common.instructor",
+    "MindBody ID": "data.fields.mindbodyId",
+    "MindBody Name": "data.fields.mindbodyName",
+    "Normalized Name": "data.fields.normalizedName",
+    Description: "data.fields.description",
+    "MindBody Site ID": "data.fields.mindbodySiteId",
+    "Room Type": "data.fields.roomType",
+    "Group Capacity": "data.fields.groupCapacity",
+    "Private Capacity": "data.fields.privateCapacity",
+    "First Name": "common.firstName",
+    "Last Name": "common.lastName",
+    Email: "common.email",
+    Phone: "common.phone",
+    "Service Category": "data.fields.serviceCategory",
+    "Track Retention": "data.fields.trackRetention",
+    "Trial Class": "data.fields.trialClass",
+    "Schedule Status": "data.fields.scheduleStatus",
+    "Expected Instructor": "data.fields.expectedInstructor",
+    "Detected Class": "data.fields.detectedClass",
+    "Class Name": "data.fields.className",
+    "Start Time": "data.fields.startTime",
+    "End Time": "data.fields.endTime",
+    "Session Type": "data.fields.sessionType",
+    "All Day": "data.fields.allDay",
+    "Active From": "data.fields.activeFrom",
+    "Active Until": "data.fields.activeUntil",
+    "Resolution Notes": "data.fields.resolutionNotes",
+};
+
+
+const optionTranslationKeys = {
+    Group: "data.options.group",
+    Private: "data.options.private",
+    Mixed: "data.options.mixed",
+    Scheduled: "data.options.scheduled",
+    Cancelled: "data.options.cancelled",
+    Unavailable: "data.options.unavailable",
+    "Needs Review": "data.options.needsReview",
+    Conflict: "data.options.conflict",
+    Pending: "data.options.pending",
+    Matched: "data.options.matched",
+    Missing: "data.options.missing",
+    "Manually Created": "data.options.manuallyCreated",
+    Ignored: "data.options.ignored",
+    Monday: "weekdays.monday",
+    Tuesday: "weekdays.tuesday",
+    Wednesday: "weekdays.wednesday",
+    Thursday: "weekdays.thursday",
+    Friday: "weekdays.friday",
+    Saturday: "weekdays.saturday",
+    Sunday: "weekdays.sunday",
+};
+
+
+const translateLabel = (t, label) => t(labelTranslationKeys[label] || label, label);
+const translateOption = (t, label) => t(optionTranslationKeys[label] || label, label);
 
 
 const emptyValueForField = (field) => {
@@ -59,6 +136,7 @@ export default function ResourcePage() {
     const config = dataResources[resource];
     const token = useFetchToken();
     const access = useAccess();
+    const { t } = useI18n();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const canEditData = Boolean(access.capabilities?.can_edit_data);
 
@@ -148,7 +226,7 @@ export default function ResourcePage() {
     if (!config || !canSeeResource(config, access)) {
         return (
             <MainPage>
-                <div className={styles.container}>Resource not available.</div>
+                <div className={styles.container}>{t("common.notAvailable")}</div>
             </MainPage>
         );
     }
@@ -195,7 +273,7 @@ export default function ResourcePage() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Delete this record?")) return;
+        if (!window.confirm(t("common.deleteConfirm"))) return;
         await axios.delete(`${backendUrl}/api/data/${config.endpoint}/${id}/`, authHeaders);
         await fetchRows(page);
     };
@@ -211,7 +289,7 @@ export default function ResourcePage() {
                             onChange={(event) => setFormData({ ...formData, [field.name]: event.target.checked })}
                         />
                     }
-                    label={field.label}
+                    label={translateLabel(t, field.label)}
                 />
             );
         }
@@ -245,15 +323,15 @@ export default function ResourcePage() {
                     key={field.name}
                     select
                     fullWidth
-                    label={field.label}
+                    label={translateLabel(t, field.label)}
                     value={formData[field.name] || ""}
                     required={field.required}
                     onChange={(event) => setFormData({ ...formData, [field.name]: event.target.value })}
                 >
-                    <MenuItem value="">None</MenuItem>
+                    <MenuItem value="">{t("common.none")}</MenuItem>
                     {options.map((option) => (
                         <MenuItem value={option.value} key={option.value}>
-                            {option.label}
+                            {translateOption(t, option.label)}
                         </MenuItem>
                     ))}
                 </TextField>
@@ -264,7 +342,7 @@ export default function ResourcePage() {
             <TextField
                 key={field.name}
                 fullWidth
-                label={field.label}
+                label={translateLabel(t, field.label)}
                 type={field.type || "text"}
                 required={field.required}
                 multiline={field.multiline}
@@ -278,14 +356,14 @@ export default function ResourcePage() {
     return (
         <MainPage>
             <Head>
-                <title>Beness Analytics | {config.label}</title>
+                <title>Beness Analytics | {t(`data.resources.${resource}`, config.label)}</title>
             </Head>
             <div className={styles.container}>
                 <div className={styles.titleContainer}>
-                    <h1 className={styles.title}>{config.label}</h1>
+                    <h1 className={styles.title}>{t(`data.resources.${resource}`, config.label)}</h1>
                     {canEditData && (
                         <Button className={styles.addButton} onClick={openCreateDialog}>
-                            + Add
+                            + {t("common.add")}
                         </Button>
                     )}
                 </div>
@@ -295,9 +373,9 @@ export default function ResourcePage() {
                         <TableHead>
                             <TableRow>
                                 {config.columns.map((column) => (
-                                    <TableCell key={column.field}>{column.label}</TableCell>
+                                    <TableCell key={column.field}>{translateLabel(t, column.label)}</TableCell>
                                 ))}
-                                {canEditData && <TableCell>Actions</TableCell>}
+                                {canEditData && <TableCell>{t("common.actions")}</TableCell>}
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -306,7 +384,7 @@ export default function ResourcePage() {
                                     {config.columns.map((column) => (
                                         <TableCell key={column.field}>
                                             {typeof row[column.field] === "boolean"
-                                                ? row[column.field] ? "Yes" : "No"
+                                                ? row[column.field] ? t("common.yes") : t("common.no")
                                                 : row[column.field] || "N/A"}
                                         </TableCell>
                                     ))}
@@ -321,7 +399,7 @@ export default function ResourcePage() {
                             {!rows.length && (
                                 <TableRow>
                                     <TableCell colSpan={config.columns.length + (canEditData ? 1 : 0)}>
-                                        {loading ? "Loading..." : "No records found."}
+                                        {loading ? t("common.loading") : t("common.noRecordsFound")}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -341,13 +419,13 @@ export default function ResourcePage() {
             </div>
 
             <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
-                <DialogTitle>{editingRow ? "Edit" : "Add"} {config.singular}</DialogTitle>
+                <DialogTitle>{editingRow ? t("common.edit") : t("common.add")} {t(`data.resources.${resource}`, config.singular)}</DialogTitle>
                 <DialogContent style={{ display: "grid", gap: "16px", paddingTop: "12px" }}>
                     {config.fields.map(renderField)}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleSave}>Save</Button>
+                    <Button onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
+                    <Button variant="contained" onClick={handleSave}>{t("common.save")}</Button>
                 </DialogActions>
             </Dialog>
         </MainPage>

@@ -6,6 +6,7 @@ import axios from "axios";
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
 import useAccess from "@/hooks/useAccess";
+import useI18n from "@/hooks/useI18n";
 import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
@@ -17,7 +18,7 @@ import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 const statusColors = {
     scheduled: { background: "#e7f3ec", border: "#72a987", color: "#24533a" },
@@ -36,12 +37,12 @@ const scheduleStatusColors = {
 };
 
 const scheduleStatusOptions = [
-    { value: "", label: "All statuses" },
-    { value: "matched", label: "Matched" },
-    { value: "missing_from_report", label: "Missing from report" },
-    { value: "unexpected_from_report", label: "Unexpected from report" },
-    { value: "unreconciled", label: "Unreconciled" },
-    { value: "manual", label: "Manual" },
+    { value: "", labelKey: "schedule.allStatuses" },
+    { value: "matched", labelKey: "schedule.status.matched" },
+    { value: "missing_from_report", labelKey: "schedule.status.missing_from_report" },
+    { value: "unexpected_from_report", labelKey: "schedule.status.unexpected_from_report" },
+    { value: "unreconciled", labelKey: "schedule.status.unreconciled" },
+    { value: "manual", labelKey: "schedule.status.manual" },
 ];
 
 
@@ -111,7 +112,7 @@ const WarningCard = ({ label, value }) => (
 );
 
 
-const ClassCard = ({ item, onResolve, canEditData }) => {
+const ClassCard = ({ item, onResolve, canEditData, t }) => {
     const colors = scheduleStatusColors[item.schedule_status] || statusColors[item.status] || statusColors.scheduled;
     const scheduleLabel = item.schedule_status_label || item.schedule_status?.replaceAll("_", " ") || "Scheduled";
     const isClosed = ["cancelled", "unavailable"].includes(item.status);
@@ -134,7 +135,7 @@ const ClassCard = ({ item, onResolve, canEditData }) => {
             </div>
             <div style={{ fontWeight: 700 }}>{item.name}</div>
             <div style={{ fontSize: "13px" }}>{item.studio_name}</div>
-            <div style={{ fontSize: "13px" }}>{item.room_name || "No room"} · {item.staff_member_name || "No instructor"}</div>
+            <div style={{ fontSize: "13px" }}>{item.room_name || t("schedule.noRoom")} · {item.staff_member_name || t("schedule.noInstructor")}</div>
             {item.template_name && (
                 <div style={{ fontSize: "12px" }}>Template: {item.template_name}</div>
             )}
@@ -144,19 +145,19 @@ const ClassCard = ({ item, onResolve, canEditData }) => {
                 {(item.no_show_count || item.late_cancel_count) ? (
                     <Chip size="small" label={`NS/LC ${(item.no_show_count || 0) + (item.late_cancel_count || 0)}`} />
                 ) : null}
-                <Chip size="small" label={item.source_label || item.source || "Source N/A"} />
+                <Chip size="small" label={item.source_label || item.source || `${t("common.source")} N/A`} />
                 {isClosed && <Chip size="small" color="warning" label={item.status?.replaceAll("_", " ")} />}
             </div>
             {item.reason && <div style={{ fontSize: "12px" }}>{item.reason}</div>}
             {canEditData && <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                 {!isClosed && (
                     <>
-                        <Button size="small" variant="outlined" onClick={() => onResolve(item, "cancelled")}>Cancel</Button>
-                        <Button size="small" variant="outlined" onClick={() => onResolve(item, "unavailable")}>Unavailable</Button>
+                        <Button size="small" variant="outlined" onClick={() => onResolve(item, "cancelled")}>{t("schedule.cancel")}</Button>
+                        <Button size="small" variant="outlined" onClick={() => onResolve(item, "unavailable")}>{t("schedule.unavailable")}</Button>
                     </>
                 )}
                 {isClosed && (
-                    <Button size="small" variant="outlined" onClick={() => onResolve(item, "scheduled")}>Reopen</Button>
+                    <Button size="small" variant="outlined" onClick={() => onResolve(item, "scheduled")}>{t("schedule.reopen")}</Button>
                 )}
             </div>}
         </div>
@@ -166,6 +167,7 @@ const ClassCard = ({ item, onResolve, canEditData }) => {
 export default function SchedulePage() {
     const token = useFetchToken();
     const access = useAccess();
+    const { t } = useI18n();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const canEditData = Boolean(access.capabilities?.can_edit_data);
 
@@ -196,7 +198,7 @@ export default function SchedulePage() {
         return Array.from({ length: 7 }, (_, index) => {
             const date = addDays(start, index);
             return {
-                label: DAY_LABELS[index],
+                label: t(`weekdaysShort.${DAY_KEYS[index]}`),
                 date,
                 value: formatDate(date),
             };
@@ -373,11 +375,11 @@ export default function SchedulePage() {
     return (
         <MainPage>
             <Head>
-                <title>Beness Analytics | Schedule</title>
+                <title>Beness Analytics | {t("schedule.title")}</title>
             </Head>
             <div className={styles.container}>
                 <div className={styles.titleContainer}>
-                    <h1 className={styles.title}>Schedule</h1>
+                    <h1 className={styles.title}>{t("schedule.title")}</h1>
                 </div>
 
                 <div style={{ display: "grid", gap: "16px" }}>
@@ -385,7 +387,7 @@ export default function SchedulePage() {
 
                     <Paper style={{ padding: "18px", display: "grid", gap: "14px" }}>
                         <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
-                            <TextField select label="Site" value={site} onChange={(event) => {
+                            <TextField select label={t("common.site")} value={site} onChange={(event) => {
                                 setSite(event.target.value);
                                 setStudio("");
                                 setRoom("");
@@ -394,28 +396,28 @@ export default function SchedulePage() {
                                     <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
                                 ))}
                             </TextField>
-                            <TextField select label="Studio" value={studio} onChange={(event) => {
+                            <TextField select label={t("common.studio")} value={studio} onChange={(event) => {
                                 setStudio(event.target.value);
                                 setRoom("");
                             }}>
-                                <MenuItem value="">All studios</MenuItem>
+                                <MenuItem value="">{t("schedule.allStudios")}</MenuItem>
                                 {filteredStudios.map((item) => (
                                     <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
                                 ))}
                             </TextField>
-                            <TextField select label="Room" value={room} onChange={(event) => setRoom(event.target.value)}>
-                                <MenuItem value="">All rooms</MenuItem>
+                            <TextField select label={t("common.room", "Room")} value={room} onChange={(event) => setRoom(event.target.value)}>
+                                <MenuItem value="">{t("schedule.allRooms")}</MenuItem>
                                 {filteredRooms.map((item) => (
                                     <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
                                 ))}
                             </TextField>
-                            <TextField select label="Schedule Status" value={scheduleStatus} onChange={(event) => setScheduleStatus(event.target.value)}>
+                            <TextField select label={t("schedule.status")} value={scheduleStatus} onChange={(event) => setScheduleStatus(event.target.value)}>
                                 {scheduleStatusOptions.map((item) => (
-                                    <MenuItem key={item.value || "all"} value={item.value}>{item.label}</MenuItem>
+                                    <MenuItem key={item.value || "all"} value={item.value}>{t(item.labelKey)}</MenuItem>
                                 ))}
                             </TextField>
                             <TextField
-                                label="Week Starts"
+                                label={t("schedule.weekStarts")}
                                 type="date"
                                 value={weekStart}
                                 onChange={(event) => setWeekStart(formatDate(startOfWeek(parseDate(event.target.value))))}
@@ -423,31 +425,31 @@ export default function SchedulePage() {
                             />
                         </div>
                         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                            <Button variant="outlined" onClick={() => moveWeek(-7)}>Previous Week</Button>
-                            <Button variant="outlined" onClick={() => setWeekStart(formatDate(startOfWeek(new Date())))}>This Week</Button>
-                            <Button variant="outlined" onClick={() => moveWeek(7)}>Next Week</Button>
+                            <Button variant="outlined" onClick={() => moveWeek(-7)}>{t("schedule.previousWeek")}</Button>
+                            <Button variant="outlined" onClick={() => setWeekStart(formatDate(startOfWeek(new Date())))}>{t("schedule.thisWeek")}</Button>
+                            <Button variant="outlined" onClick={() => moveWeek(7)}>{t("schedule.nextWeek")}</Button>
                             {canEditData && (
                                 <>
                                     <Link href="/data/scheduled-classes">
-                                        <Button variant="text">Manage Scheduled Classes</Button>
+                                        <Button variant="text">{t("schedule.manageScheduledClasses")}</Button>
                                     </Link>
                                     <Link href="/data/weekly-room-templates">
-                                        <Button variant="text">Manage Templates</Button>
+                                        <Button variant="text">{t("schedule.manageTemplates")}</Button>
                                     </Link>
                                     <Link href="/schedule/templates">
-                                        <Button variant="contained" color="secondary">Visual Template Builder</Button>
+                                        <Button variant="contained" color="secondary">{t("schedule.templateBuilder")}</Button>
                                     </Link>
                                     <Link href="/schedule/unmatched-attendance">
-                                        <Button variant="outlined">Review Unmatched Attendance</Button>
+                                        <Button variant="outlined">{t("schedule.reviewUnmatched")}</Button>
                                     </Link>
                                     <Button variant="outlined" onClick={handleReconcileScheduledClasses} disabled={reconcilingClasses || !site}>
-                                        {reconcilingClasses ? "Reconciling..." : "Reconcile Scheduled Classes"}
+                                        {reconcilingClasses ? t("schedule.reconciling") : t("schedule.reconcileClasses")}
                                     </Button>
                                     <Button variant="contained" onClick={handleRebuildMatches} disabled={matching || !site}>
-                                        {matching ? "Matching..." : "Rebuild Attendance Matches"}
+                                        {matching ? t("schedule.matching") : t("schedule.rebuildMatches")}
                                     </Button>
                                     <Button variant="outlined" onClick={handleSyncTemplateCapacities} disabled={syncingCapacity || !site}>
-                                        {syncingCapacity ? "Updating..." : "Sync Template Capacities"}
+                                        {syncingCapacity ? t("schedule.updating") : t("schedule.syncCapacities")}
                                     </Button>
                                 </>
                             )}
@@ -473,19 +475,19 @@ export default function SchedulePage() {
                     )}
 
                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
-                        <SummaryCard label="Classes" value={summary.total} />
-                        <SummaryCard label="Capacity" value={summary.capacity} />
-                        <SummaryCard label="Attended" value={summary.attended} />
-                        <SummaryCard label="Needs Review" value={summary.needsReview} />
-                        <SummaryCard label="Conflicts" value={summary.conflicts} />
-                        <SummaryCard label="Matched Schedule" value={summary.matched} />
-                        <SummaryCard label="Missing From Report" value={summary.missing} />
-                        <SummaryCard label="Unexpected From Report" value={summary.unexpected} />
+                        <SummaryCard label={t("schedule.classes")} value={summary.total} />
+                        <SummaryCard label={t("common.capacity")} value={summary.capacity} />
+                        <SummaryCard label={t("schedule.attended")} value={summary.attended} />
+                        <SummaryCard label={t("schedule.needsReview")} value={summary.needsReview} />
+                        <SummaryCard label={t("schedule.conflicts")} value={summary.conflicts} />
+                        <SummaryCard label={t("schedule.matchedSchedule")} value={summary.matched} />
+                        <SummaryCard label={t("schedule.missingFromReport")} value={summary.missing} />
+                        <SummaryCard label={t("schedule.unexpectedFromReport")} value={summary.unexpected} />
                         {summary.unreconciled > 0 && (
-                            <WarningCard label="Unreconciled" value={summary.unreconciled} />
+                            <WarningCard label={t("schedule.unreconciled")} value={summary.unreconciled} />
                         )}
                         {summary.zeroMatchedAttendance > 0 && (
-                            <WarningCard label="Zero Attendance" value={summary.zeroMatchedAttendance} />
+                            <WarningCard label={t("schedule.zeroAttendance")} value={summary.zeroMatchedAttendance} />
                         )}
                     </div>
 
@@ -495,7 +497,7 @@ export default function SchedulePage() {
                         </Alert>
                     )}
 
-                    {loading && <Alert severity="info">Loading schedule...</Alert>}
+                    {loading && <Alert severity="info">{t("schedule.loading")}</Alert>}
 
                     <div style={{
                         display: "grid",
@@ -516,10 +518,11 @@ export default function SchedulePage() {
                                             item={item}
                                             onResolve={handleResolveClass}
                                             canEditData={canEditData}
+                                            t={t}
                                         />
                                     ))}
                                     {!classesByDate[day.value]?.length && (
-                                        <div style={{ color: "#777", fontSize: "14px" }}>No classes</div>
+                                        <div style={{ color: "#777", fontSize: "14px" }}>{t("schedule.noClasses")}</div>
                                     )}
                                 </div>
                             </Paper>
