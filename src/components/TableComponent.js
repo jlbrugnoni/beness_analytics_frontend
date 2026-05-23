@@ -41,7 +41,7 @@ import TextField from "@mui/material/TextField";
 // import axios from "axios";
 // import useFetchToken from "@/components/useFetchUserId"; // ✅ Ensure you get the token correctly
 
-const TableComponent = ({ data, columns, entityName, onEdit, onEditSession, onSummary, onDelete, onAdding = false, onEditRoutine, totalCount, page, rowsPerPage, onPageChange, onRowsPerPageChange, onFeedback }) => {
+const TableComponent = ({ data, columns, entityName, onInfo, onEdit, onEditSession, onSummary, onDelete, onAdding = false, onEditRoutine, totalCount, page, rowsPerPage, onPageChange, onRowsPerPageChange, onFeedback, canEditRow, canDeleteRow }) => {
 
 
     const router = useRouter();
@@ -183,7 +183,25 @@ const TableComponent = ({ data, columns, entityName, onEdit, onEditSession, onSu
                                         </TableCell>
                                     ))}
                                     <TableCell>
-                                        {onEdit && (
+                                        <div className={styles.actionsCell}>
+                                        {onInfo && (
+                                            <div className={responsiveStyles.actionsCell}>
+                                                <InfoIcon
+                                                    className={`${styles.buttonIcon} ${responsiveStyles.hideOnMobile}`}
+                                                    onClick={() => onInfo(item.id)}
+                                                />
+                                                <Button
+                                                    variant="outlined"
+                                                    size="small"
+                                                    className={responsiveStyles.showOnlyOnMobile}
+                                                    onClick={() => onInfo(item.id)}
+                                                >
+                                                    Info
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {onEdit && (canEditRow ? canEditRow(item) : true) && (
                                             <div className={responsiveStyles.actionsCell}>
                                                 <EditIcon
                                                     className={`${styles.buttonIcon} ${responsiveStyles.hideOnMobile}`}
@@ -268,7 +286,7 @@ const TableComponent = ({ data, columns, entityName, onEdit, onEditSession, onSu
                                             </div>
                                         )}
 
-                                        {onDelete && (
+                                        {onDelete && (canDeleteRow ? canDeleteRow(item) : true) && (
                                             <div className={responsiveStyles.actionsCell}>
                                                 <DeleteIcon
                                                     className={`${styles.buttonIcon} ${responsiveStyles.hideOnMobile}`}
@@ -365,6 +383,7 @@ const TableComponent = ({ data, columns, entityName, onEdit, onEditSession, onSu
                                                 💬 Feedback
                                             </Button>
                                         )}
+                                        </div>
 
                                     </TableCell>
                                 </TableRow>

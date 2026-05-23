@@ -75,20 +75,25 @@ export default function UsersTable() {
                 data={usersData}
                 entityName="Usuarios"
                 columns={[
-                    { label: "Email", field: "email", className: responsiveStyles.hideOnMobile },
+                    {
+                        label: "Email",
+                        field: "email",
+                        className: responsiveStyles.hideOnMobile,
+                        render: (row) => row.is_superuser ? `${row.email} (SU)` : row.email,
+                    },
                     { label: "Nombre", field: "first_name", className: responsiveStyles.hideOnMobile },
                     { label: "Apellido", field: "last_name", className: responsiveStyles.hideOnMobile },
-                    { label: "Grupo", field: "group_name", className: responsiveStyles.hideOnMobile },
+                    { label: "Grupo", field: "group_name", className: responsiveStyles.hideOnMobile, render: (row) => row.is_superuser ? "Superuser" : row.group_name || "Sin grupo" },
                     {
                         label: "Datos",
                         field: "info",
                         className: responsiveStyles.showOnlyOnMobile,
                         render: (row) => (
                             <div>
-                                <div><strong>email:</strong> {row.email}</div>
+                                <div><strong>email:</strong> {row.is_superuser ? `${row.email} (SU)` : row.email}</div>
                                 <div><strong>Nombre:</strong> {row.first_name}</div>
                                 <div><strong>Apellido:</strong> {row.last_name}</div>
-                                <div><strong>Grupo:</strong> {row.group_name || "Sin grupo"}</div>
+                                <div><strong>Grupo:</strong> {row.is_superuser ? "Superuser" : row.group_name || "Sin grupo"}</div>
                             </div>
                         )
                     },
@@ -97,6 +102,7 @@ export default function UsersTable() {
                 onInfo={(id) => router.push(`/datos/usuarios/info?id=${id}`)}
                 onEdit={canManageUsers ? (id) => router.push(`/datos/usuarios/edit?id=${id}`) : null}
                 onDelete={canManageUsers ? handleDelete : null}
+                canDeleteRow={(row) => !row.is_superuser}
 
                 totalCount={totalCount} 
                 page={page}

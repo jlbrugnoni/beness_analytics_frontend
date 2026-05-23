@@ -39,6 +39,20 @@ const emptyValueForField = (field) => {
 };
 
 
+const canSeeResource = (config, access) => {
+    if (!config) return false;
+    if (access.has_global_access) return true;
+    if (config.visibility === "operator") return Boolean(access.capabilities?.can_upload_data);
+    if (config.visibility === "people") {
+        const groupNames = (access.groups || []).map((group) => group.name);
+        return Boolean(access.capabilities?.can_upload_data)
+            || groupNames.includes("Manager")
+            || groupNames.includes("Studio Manager");
+    }
+    return true;
+};
+
+
 export default function ResourcePage() {
     const router = useRouter();
     const { resource } = router.query;
@@ -131,10 +145,10 @@ export default function ResourcePage() {
         fetchLookups().catch(() => {});
     }, [token]);
 
-    if (!config) {
+    if (!config || !canSeeResource(config, access)) {
         return (
             <MainPage>
-                <div className={styles.container}>Resource not found.</div>
+                <div className={styles.container}>Resource not available.</div>
             </MainPage>
         );
     }

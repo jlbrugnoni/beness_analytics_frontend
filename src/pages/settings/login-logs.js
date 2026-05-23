@@ -4,7 +4,6 @@ import axios from "axios";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
-import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
@@ -31,11 +30,9 @@ export default function LoginLogsPage() {
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const [rows, setRows] = useState([]);
-    const [users, setUsers] = useState([]);
     const [count, setCount] = useState(0);
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState({
-        user: "",
         login_type: "",
         success: "",
         date_from: "",
@@ -48,18 +45,6 @@ export default function LoginLogsPage() {
     const authHeaders = useMemo(() => ({
         headers: { Authorization: `Token ${token}` },
     }), [token]);
-
-    const fetchAllPages = async (endpoint) => {
-        let url = `${backendUrl}/api/data/${endpoint}/`;
-        let allRows = [];
-        while (url) {
-            const response = await axios.get(url, authHeaders);
-            const pageRows = response.data.results || response.data;
-            allRows = [...allRows, ...pageRows];
-            url = normalizeApiNextUrl(response.data.next, backendUrl);
-        }
-        return allRows;
-    };
 
     const fetchRows = async (nextPage = page, nextFilters = filters) => {
         if (!token) return;
@@ -84,18 +69,13 @@ export default function LoginLogsPage() {
     };
 
     useEffect(() => {
-        if (!token) return;
-        fetchAllPages("users").then(setUsers).catch(() => {});
-    }, [token]);
-
-    useEffect(() => {
         fetchRows(1);
     }, [token]);
 
     const totalPages = Math.max(1, Math.ceil(count / 15));
     const updateFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
     const clearFilters = () => {
-        const cleared = { user: "", login_type: "", success: "", date_from: "", date_to: "", search: "" };
+        const cleared = { login_type: "", success: "", date_from: "", date_to: "", search: "" };
         setFilters(cleared);
         fetchRows(1, cleared);
     };
@@ -114,14 +94,6 @@ export default function LoginLogsPage() {
 
                 <Paper style={{ width: "90%", padding: "16px", display: "grid", gap: "12px", marginBottom: "12px" }}>
                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                        <TextField select label="User" value={filters.user} onChange={(event) => updateFilter("user", event.target.value)}>
-                            <MenuItem value="">All Users</MenuItem>
-                            {users.map((user) => (
-                                <MenuItem key={user.id} value={user.id}>
-                                    {user.email}
-                                </MenuItem>
-                            ))}
-                        </TextField>
                         <TextField select label="Type" value={filters.login_type} onChange={(event) => updateFilter("login_type", event.target.value)}>
                             <MenuItem value="">All Types</MenuItem>
                             <MenuItem value="main">Login</MenuItem>

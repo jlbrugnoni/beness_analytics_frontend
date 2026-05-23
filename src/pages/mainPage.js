@@ -36,7 +36,7 @@ const navItems = [
     { href: "/retention", label: "Retention", key: "retention", icon: ReplayIcon },
     { href: "/schedule", label: "Schedule", key: "schedule", icon: EventNoteIcon },
     { href: "/uploads", label: "Uploads", key: "uploads", icon: CloudUploadIcon, capability: "can_upload_data" },
-    { href: "/imported", label: "Imported", key: "imported", icon: AssessmentIcon },
+    { href: "/imported", label: "Imported", key: "imported", icon: AssessmentIcon, capability: "can_upload_data" },
     { href: "/data", label: "Data", key: "data", icon: StorageIcon },
     { href: "/manual", label: "Manual", key: "manual", icon: MenuBookIcon },
     { href: "/datos/usuarios", label: "Users", key: "usuarios", icon: PeopleIcon, capability: "can_manage_users" },

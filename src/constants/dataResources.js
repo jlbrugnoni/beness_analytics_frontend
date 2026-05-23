@@ -85,6 +85,7 @@ export const dataResources = {
     },
     clients: {
         label: "Clients",
+        visibility: "people",
         singular: "Client",
         endpoint: "clients",
         columns: [
@@ -107,6 +108,7 @@ export const dataResources = {
     },
     "staff-members": {
         label: "Staff",
+        visibility: "people",
         singular: "Staff Member",
         endpoint: "staff-members",
         columns: [
@@ -157,6 +159,7 @@ export const dataResources = {
     },
     "payment-methods": {
         label: "Payment Methods",
+        visibility: "operator",
         singular: "Payment Method",
         endpoint: "payment-methods",
         columns: [

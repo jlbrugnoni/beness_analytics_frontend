@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import axios from "axios";
 
 import styles from "@/styles/infoPage.module.css";
-import { Button, Card, CardContent, Typography, CircularProgress } from "@mui/material";
+import { Button, Card, CardContent, Typography, CircularProgress, Chip, Stack } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
 import useFetchToken from "@/components/useFetchUserId";
@@ -17,6 +17,7 @@ export default function UserInfoPage() {
     const { id } = router.query; // Get user ID from URL
 
     const [user, setUser] = useState(null);
+    const [accessProfile, setAccessProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -25,10 +26,13 @@ export default function UserInfoPage() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                const response = await axios.get(`${backendUrl}/api/data/users/${id}/`, {
-                    headers: { "Authorization": `Token ${token}` },
-                });
-                setUser(response.data);
+                const headers = { "Authorization": `Token ${token}` };
+                const [userResponse, accessResponse] = await Promise.all([
+                    axios.get(`${backendUrl}/api/data/users/${id}/`, { headers }),
+                    axios.get(`${backendUrl}/api/data/user-access-profiles/?user=${id}`, { headers }),
+                ]);
+                setUser(userResponse.data);
+                setAccessProfile((accessResponse.data.results || accessResponse.data)[0] || null);
             } catch (error) {
                 setError("Error fetching user information");
             } finally {
@@ -38,6 +42,15 @@ export default function UserInfoPage() {
 
         if (id && token) fetchUserData();
     }, [id, token]);
+
+    const capabilityLabels = [
+        ["can_view_money", "View Money"],
+        ["can_upload_data", "Upload Data"],
+        ["can_edit_data", "Edit Data"],
+        ["can_reset_data", "Reset Data"],
+        ["can_manage_users", "Manage Users"],
+        ["can_view_admin_logs", "View Admin Logs"],
+    ];
 
     return (
         <MainPage>
@@ -73,6 +86,52 @@ export default function UserInfoPage() {
                             <Typography variant="body1">
                                 {user.is_superuser ? "Superusuario" : user.is_staff ? "Administrador" : "Usuario Regular"}
                             </Typography>
+
+                            <Typography variant="h6" className={styles.infoLabel}>Groups:</Typography>
+                            <Stack direction="row" gap={1} flexWrap="wrap">
+                                {(user.group_names || []).length ? (
+                                    (user.group_names || []).map((groupName) => (
+                                        <Chip key={groupName} label={groupName} size="small" />
+                                    ))
+                                ) : (
+                                    <Typography variant="body1">No groups assigned</Typography>
+                                )}
+                            </Stack>
+
+                            <Typography variant="h6" className={styles.infoLabel}>Allowed Sites:</Typography>
+                            <Stack direction="row" gap={1} flexWrap="wrap">
+                                {accessProfile?.allowed_site_names?.length ? (
+                                    accessProfile.allowed_site_names.map((siteName) => (
+                                        <Chip key={siteName} label={siteName} size="small" />
+                                    ))
+                                ) : (
+                                    <Typography variant="body1">No explicit sites</Typography>
+                                )}
+                            </Stack>
+
+                            <Typography variant="h6" className={styles.infoLabel}>Allowed Studios:</Typography>
+                            <Stack direction="row" gap={1} flexWrap="wrap">
+                                {accessProfile?.allowed_studio_names?.length ? (
+                                    accessProfile.allowed_studio_names.map((studioName) => (
+                                        <Chip key={studioName} label={studioName} size="small" />
+                                    ))
+                                ) : (
+                                    <Typography variant="body1">No explicit studios</Typography>
+                                )}
+                            </Stack>
+
+                            <Typography variant="h6" className={styles.infoLabel}>Capabilities:</Typography>
+                            <Stack direction="row" gap={1} flexWrap="wrap">
+                                {capabilityLabels.map(([key, label]) => (
+                                    <Chip
+                                        key={key}
+                                        label={label}
+                                        size="small"
+                                        color={accessProfile?.[key] ? "success" : "default"}
+                                        variant={accessProfile?.[key] ? "filled" : "outlined"}
+                                    />
+                                ))}
+                            </Stack>
 
                             <Typography variant="h6" className={styles.infoLabel}>Fecha de Registro:</Typography>
                             <Typography variant="body1">{new Date(user.date_joined).toLocaleDateString()}</Typography>
