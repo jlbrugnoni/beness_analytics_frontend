@@ -5,6 +5,7 @@ import axios from "axios";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
+import useAccess from "@/hooks/useAccess";
 import { dataResources } from "@/constants/dataResources";
 import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import styles from "@/styles/tablePage.module.css";
@@ -38,12 +39,28 @@ const emptyValueForField = (field) => {
 };
 
 
+const canSeeResource = (config, access) => {
+    if (!config) return false;
+    if (access.has_global_access) return true;
+    if (config.visibility === "operator") return Boolean(access.capabilities?.can_upload_data);
+    if (config.visibility === "people") {
+        const groupNames = (access.groups || []).map((group) => group.name);
+        return Boolean(access.capabilities?.can_upload_data)
+            || groupNames.includes("Manager")
+            || groupNames.includes("Studio Manager");
+    }
+    return true;
+};
+
+
 export default function ResourcePage() {
     const router = useRouter();
     const { resource } = router.query;
     const config = dataResources[resource];
     const token = useFetchToken();
+    const access = useAccess();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const canEditData = Boolean(access.capabilities?.can_edit_data);
 
     const [rows, setRows] = useState([]);
     const [sites, setSites] = useState([]);
@@ -128,10 +145,10 @@ export default function ResourcePage() {
         fetchLookups().catch(() => {});
     }, [token]);
 
-    if (!config) {
+    if (!config || !canSeeResource(config, access)) {
         return (
             <MainPage>
-                <div className={styles.container}>Resource not found.</div>
+                <div className={styles.container}>Resource not available.</div>
             </MainPage>
         );
     }
@@ -266,9 +283,11 @@ export default function ResourcePage() {
             <div className={styles.container}>
                 <div className={styles.titleContainer}>
                     <h1 className={styles.title}>{config.label}</h1>
-                    <Button className={styles.addButton} onClick={openCreateDialog}>
-                        + Add
-                    </Button>
+                    {canEditData && (
+                        <Button className={styles.addButton} onClick={openCreateDialog}>
+                            + Add
+                        </Button>
+                    )}
                 </div>
                 {error && <Alert severity="error" style={{ width: "90%", marginBottom: "12px" }}>{error}</Alert>}
                 <TableContainer component={Paper} className={styles.tableContainer}>
@@ -278,7 +297,7 @@ export default function ResourcePage() {
                                 {config.columns.map((column) => (
                                     <TableCell key={column.field}>{column.label}</TableCell>
                                 ))}
-                                <TableCell>Actions</TableCell>
+                                {canEditData && <TableCell>Actions</TableCell>}
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -291,15 +310,17 @@ export default function ResourcePage() {
                                                 : row[column.field] || "N/A"}
                                         </TableCell>
                                     ))}
-                                    <TableCell>
-                                        <EditIcon className={styles.buttonIcon} onClick={() => openEditDialog(row)} />
-                                        <DeleteIcon className={styles.buttonIcon} onClick={() => handleDelete(row.id)} />
-                                    </TableCell>
+                                    {canEditData && (
+                                        <TableCell>
+                                            <EditIcon className={styles.buttonIcon} onClick={() => openEditDialog(row)} />
+                                            <DeleteIcon className={styles.buttonIcon} onClick={() => handleDelete(row.id)} />
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))}
                             {!rows.length && (
                                 <TableRow>
-                                    <TableCell colSpan={config.columns.length + 1}>
+                                    <TableCell colSpan={config.columns.length + (canEditData ? 1 : 0)}>
                                         {loading ? "Loading..." : "No records found."}
                                     </TableCell>
                                 </TableRow>

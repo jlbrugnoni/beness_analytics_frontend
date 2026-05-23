@@ -1,7 +1,12 @@
 const routePermissions = {
-    "/datos/usuarios": "core_data.view_customuser",
-    "/datos/usuarios/edit": "core_data.change_customuser",
-    "/datos/usuarios/add": "core_data.add_customuser",
+    "/uploads": { capability: "can_upload_data" },
+    "/imported": { capability: "can_upload_data" },
+    "/datos/usuarios": { capability: "can_manage_users" },
+    "/datos/usuarios/edit": { capability: "can_manage_users" },
+    "/datos/usuarios/add": { capability: "can_manage_users" },
+    "/settings/login-logs": { capability: "can_view_admin_logs" },
+    "/schedule/templates": { capability: "can_edit_data" },
+    "/schedule/unmatched-attendance": { capability: "can_edit_data" },
 };
 
 export default routePermissions;

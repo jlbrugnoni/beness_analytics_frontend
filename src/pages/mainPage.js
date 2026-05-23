@@ -26,6 +26,7 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 
 import usePermissions from "@/hooks/usePermissions";
+import useAccess from "@/hooks/useAccess";
 import routePermissions from "@/constants/routePermissions";
 
 
@@ -34,11 +35,11 @@ const navItems = [
     { href: "/dashboard", label: "Dashboard", key: "dashboard", icon: DashboardIcon },
     { href: "/retention", label: "Retention", key: "retention", icon: ReplayIcon },
     { href: "/schedule", label: "Schedule", key: "schedule", icon: EventNoteIcon },
-    { href: "/uploads", label: "Uploads", key: "uploads", icon: CloudUploadIcon },
-    { href: "/imported", label: "Imported", key: "imported", icon: AssessmentIcon },
+    { href: "/uploads", label: "Uploads", key: "uploads", icon: CloudUploadIcon, capability: "can_upload_data" },
+    { href: "/imported", label: "Imported", key: "imported", icon: AssessmentIcon, capability: "can_upload_data" },
     { href: "/data", label: "Data", key: "data", icon: StorageIcon },
     { href: "/manual", label: "Manual", key: "manual", icon: MenuBookIcon },
-    { href: "/datos/usuarios", label: "Users", key: "usuarios", icon: PeopleIcon, permission: "core_data.view_customuser" },
+    { href: "/datos/usuarios", label: "Users", key: "usuarios", icon: PeopleIcon, capability: "can_manage_users" },
     { href: "/settings", label: "Settings", key: "settings", icon: SettingsIcon },
 ];
 
@@ -52,6 +53,15 @@ export default function MainPage({ children }) {
     const [permissionsChecked, setPermissionsChecked] = useState(false);
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const permissions = usePermissions();
+    const access = useAccess();
+
+    const hasRouteRequirement = (requirement) => {
+        if (!requirement) return true;
+        if (typeof requirement === "string") return permissions?.includes(requirement);
+        if (requirement.permission) return permissions?.includes(requirement.permission);
+        if (requirement.capability) return Boolean(access.capabilities?.[requirement.capability]);
+        return true;
+    };
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -66,6 +76,11 @@ export default function MainPage({ children }) {
             try {
                 const response = await axios.post(`${backendUrl}/api/data/validate-token`, { token });
                 if (response.data.valid) {
+                    const accessResponse = await axios.get(`${backendUrl}/api/data/me/permissions/`, {
+                        headers: { Authorization: `Token ${token}` },
+                    });
+                    sessionStorage.setItem("access", JSON.stringify(accessResponse.data));
+                    sessionStorage.setItem("permissions", JSON.stringify(accessResponse.data.django_permissions || []));
                     setShowPage(true);
                 } else {
                     router.push("/loginPage");
@@ -96,13 +111,13 @@ export default function MainPage({ children }) {
             .sort((a, b) => b.length - a.length)
             .find((path) => cleanPath.startsWith(path));
 
-        const requiredPermission = matchedPath ? routePermissions[matchedPath] : null;
-        if (requiredPermission && !permissions.includes(requiredPermission)) {
+        const requirement = matchedPath ? routePermissions[matchedPath] : null;
+        if (!hasRouteRequirement(requirement)) {
             router.push("/home");
         } else {
             setPermissionsChecked(true);
         }
-    }, [permissions, router.asPath]);
+    }, [permissions, access, router.asPath]);
 
     if (isLoading || !showPage || !permissions || !permissionsChecked) {
         return null;
@@ -138,7 +153,7 @@ export default function MainPage({ children }) {
             <div className={`${styles.container} ${navVisible ? styles.navVisible : ""}`}>
                 <List component="nav" className={styles.nav}>
                     {navItems
-                        .filter((item) => !item.permission || permissions.includes(item.permission))
+                        .filter((item) => hasRouteRequirement(item))
                         .map((item) => {
                             const Icon = item.icon;
                             return (

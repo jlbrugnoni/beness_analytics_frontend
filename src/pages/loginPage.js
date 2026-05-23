@@ -47,6 +47,7 @@ export default function LoginPage() {
           let is_staff = loginRequest.data.is_staff;
           let userId = loginRequest.data.id;
           let permissions = loginRequest.data.permissions;
+          let access = loginRequest.data.access;
 
           sessionStorage.setItem("token", token);
           sessionStorage.setItem("username", userUsername);
@@ -56,6 +57,7 @@ export default function LoginPage() {
           sessionStorage.setItem("is_staff", is_staff);
           sessionStorage.setItem("id", userId);
           sessionStorage.setItem("permissions", JSON.stringify(permissions));
+          sessionStorage.setItem("access", JSON.stringify(access));
           // sessionStorage.setItem("role", userGroups);
           // sessionStorage.setItem("user_id", userId);
           // console.log(token);

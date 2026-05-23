@@ -5,6 +5,7 @@ import axios from "axios";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
+import useAccess from "@/hooks/useAccess";
 import { importedResources } from "@/constants/importedResources";
 import styles from "@/styles/tablePage.module.css";
 
@@ -29,7 +30,7 @@ const formatCell = (value, column) => {
     if (value === null || value === undefined || value === "") return "N/A";
     if (column.type === "boolean") return value ? "Yes" : "No";
     if (column.type === "list") return Array.isArray(value) && value.length ? value.join(", ") : "None";
-    if (column.type === "money") return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (column.type === "money") return `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     if (column.type === "datetime") return new Date(value).toLocaleString();
     return String(value);
 };
@@ -48,7 +49,11 @@ export default function ImportedResourcePage() {
     const { resource } = router.query;
     const config = importedResources[resource];
     const token = useFetchToken();
+    const access = useAccess();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const canViewMoney = Boolean(access.capabilities?.can_view_money);
+    const canResetData = Boolean(access.capabilities?.can_reset_data);
+    const visibleColumns = (config?.columns || []).filter((column) => canViewMoney || column.type !== "money");
 
     const [rows, setRows] = useState([]);
     const [sites, setSites] = useState([]);
@@ -268,7 +273,7 @@ export default function ImportedResourcePage() {
                     <Table stickyHeader size="small">
                         <TableHead>
                             <TableRow>
-                                {config.columns.map((column) => (
+                                {visibleColumns.map((column) => (
                                     <TableCell key={column.field}>{column.label}</TableCell>
                                 ))}
                                 {resource === "report-imports" && <TableCell>Actions</TableCell>}
@@ -277,7 +282,7 @@ export default function ImportedResourcePage() {
                         <TableBody>
                             {rows.map((row) => (
                                 <TableRow key={row.id}>
-                                    {config.columns.map((column) => (
+                                    {visibleColumns.map((column) => (
                                         <TableCell key={column.field}>
                                             {formatCell(row[column.field], column)}
                                         </TableCell>
@@ -287,23 +292,25 @@ export default function ImportedResourcePage() {
                                             <Button size="small" variant="outlined" onClick={() => openImportDetail(row)}>
                                                 Details
                                             </Button>
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                color="error"
-                                                onClick={() => rollbackImport(row)}
-                                                disabled={rollingBackId === row.id}
-                                                style={{ marginLeft: "8px" }}
-                                            >
-                                                {rollingBackId === row.id ? "Rolling Back..." : "Rollback"}
-                                            </Button>
+                                            {canResetData && (
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color="error"
+                                                    onClick={() => rollbackImport(row)}
+                                                    disabled={rollingBackId === row.id}
+                                                    style={{ marginLeft: "8px" }}
+                                                >
+                                                    {rollingBackId === row.id ? "Rolling Back..." : "Rollback"}
+                                                </Button>
+                                            )}
                                         </TableCell>
                                     )}
                                 </TableRow>
                             ))}
                             {!rows.length && (
                                 <TableRow>
-                                    <TableCell colSpan={config.columns.length + (resource === "report-imports" ? 1 : 0)}>No records found.</TableCell>
+                                    <TableCell colSpan={visibleColumns.length + (resource === "report-imports" ? 1 : 0)}>No records found.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>

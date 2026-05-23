@@ -101,6 +101,14 @@
   transform: scale(1.2);
 }
 
+.actionsCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 /* 🔥 Image & Video Previews */
 .previewImage, .previewVideo {
   max-width: 90%; /* Ensures media does not exceed the dialog width */
