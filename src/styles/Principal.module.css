@@ -1,156 +1,167 @@
-
-/* Main container */
-.container {
-    display: flex;
-    flex-direction: row;
-    height: calc(100vh - 75px);
-    overflow: hidden;
-}
-
-/* Sidebar Navigation */
-.nav {
-    width: 280px;
-    background-color: var(--beness-fondo-oscuro);
-    color: var(--beness-gris-oscuro); /* Text is now darker */
-    padding: 1rem;
-    border-right: 1px solid #ddd;
-    height: calc(100vh - 75px);
-    overflow-y: auto;
-    transition: all 0.3s ease-in-out;
-}
-
-/* Header Bar */
+/* ── Header ────────────────────────────────────────────────── */
 .header {
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
     width: 100%;
-    padding: 0.75rem 2rem;
+    height: 60px;
+    padding: 0 1rem;
     background-color: var(--beness-fondo-oscuro);
-    border-bottom: 1px solid #ddd;
-    color: var(--beness-gris-oscuro);
+    border-bottom: 1px solid #d8d3cc;
+    flex-shrink: 0;
+    z-index: 100;
 }
 
-/* Logo Styling */
-.logo {
-    height: 50px;
-    width: auto;
-    cursor: pointer;
-    transition: transform 0.2s ease-in-out;
-}
-
-.logo:hover {
-    transform: scale(1.05);
-}
-
-/* Navigation Menu Icon */
-.menuIcon {
-    height: 30px;
-    width: auto;
-    display: none;
-    cursor: pointer;
-}
-
-/* Main Content Area */
-.main {
-    flex-grow: 1;
-    padding: 1rem;
-    height: calc(100vh - 75px);
-    overflow-y: auto;
+.headerLeft {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    color: var(--beness-gris-oscuro); /* Fix text color */
 }
 
-/* Navigation Icons */
-.icon {
-    width: 22px;
-    height: auto;
+.hamburger {
+    color: var(--beness-gris-oscuro) !important;
 }
 
-/* Sidebar Visibility Control */
-.navVisible .nav {
+.hamburger:hover {
+    background-color: rgba(74, 75, 69, 0.1) !important;
+}
+
+/* Logo — center column of the grid */
+.logo {
+    height: 36px;
+    width: auto;
+    cursor: pointer;
+    opacity: 0.88;
+    transition: opacity 0.15s;
+    object-fit: contain;
     display: block;
 }
 
-/* Fix Navigation Text Color */
-.nav a,
-.nav li {
-    color: var(--beness-gris-oscuro) !important; /* Force dark text */
+.logo:hover {
+    opacity: 1;
 }
 
-/* Fix Hover Effect */
-.nav a:hover {
+/* ── User area (right column of the grid) ───────────────────── */
+.userArea {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--beness-azul);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.userName {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--beness-gris-oscuro);
+}
+
+.logoutBtn {
     color: var(--beness-gris-claro) !important;
 }
 
-/* Logout Button */
-.logoutButton {
-    padding: 6px 10px;
-    background-color: var(--beness-gris-claro);
-    color: var(--beness-fondo-oscuro); /* Dark text for better contrast */
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s, transform 0.2s, color 0.2s;
-    margin-right: 16px;
+.logoutBtn:hover {
+    color: var(--beness-gris-oscuro) !important;
+    background-color: rgba(74, 75, 69, 0.1) !important;
 }
 
-.logoutButton:hover {
-    background-color: var(--beness-gris-oscuro);
-    transform: scale(1.05);
-    color: white; /* White text only on hover */
+/* ── Layout container ───────────────────────────────────────── */
+.container {
+    display: flex;
+    flex-direction: row;
+    height: calc(100vh - 60px);
+    overflow: hidden;
 }
 
-/* Mobile Responsiveness */
+/* ── Sidebar ────────────────────────────────────────────────── */
+.nav {
+    width: 240px;
+    min-width: 240px;
+    background-color: var(--beness-fondo-oscuro);
+    border-right: 1px solid #d8d3cc;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.container.collapsed .nav {
+    width: 64px;
+    min-width: 64px;
+}
+
+/* ── Main content area ──────────────────────────────────────── */
+.main {
+    flex-grow: 1;
+    padding: 1.25rem 1.5rem;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    color: var(--beness-gris-oscuro);
+}
+
+/* ── Mobile backdrop overlay ────────────────────────────────── */
+.backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 999;
+}
+
+/* ── Mobile ─────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .container {
-        flex-direction: column;
-        height: 100vh;
+    .userName {
+        display: none;
     }
 
-    .header {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-
-    .main {
-        padding: 0;
-    }
-
-    .logo {
-        height: 40px;
-    }
-
-    .menuIcon {
-        display: block;
-        cursor: pointer;
-    }
-
-    /* Mobile Sidebar */
     .nav {
         position: fixed;
         top: 60px;
-        left: 0;
-        width: 100vw;
+        left: -240px;
+        width: 240px;
+        min-width: 240px;
         height: calc(100vh - 60px);
-        background-color: var(--beness-fondo-oscuro);
-        color: var(--beness-gris-oscuro); /* Dark text */
-        padding: 1rem;
-        border-right: none;
-        overflow-y: auto;
-        display: none;
         z-index: 1000;
-        transition: transform 0.3s ease-in-out;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.12);
+        transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Show menu when active */
     .container.navVisible .nav {
-        display: block;
-        transform: translateX(0);
+        left: 0;
+    }
+
+    /* collapsed state has no effect on mobile — always full width */
+    .container.collapsed .nav {
+        width: 240px;
+        min-width: 240px;
+        left: -240px;
+    }
+
+    .container.collapsed.navVisible .nav {
+        left: 0;
+    }
+
+    .main {
+        padding: 1rem;
     }
 }

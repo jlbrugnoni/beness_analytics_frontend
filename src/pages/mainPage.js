@@ -5,29 +5,32 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/router";
 
-import menuIcon from "../images/menu-icon.png";
 import benessLogo from "../images/beness-logo.png";
 
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AssessmentIcon from "@mui/icons-material/Assessment";
-import HomeIcon from "@mui/icons-material/Home";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import EventNoteIcon from "@mui/icons-material/EventNote";
+import HomeIcon from "@mui/icons-material/Home";
+import LogoutIcon from "@mui/icons-material/Logout";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
+import MenuIcon from "@mui/icons-material/Menu";
 import PeopleIcon from "@mui/icons-material/People";
 import ReplayIcon from "@mui/icons-material/Replay";
 import SettingsIcon from "@mui/icons-material/Settings";
 import StorageIcon from "@mui/icons-material/Storage";
 
-import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
+import Tooltip from "@mui/material/Tooltip";
 
 import usePermissions from "@/hooks/usePermissions";
 import useAccess, { storeAccess } from "@/hooks/useAccess";
 import useI18n from "@/hooks/useI18n";
+import useFetchUserInfo from "@/components/useFetchUserInfo";
 import routePermissions from "@/constants/routePermissions";
 
 
@@ -49,6 +52,7 @@ export default function MainPage({ children }) {
     const router = useRouter();
     const [selectedIndex, setSelectedIndex] = useState(null);
     const [navVisible, setNavVisible] = useState(false);
+    const [navCollapsed, setNavCollapsed] = useState(false);
     const [showPage, setShowPage] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [permissionsChecked, setPermissionsChecked] = useState(false);
@@ -56,6 +60,7 @@ export default function MainPage({ children }) {
     const permissions = usePermissions();
     const access = useAccess();
     const { t } = useI18n();
+    const userData = useFetchUserInfo();
 
     const hasRouteRequirement = (requirement) => {
         if (!requirement) return true;
@@ -63,6 +68,19 @@ export default function MainPage({ children }) {
         if (requirement.permission) return permissions?.includes(requirement.permission);
         if (requirement.capability) return Boolean(access.capabilities?.[requirement.capability]);
         return true;
+    };
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        setNavCollapsed(localStorage.getItem("nav-collapsed") === "true");
+    }, []);
+
+    const toggleCollapsed = () => {
+        setNavCollapsed((prev) => {
+            const next = !prev;
+            localStorage.setItem("nav-collapsed", String(next));
+            return next;
+        });
     };
 
     useEffect(() => {
@@ -137,39 +155,133 @@ export default function MainPage({ children }) {
         router.push("/loginPage");
     };
 
+    const initials = [userData.firstName, userData.lastName]
+        .filter(Boolean)
+        .map((s) => s[0].toUpperCase())
+        .join("");
+
+    // On mobile (drawer open), always show labels regardless of collapsed state
+    const showLabels = !navCollapsed || navVisible;
+    const showTooltip = navCollapsed && !navVisible;
+
+    const handleHamburger = () => {
+        if (typeof window !== "undefined" && window.innerWidth <= 768) {
+            setNavVisible((v) => !v);
+        } else {
+            toggleCollapsed();
+        }
+    };
+
     return (
         <>
+            {navVisible && (
+                <div className={styles.backdrop} onClick={() => setNavVisible(false)} />
+            )}
+
             <header className={styles.header}>
+                <div className={styles.headerLeft}>
+                    <IconButton onClick={handleHamburger} size="small" className={styles.hamburger}>
+                        <MenuIcon />
+                    </IconButton>
+                </div>
+
                 <Image
-                    src={menuIcon}
-                    alt="Menu Icon"
-                    className={styles.menuIcon}
-                    onClick={() => setNavVisible(!navVisible)}
+                    src={benessLogo}
+                    alt="Beness"
+                    className={styles.logo}
+                    onClick={() => router.push("/home")}
                 />
-                <Image src={benessLogo} alt="Company Logo" className={styles.logo} onClick={() => router.push("/home")} />
-                <Button className={styles.logoutButton} onClick={handleLogout}>
-                    {t("nav.logout")}
-                </Button>
+
+                <div className={styles.userArea}>
+                    <div className={styles.avatar}>{initials || "?"}</div>
+                    {userData.firstName && (
+                        <span className={styles.userName}>{userData.firstName}</span>
+                    )}
+                    <Tooltip title={t("nav.logout")} placement="bottom">
+                        <IconButton
+                            onClick={handleLogout}
+                            size="small"
+                            className={styles.logoutBtn}
+                        >
+                            <LogoutIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </div>
             </header>
 
-            <div className={`${styles.container} ${navVisible ? styles.navVisible : ""}`}>
-                <List component="nav" className={styles.nav}>
-                    {navItems
-                        .filter((item) => hasRouteRequirement(item))
-                        .map((item) => {
+            <div
+                className={[
+                    styles.container,
+                    navCollapsed ? styles.collapsed : "",
+                    navVisible ? styles.navVisible : "",
+                ].join(" ")}
+            >
+                <nav className={styles.nav}>
+                    <List component="div" disablePadding sx={{ px: 0.5, py: 0.75 }}>
+                        {navItems.filter(hasRouteRequirement).map((item) => {
                             const Icon = item.icon;
+                            const isActive = selectedIndex === item.key;
                             return (
-                                <Link href={item.href} key={item.href}>
-                                    <ListItemButton selected={selectedIndex === item.key}>
-                                        <ListItemIcon>
-                                            <Icon style={{ color: "var(--beness-gris-oscuro)" }} />
-                                        </ListItemIcon>
-                                        <ListItemText primary={t(item.labelKey)} />
-                                    </ListItemButton>
-                                </Link>
+                                <Tooltip
+                                    key={item.href}
+                                    title={showTooltip ? t(item.labelKey) : ""}
+                                    placement="right"
+                                    arrow
+                                >
+                                    <Link href={item.href} style={{ display: "block" }}>
+                                        <ListItemButton
+                                            selected={isActive}
+                                            sx={{
+                                                borderLeft: isActive
+                                                    ? "3px solid var(--beness-azul)"
+                                                    : "3px solid transparent",
+                                                borderRadius: "6px",
+                                                my: 0.25,
+                                                minHeight: 44,
+                                                justifyContent: showLabels ? "flex-start" : "center",
+                                                "&.Mui-selected": {
+                                                    backgroundColor: "rgba(138, 184, 215, 0.18)",
+                                                },
+                                                "&.Mui-selected:hover": {
+                                                    backgroundColor: "rgba(138, 184, 215, 0.28)",
+                                                },
+                                                "&:hover": {
+                                                    backgroundColor: "rgba(74, 75, 69, 0.08)",
+                                                },
+                                            }}
+                                        >
+                                            <ListItemIcon
+                                                sx={{
+                                                    minWidth: showLabels ? 36 : 0,
+                                                    mr: showLabels ? 1 : 0,
+                                                    color: isActive
+                                                        ? "var(--beness-azul)"
+                                                        : "var(--beness-gris-oscuro)",
+                                                }}
+                                            >
+                                                <Icon />
+                                            </ListItemIcon>
+                                            {showLabels && (
+                                                <ListItemText
+                                                    primary={t(item.labelKey)}
+                                                    slotProps={{
+                                                        primary: {
+                                                            fontSize: 14,
+                                                            fontWeight: isActive ? 600 : 400,
+                                                            color: isActive
+                                                                ? "var(--beness-azul)"
+                                                                : "var(--beness-gris-oscuro)",
+                                                        },
+                                                    }}
+                                                />
+                                            )}
+                                        </ListItemButton>
+                                    </Link>
+                                </Tooltip>
                             );
                         })}
-                </List>
+                    </List>
+                </nav>
 
                 <main className={styles.main}>{children}</main>
             </div>

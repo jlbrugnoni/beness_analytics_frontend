@@ -1,7 +1,7 @@
 /* 🔥 Main Container */
 .container {
-  padding-top: 20px;
-  padding-left: 30px;
+  padding-top: 0;
+  padding-left: 0;
   height: 100%;
   min-height: 800px;
   width: 100%;
@@ -51,7 +51,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 90%;
+  width: 100%;
   margin-bottom: 15px;
 }
 
@@ -123,10 +123,6 @@
 
 /* 🔥 Responsive Design */
 @media (max-width: 801px) {
-  .container {
-    padding-left: 10px;
-  }
-
   .title {
     font-size: 20px;
   }
