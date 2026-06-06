@@ -251,11 +251,8 @@ export default function RetentionFollowUp() {
         const dateFilters = selectedDateRange(periodMode, filters);
         const headers = [
             "Month",
-            "Status",
             "Client",
             "MindBody ID",
-            "Email",
-            "Phone",
             "Studio",
             "Service",
             "Sale Date",
@@ -276,15 +273,11 @@ export default function RetentionFollowUp() {
             "Post-expiration First Visit",
             "Post-expiration Last Visit",
             "Post-expiration Pricing Options",
-            "Studio Inference",
         ];
         const lines = rows.map((row) => [
             row.month,
-            formatRetentionStatus(row.status, t),
             row.client,
             row.client_mindbody_id,
-            row.client_email,
-            row.client_phone,
             row.studio,
             row.service,
             row.sale_date,
@@ -305,7 +298,6 @@ export default function RetentionFollowUp() {
             row.post_expiration_first_visit_date,
             row.post_expiration_last_visit_date,
             (row.post_expiration_pricing_options || []).join(" | "),
-            row.studio_inference_method,
         ].map(csvValue).join(","));
         const blob = new Blob([[headers.map(csvValue).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
@@ -526,9 +518,7 @@ export default function RetentionFollowUp() {
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>{t("common.client")}</TableCell>
-                                        <TableCell>{t("common.contact")}</TableCell>
                                         <TableCell>{t("common.month")}</TableCell>
-                                        <TableCell>{t("common.status")}</TableCell>
                                         <TableCell>{t("common.activity")}</TableCell>
                                         <TableCell>{t("common.studio")}</TableCell>
                                         <TableCell>{t("common.service")}</TableCell>
@@ -545,12 +535,7 @@ export default function RetentionFollowUp() {
                                                 <div>{row.client || "N/A"}</div>
                                                 <div style={{ color: "#666", fontSize: "12px" }}>{row.client_mindbody_id || ""}</div>
                                             </TableCell>
-                                            <TableCell>
-                                                <div>{row.client_email || "N/A"}</div>
-                                                <div style={{ color: "#666", fontSize: "12px" }}>{row.client_phone || ""}</div>
-                                            </TableCell>
                                             <TableCell>{row.month || "N/A"}</TableCell>
-                                            <TableCell>{formatRetentionStatus(row.status, t)}</TableCell>
                                             <TableCell>
                                                 <div>{formatActivityStatus(row.not_renewed_activity_status, t)}</div>
                                                 {!!row.post_expiration_attendance_count && (
@@ -560,8 +545,7 @@ export default function RetentionFollowUp() {
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <div>{row.studio || t("common.unknown")}</div>
-                                                <div style={{ color: "#666", fontSize: "12px" }}>{row.studio_inference_method || ""}</div>
+                                                {row.studio || t("common.unknown")}
                                             </TableCell>
                                             <TableCell>{row.service || "N/A"}</TableCell>
                                             <TableCell align="right">{row.membership_days || row.previous_membership_days || "N/A"}</TableCell>
@@ -577,7 +561,7 @@ export default function RetentionFollowUp() {
                                     ))}
                                     {!rows.length && (
                                         <TableRow>
-                                            <TableCell colSpan={11}>{t("common.noData")}</TableCell>
+                                            <TableCell colSpan={9}>{t("common.noData")}</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

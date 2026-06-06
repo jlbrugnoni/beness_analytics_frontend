@@ -592,7 +592,6 @@ export const RetentionTable = ({ title, rows, t }) => (
                         <TableCell>Client</TableCell>
                         <TableCell>Studio</TableCell>
                         <TableCell>Service</TableCell>
-                        <TableCell>Status</TableCell>
                         <TableCell>Activity</TableCell>
                         <TableCell align="right">Days</TableCell>
                         <TableCell align="right">Amount</TableCell>
@@ -607,7 +606,6 @@ export const RetentionTable = ({ title, rows, t }) => (
                             <TableCell>{row.client || "N/A"}</TableCell>
                             <TableCell>{row.studio === "Unknown" ? t("common.unknown") : row.studio || t("common.unknown")}</TableCell>
                             <TableCell>{row.service || "N/A"}</TableCell>
-                            <TableCell>{formatRetentionStatus(row.status, t)}</TableCell>
                             <TableCell>
                                 <div>{formatActivityStatus(row.not_renewed_activity_status, t)}</div>
                                 {!!row.post_expiration_attendance_count && (
@@ -624,7 +622,7 @@ export const RetentionTable = ({ title, rows, t }) => (
                     ))}
                     {!rows?.length && (
                         <TableRow>
-                            <TableCell colSpan={10}>{t("common.noData")}</TableCell>
+                            <TableCell colSpan={9}>{t("common.noData")}</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -639,7 +637,6 @@ export const retentionTableColumns = {
         { key: "client", label: "Client" },
         { key: "studio", label: "Studio" },
         { key: "service", label: "Service" },
-        { key: "status", label: "Status", format: (row, t) => formatRetentionStatus(row.status, t) },
         { key: "activity", label: "Activity", format: (row, t) => formatActivityStatus(row.not_renewed_activity_status, t) },
         { key: "sale_date", label: "Last Purchase" },
         { key: "expiration_date", label: "Expiration" },
@@ -684,7 +681,6 @@ export const RetentionDetailTable = ({ rows, tableKey, t }) => {
         Client: t("common.client"),
         Studio: t("common.studio"),
         Service: t("common.service"),
-        Status: t("common.status"),
         Activity: t("common.activity"),
         "Last Purchase": t("dashboard.table.lastPurchase"),
         Expiration: t("common.expiration"),
