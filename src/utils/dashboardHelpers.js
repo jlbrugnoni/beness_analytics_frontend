@@ -673,7 +673,7 @@ export const retentionTableColumns = {
         { key: "sale_date", label: "Reactivation Purchase" },
         { key: "expiration_date", label: "Expiration" },
         { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
-        { key: "last_membership_purchase_date", label: "Previous Purchase" },
+        { key: "previous_membership_purchase_date", label: "Previous Purchase" },
     ],
 };
 
