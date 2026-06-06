@@ -734,17 +734,6 @@ export const RetentionDetailTable = ({ rows, tableKey, t }) => {
 };
 
 
-export const RetentionSummaryTableCard = ({ title, rows, tableKey, onExpand, t }) => (
-    <Paper style={{ padding: "16px" }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
-            <h2 style={{ margin: 0 }}>{title}</h2>
-            <Button size="small" variant="outlined" onClick={onExpand}>{t("common.openTable")}</Button>
-        </Stack>
-        <RetentionDetailTable rows={(rows || []).slice(0, 5)} tableKey={tableKey} t={t} />
-    </Paper>
-);
-
-
 export const InstructorQualityTable = ({ rows, t }) => (
     <Paper style={{ padding: "16px" }}>
         <h2 style={{ marginTop: 0 }}>{t("dashboard.charts.instructorQuality")}</h2>

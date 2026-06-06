@@ -49,7 +49,6 @@ import {
     MemberTrendChart,
     RetentionDetailTable,
     RetentionHealthTrendChart,
-    RetentionSummaryTableCard,
     monthOptions,
     monthParts,
     monthRange,
@@ -202,6 +201,24 @@ export default function RetentionPage() {
         not_renewed_members: row.not_renewed_members || 0,
         renewal_rate: row.renewal_rate || 0,
     }));
+    const retentionPreviewTables = {
+        not_renewed: {
+            count: retention?.not_renewed_members ?? retention?.not_renewed_services ?? 0,
+            rows: retention?.not_renewed_clients || [],
+        },
+        retained: {
+            count: retention?.retained_members || 0,
+            rows: retention?.retained_samples || [],
+        },
+        new_members: {
+            count: retention?.new_members || 0,
+            rows: retention?.new_member_samples || [],
+        },
+        reactivated: {
+            count: retention?.reactivated_members || 0,
+            rows: retention?.reactivated_samples || [],
+        },
+    };
 
     // ─── API calls ────────────────────────────────────────────────────────────
 
@@ -560,36 +577,42 @@ export default function RetentionPage() {
                         </Alert>
                     )}
 
-                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))" }}>
-                        <RetentionSummaryTableCard
-                            title={t("dashboard.tables.notRenewedClients")}
-                            rows={retention?.not_renewed_clients}
-                            tableKey="not_renewed"
-                            onExpand={() => openRetentionTable("not_renewed")}
+                    <Paper style={{ padding: "16px" }}>
+                        <Stack
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            gap={2}
+                            flexWrap="wrap"
+                            style={{ marginBottom: "8px" }}
+                        >
+                            <h2 style={{ margin: 0 }}>{t("dashboard.modal.retentionDetailTables")}</h2>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => openRetentionTable(activeRetentionTable)}
+                            >
+                                {t("common.openTable")}
+                            </Button>
+                        </Stack>
+                        <Tabs
+                            value={activeRetentionTable}
+                            onChange={(_, value) => setActiveRetentionTable(value)}
+                            variant="scrollable"
+                            scrollButtons="auto"
+                            style={{ marginBottom: "12px" }}
+                        >
+                            <Tab label={`${t("retention.status.notRenewed")} (${formatNumber(retentionPreviewTables.not_renewed.count)})`} value="not_renewed" />
+                            <Tab label={`${t("retention.status.retained")} (${formatNumber(retentionPreviewTables.retained.count)})`} value="retained" />
+                            <Tab label={`${t("retention.status.new")} (${formatNumber(retentionPreviewTables.new_members.count)})`} value="new_members" />
+                            <Tab label={`${t("retention.status.reactivated")} (${formatNumber(retentionPreviewTables.reactivated.count)})`} value="reactivated" />
+                        </Tabs>
+                        <RetentionDetailTable
+                            rows={retentionPreviewTables[activeRetentionTable]?.rows || []}
+                            tableKey={activeRetentionTable}
                             t={t}
                         />
-                        <RetentionSummaryTableCard
-                            title={t("dashboard.tables.retainedMembers")}
-                            rows={retention?.retained_samples}
-                            tableKey="retained"
-                            onExpand={() => openRetentionTable("retained")}
-                            t={t}
-                        />
-                        <RetentionSummaryTableCard
-                            title={t("dashboard.tables.newMembers")}
-                            rows={retention?.new_member_samples}
-                            tableKey="new_members"
-                            onExpand={() => openRetentionTable("new_members")}
-                            t={t}
-                        />
-                        <RetentionSummaryTableCard
-                            title={t("dashboard.tables.reactivatedMembers")}
-                            rows={retention?.reactivated_samples}
-                            tableKey="reactivated"
-                            onExpand={() => openRetentionTable("reactivated")}
-                            t={t}
-                        />
-                    </div>
+                    </Paper>
 
                     <div>
                         <Link href={retentionFollowUpHref}>
