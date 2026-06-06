@@ -587,7 +587,7 @@ export default function AttendancePage() {
                             t={t}
                             action={(
                                 <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_attendance_weekday")}>
-                                    Weekday Detail
+                                    {t("dashboard.actions.weekdayDetail")}
                                 </Button>
                             )}
                         />
@@ -597,7 +597,7 @@ export default function AttendancePage() {
                             t={t}
                             action={(
                                 <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_booking_quality_weekday")}>
-                                    Weekday Detail
+                                    {t("dashboard.actions.weekdayDetail")}
                                 </Button>
                             )}
                         />
@@ -607,7 +607,7 @@ export default function AttendancePage() {
                             t={t}
                             action={(
                                 <Button variant="outlined" size="small" onClick={openOccupancyHourMatrix}>
-                                    Hour Matrix
+                                    {t("dashboard.actions.hourMatrix")}
                                 </Button>
                             )}
                         />
@@ -638,8 +638,8 @@ export default function AttendancePage() {
                         scrollButtons="auto"
                         style={{ marginBottom: "16px" }}
                     >
-                        <Tab label="Bookings & Visits" value="visits" />
-                        <Tab label="No-show & Late Cancel" value="rates" />
+                        <Tab label={t("dashboard.tabs.bookingsVisits")} value="visits" />
+                        <Tab label={t("dashboard.tabs.noShowLateCancel")} value="rates" />
                         {canViewMoney && <Tab label={t("dashboard.kpi.avgRevenueVisit")} value="revenue" />}
                     </Tabs>
                     {weeklyTrendsLoading ? (

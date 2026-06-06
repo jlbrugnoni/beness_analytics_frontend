@@ -424,8 +424,8 @@ export default function ConversionPage() {
                             onChange={(_, value) => setMode(value)}
                             variant="standard"
                         >
-                            <Tab label="Monthly" value="monthly" />
-                            <Tab label="Weekly" value="weekly" />
+                            <Tab label={t("dashboard.hub.badge.monthly")} value="monthly" />
+                            <Tab label={t("dashboard.hub.badge.weekly")} value="weekly" />
                         </Tabs>
                     </Stack>
 

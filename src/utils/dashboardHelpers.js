@@ -141,11 +141,18 @@ export const comparisonDelta = (current, previous, options = {}) => {
     };
 };
 
-export const formatActivityStatus = (value) => ({
-    inactive: "Inactive",
-    attending_unpaid: "Attending Unpaid",
-    attending_paid: "Attending Paid",
+export const formatActivityStatus = (value, t) => ({
+    inactive: t("dashboard.activity.inactive"),
+    attending_unpaid: t("dashboard.activity.attendingUnpaid"),
+    attending_paid: t("dashboard.activity.attendingPaid"),
 }[value] || "N/A");
+
+export const formatRetentionStatus = (value, t) => ({
+    not_renewed: t("dashboard.status.notRenewed"),
+    retained: t("dashboard.status.retained"),
+    new: t("dashboard.status.new"),
+    reactivated: t("dashboard.status.reactivated"),
+}[value] || value || "N/A");
 
 
 // ─── Date / period helpers ────────────────────────────────────────────────────
@@ -574,7 +581,7 @@ export const OccupancySlotTable = ({ title, rows, t }) => (
 );
 
 
-export const RetentionTable = ({ title, rows }) => (
+export const RetentionTable = ({ title, rows, t }) => (
     <Paper style={{ padding: "16px" }}>
         <h2 style={{ marginTop: 0 }}>{title}</h2>
         <TableContainer style={{ maxHeight: 360 }}>
@@ -598,14 +605,14 @@ export const RetentionTable = ({ title, rows }) => (
                         <TableRow key={`${title}-${row.id || index}`}>
                             <TableCell>{row.month || "N/A"}</TableCell>
                             <TableCell>{row.client || "N/A"}</TableCell>
-                            <TableCell>{row.studio || "Unknown"}</TableCell>
+                            <TableCell>{row.studio === "Unknown" ? t("common.unknown") : row.studio || t("common.unknown")}</TableCell>
                             <TableCell>{row.service || "N/A"}</TableCell>
-                            <TableCell>{row.status || "N/A"}</TableCell>
+                            <TableCell>{formatRetentionStatus(row.status, t)}</TableCell>
                             <TableCell>
-                                <div>{formatActivityStatus(row.not_renewed_activity_status)}</div>
+                                <div>{formatActivityStatus(row.not_renewed_activity_status, t)}</div>
                                 {!!row.post_expiration_attendance_count && (
                                     <div style={{ color: "#666", fontSize: "12px" }}>
-                                        {formatNumber(row.post_expiration_attendance_count)} visits
+                                        {formatNumber(row.post_expiration_attendance_count)} {t("retention.visits")}
                                     </div>
                                 )}
                             </TableCell>
@@ -617,7 +624,7 @@ export const RetentionTable = ({ title, rows }) => (
                     ))}
                     {!rows?.length && (
                         <TableRow>
-                            <TableCell colSpan={10}>No data</TableCell>
+                            <TableCell colSpan={10}>{t("common.noData")}</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -632,8 +639,8 @@ export const retentionTableColumns = {
         { key: "client", label: "Client" },
         { key: "studio", label: "Studio" },
         { key: "service", label: "Service" },
-        { key: "status", label: "Status", format: (row) => row.status || "N/A" },
-        { key: "activity", label: "Activity", format: (row) => formatActivityStatus(row.not_renewed_activity_status) },
+        { key: "status", label: "Status", format: (row, t) => formatRetentionStatus(row.status, t) },
+        { key: "activity", label: "Activity", format: (row, t) => formatActivityStatus(row.not_renewed_activity_status, t) },
         { key: "sale_date", label: "Last Purchase" },
         { key: "expiration_date", label: "Expiration" },
         { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
@@ -678,17 +685,22 @@ export const RetentionDetailTable = ({ rows, tableKey, t }) => {
         Studio: t("common.studio"),
         Service: t("common.service"),
         Status: t("common.status"),
-        Activity: "Activity",
-        "Last Purchase": "Last Purchase",
+        Activity: t("common.activity"),
+        "Last Purchase": t("dashboard.table.lastPurchase"),
         Expiration: t("common.expiration"),
         Amount: t("common.amount"),
         Purchases: t("common.purchases"),
         Lifetime: t("common.lifetime"),
         Month: t("common.month"),
-        "Service Purchased": "Service Purchased",
-        "Purchase Date": "Purchase Date",
-        "Reactivation Purchase": "Reactivation Purchase",
-        "Previous Purchase": "Previous Purchase",
+        "Service Purchased": t("dashboard.table.servicePurchased"),
+        "Purchase Date": t("dashboard.table.purchaseDate"),
+        "Reactivation Purchase": t("dashboard.table.reactivationPurchase"),
+        "Previous Purchase": t("dashboard.table.previousPurchase"),
+    };
+    const displayValue = (row, column) => {
+        const value = row[column.key];
+        if (column.key === "studio" && (!value || value === "Unknown")) return t("common.unknown");
+        return value || "N/A";
     };
     return (
         <TableContainer style={{ maxHeight: 520 }}>
@@ -705,7 +717,7 @@ export const RetentionDetailTable = ({ rows, tableKey, t }) => {
                         <TableRow key={`${tableKey}-${row.id || index}`}>
                             {columns.map((column) => (
                                 <TableCell key={column.key} align={column.align || "left"}>
-                                    {column.format ? column.format(row) : row[column.key] || "N/A"}
+                                    {column.format ? column.format(row, t) : displayValue(row, column)}
                                 </TableCell>
                             ))}
                         </TableRow>
@@ -1642,7 +1654,7 @@ export const OccupancyHourMatrix = ({ data, view, weekday, t }) => {
                                 alignItems: "center",
                             }}
                         >
-                            {day.label || formatShortWeekdayDate(day.date, t)}
+                            {formatShortWeekdayDate(day.date, t)}
                         </div>
                         {activeHours.map((hour) => {
                             const cell = cellLookup[`${day.date}-${hour}`];
@@ -1896,37 +1908,37 @@ export const ConversionTrendChart = ({ rows, view, t }) => {
 };
 
 
-export const TrialConversionTable = ({ rows }) => (
+export const TrialConversionTable = ({ rows, t }) => (
     <Paper style={{ padding: "16px", gridColumn: "1 / -1" }}>
-        <h2 style={{ marginTop: 0 }}>Trial Client Follow-up</h2>
+        <h2 style={{ marginTop: 0 }}>{t("dashboard.table.trialClientFollowUp")}</h2>
         <TableContainer style={{ maxHeight: 460 }}>
             <Table stickyHeader size="small">
                 <TableHead>
                     <TableRow>
-                        <TableCell>Client</TableCell>
-                        <TableCell>Trial Date</TableCell>
-                        <TableCell>Studio</TableCell>
-                        <TableCell>Instructor</TableCell>
-                        <TableCell>Trial Service</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Conversion Service</TableCell>
-                        <TableCell align="right">Days</TableCell>
+                        <TableCell>{t("common.client")}</TableCell>
+                        <TableCell>{t("dashboard.table.trialDate")}</TableCell>
+                        <TableCell>{t("common.studio")}</TableCell>
+                        <TableCell>{t("common.instructor")}</TableCell>
+                        <TableCell>{t("dashboard.table.trialService")}</TableCell>
+                        <TableCell>{t("common.status")}</TableCell>
+                        <TableCell>{t("dashboard.table.conversionService")}</TableCell>
+                        <TableCell align="right">{t("common.days")}</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {(rows || []).map((row, index) => (
                         <TableRow key={`${row.client_id}-${row.trial_date}-${index}`}>
                             <TableCell>{row.client || "N/A"}</TableCell>
-                            <TableCell>{formatShortWeekdayDate(row.trial_date)}</TableCell>
+                            <TableCell>{formatShortWeekdayDate(row.trial_date, t)}</TableCell>
                             <TableCell>{row.studio || "N/A"}</TableCell>
                             <TableCell>{row.instructor || "N/A"}</TableCell>
                             <TableCell>{row.trial_service || "N/A"}</TableCell>
                             <TableCell>
                                 {row.converted_to_member
-                                    ? "Member"
+                                    ? t("dashboard.status.member")
                                     : row.converted_to_client
-                                        ? "Paid client"
-                                        : "Pending"}
+                                        ? t("dashboard.status.paidClient")
+                                        : t("dashboard.status.pending")}
                             </TableCell>
                             <TableCell>{row.membership_service || row.conversion_service || "N/A"}</TableCell>
                             <TableCell align="right">
@@ -1938,7 +1950,7 @@ export const TrialConversionTable = ({ rows }) => (
                     ))}
                     {!rows?.length && (
                         <TableRow>
-                            <TableCell colSpan={8}>No data</TableCell>
+                            <TableCell colSpan={8}>{t("common.noData")}</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -2012,7 +2024,7 @@ export const ConversionDashboardSection = ({ conversion, comparisonConversion, p
                 {mode === "weekly" && <TrialActivityByDateChart rows={conversion?.by_date} t={t} />}
                 <TrialConversionRankingChart title={t("dashboard.charts.trialConversionByInstructor")} rows={conversion?.by_instructor} t={t} />
                 <TrialConversionRankingChart title={t("dashboard.charts.trialConversionByStudio")} rows={conversion?.by_studio} t={t} />
-                <TrialConversionTable rows={conversion?.rows} />
+                <TrialConversionTable rows={conversion?.rows} t={t} />
             </div>
         </>
     );

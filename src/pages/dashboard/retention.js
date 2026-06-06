@@ -493,7 +493,7 @@ export default function RetentionPage() {
                         <InsightCard
                             title={t("dashboard.cards.currentMemberMix")}
                             value={formatNumber(retention?.current_month_members)}
-                            caption="How current members are entering the month."
+                            caption={t("dashboard.caption.memberMix")}
                             details={[
                                 { label: t("dashboard.kpi.renewalRate"), value: formatPercent(retention?.renewal_rate) },
                                 { label: t("dashboard.kpi.retained"), value: formatNumber(retention?.retained_members) },
@@ -519,15 +519,15 @@ export default function RetentionPage() {
                                 comparisonRetention?.not_renewed_members ?? comparisonRetention?.not_renewed_services,
                                 { periodLabel, invertTone: true, previousLabel: `vs ${t("common.previousPeriod")}` },
                             )}
-                            caption="Members who need attention after not renewing."
+                            caption={t("dashboard.caption.notRenewedAttention")}
                             details={[
                                 { label: t("dashboard.kpi.inactive"), value: formatNumber(retention?.not_renewed_inactive) },
-                                { label: "Attending unpaid", value: formatNumber(retention?.not_renewed_attending_unpaid) },
-                                { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
+                                { label: t("dashboard.kpi.attendingUnpaid"), value: formatNumber(retention?.not_renewed_attending_unpaid) },
+                                { label: t("dashboard.kpi.attendingPaid"), value: formatNumber(retention?.not_renewed_attending_paid) },
                             ]}
                             action={(
                                 <Link href={retentionFollowUpHref}>
-                                    <Button variant="outlined" size="small">Open Follow-up List</Button>
+                                    <Button variant="outlined" size="small">{t("dashboard.actions.openFollowUpList")}</Button>
                                 </Link>
                             )}
                         />
@@ -535,7 +535,7 @@ export default function RetentionPage() {
                             <InsightCard
                                 title={t("dashboard.cards.valueAtRisk")}
                                 value={formatMoney(retention?.not_renewed_value)}
-                                caption="Estimated membership value from not-renewed clients."
+                                caption={t("dashboard.caption.valueAtRisk")}
                                 details={[
                                     { label: t("dashboard.kpi.postExpirationVisits"), value: formatNumber(retention?.not_renewed_post_expiration_attendance) },
                                     { label: t("dashboard.kpi.paidVisits"), value: formatNumber(retention?.not_renewed_post_expiration_paid_attendance) },
@@ -549,12 +549,12 @@ export default function RetentionPage() {
 
                     {retention?.tracked_pricing_options === 0 && (
                         <Alert severity="warning">
-                            No hay productos marcados para analizar retencion. Marca las membresias en Data &gt; Pricing Options.
+                            {t("dashboard.warning.noRetentionProducts")}
                         </Alert>
                     )}
                     {retention?.snapshot_rows === 0 && (
                         <Alert severity="warning">
-                            No hay snapshots mensuales para este periodo. Abre Retention Follow-up y reconstruye el mes.
+                            {t("dashboard.warning.noMembershipSnapshots")}
                         </Alert>
                     )}
 
@@ -591,7 +591,7 @@ export default function RetentionPage() {
 
                     <div>
                         <Link href={retentionFollowUpHref}>
-                            <Button variant="outlined">Open Retention Follow-up</Button>
+                            <Button variant="outlined">{t("dashboard.actions.openRetentionFollowUp")}</Button>
                         </Link>
                     </div>
                 </div>
@@ -618,7 +618,7 @@ export default function RetentionPage() {
                     >
                         <Tab label={t("dashboard.kpi.currentMembers")} value="members" />
                         <Tab label={t("dashboard.kpi.renewalRate")} value="renewal" />
-                        <Tab label="Movement" value="movement" />
+                        <Tab label={t("dashboard.tabs.movement")} value="movement" />
                     </Tabs>
                     <MemberMixHistoryChart rows={memberMixTrendRows} view={memberMixTrendView} t={t} />
                 </DialogContent>
@@ -655,10 +655,10 @@ export default function RetentionPage() {
                         scrollButtons="auto"
                         style={{ marginBottom: "16px" }}
                     >
-                        <Tab label={`Not Renewed (${formatNumber(retentionTables?.not_renewed?.count || 0)})`} value="not_renewed" />
-                        <Tab label={`Retained (${formatNumber(retentionTables?.retained?.count || 0)})`} value="retained" />
-                        <Tab label={`New (${formatNumber(retentionTables?.new_members?.count || 0)})`} value="new_members" />
-                        <Tab label={`Reactivated (${formatNumber(retentionTables?.reactivated?.count || 0)})`} value="reactivated" />
+                        <Tab label={`${t("retention.status.notRenewed")} (${formatNumber(retentionTables?.not_renewed?.count || 0)})`} value="not_renewed" />
+                        <Tab label={`${t("retention.status.retained")} (${formatNumber(retentionTables?.retained?.count || 0)})`} value="retained" />
+                        <Tab label={`${t("retention.status.new")} (${formatNumber(retentionTables?.new_members?.count || 0)})`} value="new_members" />
+                        <Tab label={`${t("retention.status.reactivated")} (${formatNumber(retentionTables?.reactivated?.count || 0)})`} value="reactivated" />
                     </Tabs>
                     {retentionTablesLoading ? (
                         <LinearProgress />

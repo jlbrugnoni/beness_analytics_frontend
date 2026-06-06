@@ -551,10 +551,10 @@ export default function OccupancyPage() {
                             action={(
                                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                     <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
-                                        Weekday Detail
+                                        {t("dashboard.actions.weekdayDetail")}
                                     </Button>
                                     <Button variant="outlined" size="small" onClick={openOccupancyHourMatrix}>
-                                        Hour Matrix
+                                        {t("dashboard.actions.hourMatrix")}
                                     </Button>
                                 </Stack>
                             )}

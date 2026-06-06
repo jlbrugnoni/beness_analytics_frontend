@@ -28,6 +28,12 @@ const formatActivityStatus = (value, t) => ({
     attending_unpaid: t("dashboard.activity.attendingUnpaid"),
     attending_paid: t("dashboard.activity.attendingPaid"),
 }[value] || "N/A");
+const formatRetentionStatus = (value, t) => ({
+    not_renewed: t("retention.status.notRenewed"),
+    retained: t("retention.status.retained"),
+    new: t("retention.status.new"),
+    reactivated: t("retention.status.reactivated"),
+}[value] || value || "N/A");
 
 
 const csvValue = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
@@ -274,7 +280,7 @@ export default function RetentionFollowUp() {
         ];
         const lines = rows.map((row) => [
             row.month,
-            row.status,
+            formatRetentionStatus(row.status, t),
             row.client,
             row.client_mindbody_id,
             row.client_email,
@@ -544,7 +550,7 @@ export default function RetentionFollowUp() {
                                                 <div style={{ color: "#666", fontSize: "12px" }}>{row.client_phone || ""}</div>
                                             </TableCell>
                                             <TableCell>{row.month || "N/A"}</TableCell>
-                                            <TableCell>{row.status || "N/A"}</TableCell>
+                                            <TableCell>{formatRetentionStatus(row.status, t)}</TableCell>
                                             <TableCell>
                                                 <div>{formatActivityStatus(row.not_renewed_activity_status, t)}</div>
                                                 {!!row.post_expiration_attendance_count && (

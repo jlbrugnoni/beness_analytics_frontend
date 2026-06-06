@@ -568,7 +568,7 @@ export default function WeeklySummaryPage() {
                             title={t("dashboard.cards.attendanceHealth")}
                             value={formatNumber(totals.attended_visits)}
                             delta={comparisonDelta(totals.attended_visits, comparisonTotals.attended_visits, { periodLabel, previousLabel: `vs ${t("common.previousPeriod")}` })}
-                            caption="Completed visits for the selected week."
+                            caption={t("dashboard.caption.completedVisits")}
                             details={[
                                 { label: t("dashboard.kpi.totalBookings"), value: formatNumber(totals.attendance_visits) },
                                 { label: t("dashboard.kpi.noShowRate"), value: formatPercent(totals.no_show_rate) },
@@ -589,7 +589,7 @@ export default function WeeklySummaryPage() {
                                 suffix: " pts",
                                 previousLabel: `vs ${t("common.previousPeriod")}`,
                             })}
-                            caption="How much scheduled capacity was used."
+                            caption={t("dashboard.caption.occupancy")}
                             details={[
                                 { label: t("dashboard.kpi.attendanceUsed"), value: formatNumber(occupation?.matched_attended_visits) },
                                 { label: t("dashboard.kpi.scheduledCapacity"), value: formatNumber(occupation?.scheduled_capacity) },
@@ -605,7 +605,7 @@ export default function WeeklySummaryPage() {
                             title={t("dashboard.cards.studioActivity")}
                             value={formatNumber(totals.active_clients)}
                             delta={comparisonDelta(totals.active_clients, comparisonTotals.active_clients, { periodLabel, previousLabel: `vs ${t("common.previousPeriod")}` })}
-                            caption="Clients with activity during the selected week."
+                            caption={t("dashboard.caption.activeClients")}
                             details={[
                                 { label: t("dashboard.kpi.scheduledClasses"), value: formatNumber(occupation?.available_classes) },
                                 { label: t("dashboard.kpi.closedUnavailable"), value: formatNumber(occupation?.closed_or_unavailable_classes) },
@@ -620,7 +620,7 @@ export default function WeeklySummaryPage() {
                             t={t}
                             action={(
                                 <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_attendance_weekday")}>
-                                    Weekday Detail
+                                    {t("dashboard.actions.weekdayDetail")}
                                 </Button>
                             )}
                         />
@@ -630,7 +630,7 @@ export default function WeeklySummaryPage() {
                             t={t}
                             action={(
                                 <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
-                                    Weekday Detail
+                                    {t("dashboard.actions.weekdayDetail")}
                                 </Button>
                             )}
                         />
@@ -658,8 +658,8 @@ export default function WeeklySummaryPage() {
                         scrollButtons="auto"
                         style={{ marginBottom: "16px" }}
                     >
-                        <Tab label="Bookings & Visits" value="visits" />
-                        <Tab label="No-show & Late Cancel" value="rates" />
+                        <Tab label={t("dashboard.tabs.bookingsVisits")} value="visits" />
+                        <Tab label={t("dashboard.tabs.noShowLateCancel")} value="rates" />
                         {canViewMoney && <Tab label={t("dashboard.kpi.avgRevenueVisit")} value="revenue" />}
                     </Tabs>
                     {weeklyTrendsLoading ? (

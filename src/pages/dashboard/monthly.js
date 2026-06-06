@@ -460,7 +460,7 @@ export default function MonthlySummaryPage() {
                                     money: true,
                                     previousLabel: `vs ${t("common.previousPeriod")}`,
                                 })}
-                                caption="Sales revenue for the selected month."
+                                caption={t("dashboard.caption.salesRevenue")}
                                 details={[
                                     { label: t("dashboard.kpi.visitRevenue"), value: formatMoney(totals.visit_revenue) },
                                     { label: t("dashboard.kpi.averageTicket"), value: formatMoney(totals.average_ticket) },
@@ -481,9 +481,9 @@ export default function MonthlySummaryPage() {
                                 suffix: " pts",
                                 previousLabel: `vs ${t("common.previousPeriod")}`,
                             })}
-                            caption="Renewal rate from monthly membership snapshots."
+                            caption={t("dashboard.caption.renewalRate")}
                             details={[
-                                { label: "Churn rate", value: formatPercent(retention?.churn_rate) },
+                                { label: t("dashboard.kpi.churnRate"), value: formatPercent(retention?.churn_rate) },
                                 { label: t("dashboard.kpi.retainedMembers"), value: formatNumber(retention?.retained_members) },
                                 { label: t("dashboard.kpi.currentMembers"), value: formatNumber(retention?.current_month_members) },
                                 { label: t("dashboard.kpi.unassignedNotRenewed"), value: formatNumber(retention?.not_renewed_unassigned_studio) },
@@ -494,7 +494,7 @@ export default function MonthlySummaryPage() {
                                         {t("common.trend")}
                                     </Button>
                                     <Link href="/retention">
-                                        <Button variant="outlined" size="small">Open Follow-up</Button>
+                                        <Button variant="outlined" size="small">{t("dashboard.actions.openFollowUp")}</Button>
                                     </Link>
                                 </Stack>
                             )}
@@ -507,11 +507,11 @@ export default function MonthlySummaryPage() {
                                 comparisonRetention?.not_renewed_members ?? comparisonRetention?.not_renewed_services,
                                 { periodLabel, invertTone: true, previousLabel: `vs ${t("common.previousPeriod")}` },
                             )}
-                            caption="Members who did not renew in the selected month."
+                            caption={t("dashboard.caption.notRenewed")}
                             details={[
                                 ...(canViewMoney ? [{ label: t("dashboard.kpi.valueAtRisk"), value: formatMoney(retention?.not_renewed_value) }] : []),
-                                { label: "Attending unpaid", value: formatNumber(retention?.not_renewed_attending_unpaid) },
-                                { label: "Attending paid", value: formatNumber(retention?.not_renewed_attending_paid) },
+                                { label: t("dashboard.kpi.attendingUnpaid"), value: formatNumber(retention?.not_renewed_attending_unpaid) },
+                                { label: t("dashboard.kpi.attendingPaid"), value: formatNumber(retention?.not_renewed_attending_paid) },
                             ]}
                         />
                     </div>
