@@ -145,6 +145,7 @@ export default function Uploads() {
     const [preview, setPreview] = useState(null);
     const [importResult, setImportResult] = useState(null);
     const [scheduleAutomation, setScheduleAutomation] = useState(null);
+    const [retentionAutomation, setRetentionAutomation] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
@@ -188,6 +189,7 @@ export default function Uploads() {
         setPreview(null);
         setImportResult(null);
         setScheduleAutomation(null);
+        setRetentionAutomation(null);
         setRoomCapacities({});
     }, [site, studio, reportType]);
 
@@ -206,6 +208,7 @@ export default function Uploads() {
         setPreview(null);
         setImportResult(null);
         setScheduleAutomation(null);
+        setRetentionAutomation(null);
         setRoomCapacities({});
 
         const formData = new FormData();
@@ -247,6 +250,7 @@ export default function Uploads() {
         setError("");
         setImportResult(null);
         setScheduleAutomation(null);
+        setRetentionAutomation(null);
 
         const formData = new FormData();
         formData.append("site", site);
@@ -275,6 +279,7 @@ export default function Uploads() {
             });
             setImportResult(response.data.import);
             setScheduleAutomation(response.data.schedule_automation || null);
+            setRetentionAutomation(response.data.retention_automation || null);
             setPreview(null);
             setFile(null);
             setRoomCapacities({});
@@ -295,6 +300,7 @@ export default function Uploads() {
         setError("");
         setImportResult(null);
         setScheduleAutomation(null);
+        setRetentionAutomation(null);
 
         try {
             const response = await axios.post(
@@ -736,6 +742,25 @@ export default function Uploads() {
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
+                                </Paper>
+                            )}
+
+                            {retentionAutomation && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Retention Automation</h2>
+                                    {retentionAutomation.error ? (
+                                        <Alert severity="warning">{retentionAutomation.error}</Alert>
+                                    ) : retentionAutomation.skipped ? (
+                                        <Alert severity="info">
+                                            {retentionAutomation.reason || "Retention snapshot automation skipped."}
+                                        </Alert>
+                                    ) : (
+                                        <Alert severity="success">
+                                            Rebuilt {retentionAutomation.rebuilt?.length || 0} monthly retention snapshots
+                                            {" "}({retentionAutomation.rebuilt?.[0]?.month} to{" "}
+                                            {retentionAutomation.rebuilt?.at(-1)?.month}).
+                                        </Alert>
+                                    )}
                                 </Paper>
                             )}
 
