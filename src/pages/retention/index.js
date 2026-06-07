@@ -41,6 +41,7 @@ const formatRetentionStatus = (value, t) => ({
     not_renewed: t("retention.status.notRenewed"),
     retained: t("retention.status.retained"),
     new: t("retention.status.new"),
+    new_non_member: t("retention.status.newNonMembers"),
     reactivated: t("retention.status.reactivated"),
 }[value] || value || "N/A");
 
@@ -401,8 +402,11 @@ export default function RetentionFollowUp() {
         setHistoryError("");
         setHistoryDetails(null);
         try {
+            const historyPath = row.history_client_id
+                ? `retention-clients/${row.history_client_id}/purchase-history`
+                : `retention-followup/${row.id}/purchase-history`;
             const response = await axios.get(
-                `${backendUrl}/api/data/analytics/retention-followup/${row.id}/purchase-history/`,
+                `${backendUrl}/api/data/analytics/${historyPath}/`,
                 authHeaders,
             );
             setHistoryDetails(response.data);
@@ -469,6 +473,7 @@ export default function RetentionFollowUp() {
     const activePeriodTitle = periodMode === "range"
         ? t("retention.period.dateRange")
         : `${t(`months.${activeMonthParts.month}`)} ${activeMonthParts.year}`;
+    const showingNewNonMembers = filters.status === "new_non_members";
 
     const navigateMonth = (direction) => {
         const nextFilters = {
@@ -566,6 +571,7 @@ export default function RetentionFollowUp() {
                                 <MenuItem value="not_renewed">{t("retention.status.notRenewed")}</MenuItem>
                                 <MenuItem value="retained">{t("retention.status.retained")}</MenuItem>
                                 <MenuItem value="new">{t("retention.status.new")}</MenuItem>
+                                <MenuItem value="new_non_members">{t("retention.status.newNonMembers")}</MenuItem>
                                 <MenuItem value="reactivated">{t("retention.status.reactivated")}</MenuItem>
                             </TextField>
                             <TextField
@@ -693,12 +699,20 @@ export default function RetentionFollowUp() {
                                     <TableRow>
                                         <TableCell>{t("common.client")}</TableCell>
                                         <TableCell>{t("common.month")}</TableCell>
-                                        <TableCell>{t("common.activity")}</TableCell>
                                         <TableCell>{t("common.studio")}</TableCell>
                                         <TableCell>{t("common.service")}</TableCell>
-                                        <TableCell align="right">{t("common.days")}</TableCell>
+                                        {showingNewNonMembers ? (
+                                            <TableCell>{t("dashboard.table.purchaseDate")}</TableCell>
+                                        ) : (
+                                            <>
+                                                <TableCell>{t("common.activity")}</TableCell>
+                                                <TableCell align="right">{t("common.days")}</TableCell>
+                                            </>
+                                        )}
                                         <TableCell align="right">{t("common.amount")}</TableCell>
-                                        <TableCell align="right">{t("common.purchases")}</TableCell>
+                                        {!showingNewNonMembers && (
+                                            <TableCell align="right">{t("common.purchases")}</TableCell>
+                                        )}
                                         <TableCell>{t("common.history")}</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -711,32 +725,40 @@ export default function RetentionFollowUp() {
                                             </TableCell>
                                             <TableCell>{row.month || "N/A"}</TableCell>
                                             <TableCell>
-                                                {row.status === "not_renewed"
-                                                && row.not_renewed_activity_status !== "inactive" ? (
-                                                    <Button
-                                                        variant="text"
-                                                        size="small"
-                                                        onClick={() => openActivity(row)}
-                                                        style={{ padding: 0, minWidth: 0, textTransform: "none" }}
-                                                    >
-                                                        {formatActivityStatus(row.not_renewed_activity_status, t)}
-                                                    </Button>
-                                                ) : (
-                                                    <div>{formatActivityStatus(row.not_renewed_activity_status, t)}</div>
-                                                )}
-                                                {!!row.post_expiration_attendance_count && (
-                                                    <div style={{ color: "#666", fontSize: "12px" }}>
-                                                        {row.post_expiration_attendance_count} {t("retention.visits")} / {formatMoney(row.post_expiration_revenue)}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
                                                 {row.studio || t("common.unknown")}
                                             </TableCell>
                                             <TableCell>{row.service || "N/A"}</TableCell>
-                                            <TableCell align="right">{row.membership_days || row.previous_membership_days || "N/A"}</TableCell>
+                                            {showingNewNonMembers ? (
+                                                <TableCell>{row.sale_date || "N/A"}</TableCell>
+                                            ) : (
+                                                <>
+                                                    <TableCell>
+                                                        {row.status === "not_renewed"
+                                                        && row.not_renewed_activity_status !== "inactive" ? (
+                                                            <Button
+                                                                variant="text"
+                                                                size="small"
+                                                                onClick={() => openActivity(row)}
+                                                                style={{ padding: 0, minWidth: 0, textTransform: "none" }}
+                                                            >
+                                                                {formatActivityStatus(row.not_renewed_activity_status, t)}
+                                                            </Button>
+                                                        ) : (
+                                                            <div>{formatActivityStatus(row.not_renewed_activity_status, t)}</div>
+                                                        )}
+                                                        {!!row.post_expiration_attendance_count && (
+                                                            <div style={{ color: "#666", fontSize: "12px" }}>
+                                                                {row.post_expiration_attendance_count} {t("retention.visits")} / {formatMoney(row.post_expiration_revenue)}
+                                                            </div>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell align="right">{row.membership_days || row.previous_membership_days || "N/A"}</TableCell>
+                                                </>
+                                            )}
                                             <TableCell align="right">{formatMoney(row.total_amount)}</TableCell>
-                                            <TableCell align="right">{row.tracked_membership_purchase_count || 0}</TableCell>
+                                            {!showingNewNonMembers && (
+                                                <TableCell align="right">{row.tracked_membership_purchase_count || 0}</TableCell>
+                                            )}
                                             <TableCell>
                                                 <Button
                                                     variant="text"
@@ -755,7 +777,7 @@ export default function RetentionFollowUp() {
                                     ))}
                                     {!rows.length && (
                                         <TableRow>
-                                            <TableCell colSpan={9}>{t("common.noData")}</TableCell>
+                                            <TableCell colSpan={showingNewNonMembers ? 7 : 9}>{t("common.noData")}</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

@@ -242,6 +242,10 @@ export default function RetentionPage() {
             count: retention?.new_members || 0,
             rows: retention?.new_member_samples || [],
         },
+        new_non_members: {
+            count: retention?.new_non_members || 0,
+            rows: retention?.new_non_member_samples || [],
+        },
         reactivated: {
             count: retention?.reactivated_members || 0,
             rows: retention?.reactivated_samples || [],
@@ -431,8 +435,11 @@ export default function RetentionPage() {
         setHistoryError("");
         setHistoryDetails(null);
         try {
+            const historyPath = row.history_client_id
+                ? `retention-clients/${row.history_client_id}/purchase-history`
+                : `retention-followup/${row.id}/purchase-history`;
             const response = await axios.get(
-                `${backendUrl}/api/data/analytics/retention-followup/${row.id}/purchase-history/`,
+                `${backendUrl}/api/data/analytics/${historyPath}/`,
                 authHeaders,
             );
             setHistoryDetails(response.data);
@@ -679,6 +686,7 @@ export default function RetentionPage() {
                             <Tab label={`${t("retention.status.notRenewed")} (${formatNumber(retentionPreviewTables.not_renewed.count)})`} value="not_renewed" />
                             <Tab label={`${t("retention.status.retained")} (${formatNumber(retentionPreviewTables.retained.count)})`} value="retained" />
                             <Tab label={`${t("retention.status.new")} (${formatNumber(retentionPreviewTables.new_members.count)})`} value="new_members" />
+                            <Tab label={`${t("retention.status.newNonMembers")} (${formatNumber(retentionPreviewTables.new_non_members.count)})`} value="new_non_members" />
                             <Tab label={`${t("retention.status.reactivated")} (${formatNumber(retentionPreviewTables.reactivated.count)})`} value="reactivated" />
                         </Tabs>
                         <RetentionDetailTable
@@ -762,6 +770,7 @@ export default function RetentionPage() {
                         <Tab label={`${t("retention.status.notRenewed")} (${formatNumber(retentionTables?.not_renewed?.count || 0)})`} value="not_renewed" />
                         <Tab label={`${t("retention.status.retained")} (${formatNumber(retentionTables?.retained?.count || 0)})`} value="retained" />
                         <Tab label={`${t("retention.status.new")} (${formatNumber(retentionTables?.new_members?.count || 0)})`} value="new_members" />
+                        <Tab label={`${t("retention.status.newNonMembers")} (${formatNumber(retentionTables?.new_non_members?.count || 0)})`} value="new_non_members" />
                         <Tab label={`${t("retention.status.reactivated")} (${formatNumber(retentionTables?.reactivated?.count || 0)})`} value="reactivated" />
                     </Tabs>
                     <TextField
