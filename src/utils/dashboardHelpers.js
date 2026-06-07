@@ -1,4 +1,5 @@
 import { useState } from "react";
+import CloseIcon from "@mui/icons-material/Close";
 import {
     Bar,
     BarChart as RechartsBarChart,
@@ -15,7 +16,12 @@ import {
 
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import IconButton from "@mui/material/IconButton";
+import LinearProgress from "@mui/material/LinearProgress";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -592,7 +598,6 @@ export const RetentionTable = ({ title, rows, t }) => (
                         <TableCell>Client</TableCell>
                         <TableCell>Studio</TableCell>
                         <TableCell>Service</TableCell>
-                        <TableCell>Status</TableCell>
                         <TableCell>Activity</TableCell>
                         <TableCell align="right">Days</TableCell>
                         <TableCell align="right">Amount</TableCell>
@@ -607,7 +612,6 @@ export const RetentionTable = ({ title, rows, t }) => (
                             <TableCell>{row.client || "N/A"}</TableCell>
                             <TableCell>{row.studio === "Unknown" ? t("common.unknown") : row.studio || t("common.unknown")}</TableCell>
                             <TableCell>{row.service || "N/A"}</TableCell>
-                            <TableCell>{formatRetentionStatus(row.status, t)}</TableCell>
                             <TableCell>
                                 <div>{formatActivityStatus(row.not_renewed_activity_status, t)}</div>
                                 {!!row.post_expiration_attendance_count && (
@@ -624,7 +628,7 @@ export const RetentionTable = ({ title, rows, t }) => (
                     ))}
                     {!rows?.length && (
                         <TableRow>
-                            <TableCell colSpan={10}>{t("common.noData")}</TableCell>
+                            <TableCell colSpan={9}>{t("common.noData")}</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -639,13 +643,13 @@ export const retentionTableColumns = {
         { key: "client", label: "Client" },
         { key: "studio", label: "Studio" },
         { key: "service", label: "Service" },
-        { key: "status", label: "Status", format: (row, t) => formatRetentionStatus(row.status, t) },
         { key: "activity", label: "Activity", format: (row, t) => formatActivityStatus(row.not_renewed_activity_status, t) },
         { key: "sale_date", label: "Last Purchase" },
         { key: "expiration_date", label: "Expiration" },
         { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
         { key: "tracked_membership_purchase_count", label: "Purchases", align: "right", format: (row) => formatNumber(row.tracked_membership_purchase_count) },
         { key: "lifetime_membership_value", label: "Lifetime", align: "right", format: (row) => formatMoney(row.lifetime_membership_value) },
+        { key: "history", label: "History" },
     ],
     retained: [
         { key: "client", label: "Client" },
@@ -656,6 +660,7 @@ export const retentionTableColumns = {
         { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
         { key: "tracked_membership_purchase_count", label: "Purchases", align: "right", format: (row) => formatNumber(row.tracked_membership_purchase_count) },
         { key: "lifetime_membership_value", label: "Lifetime", align: "right", format: (row) => formatMoney(row.lifetime_membership_value) },
+        { key: "history", label: "History" },
     ],
     new_members: [
         { key: "month", label: "Month" },
@@ -665,6 +670,18 @@ export const retentionTableColumns = {
         { key: "sale_date", label: "Purchase Date" },
         { key: "expiration_date", label: "Expiration" },
         { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+        { key: "history", label: "History" },
+    ],
+    new_non_members: [
+        { key: "month", label: "Month" },
+        { key: "client", label: "Client" },
+        { key: "studio", label: "Studio" },
+        { key: "service", label: "Service Purchased" },
+        { key: "sale_date", label: "Purchase Date" },
+        { key: "activation_date", label: "Activation" },
+        { key: "expiration_date", label: "Expiration" },
+        { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
+        { key: "history", label: "History" },
     ],
     reactivated: [
         { key: "client", label: "Client" },
@@ -673,18 +690,24 @@ export const retentionTableColumns = {
         { key: "sale_date", label: "Reactivation Purchase" },
         { key: "expiration_date", label: "Expiration" },
         { key: "total_amount", label: "Amount", align: "right", format: (row) => formatMoney(row.total_amount) },
-        { key: "last_membership_purchase_date", label: "Previous Purchase" },
+        { key: "previous_membership_purchase_date", label: "Previous Purchase" },
+        { key: "history", label: "History" },
     ],
 };
 
 
-export const RetentionDetailTable = ({ rows, tableKey, t }) => {
+export const RetentionDetailTable = ({
+    rows,
+    tableKey,
+    t,
+    onOpenActivity,
+    onOpenHistory,
+}) => {
     const columns = retentionTableColumns[tableKey] || retentionTableColumns.not_renewed;
     const headerLabels = {
         Client: t("common.client"),
         Studio: t("common.studio"),
         Service: t("common.service"),
-        Status: t("common.status"),
         Activity: t("common.activity"),
         "Last Purchase": t("dashboard.table.lastPurchase"),
         Expiration: t("common.expiration"),
@@ -694,8 +717,10 @@ export const RetentionDetailTable = ({ rows, tableKey, t }) => {
         Month: t("common.month"),
         "Service Purchased": t("dashboard.table.servicePurchased"),
         "Purchase Date": t("dashboard.table.purchaseDate"),
+        Activation: t("retention.activity.activationDate"),
         "Reactivation Purchase": t("dashboard.table.reactivationPurchase"),
         "Previous Purchase": t("dashboard.table.previousPurchase"),
+        History: t("common.history"),
     };
     const displayValue = (row, column) => {
         const value = row[column.key];
@@ -717,7 +742,27 @@ export const RetentionDetailTable = ({ rows, tableKey, t }) => {
                         <TableRow key={`${tableKey}-${row.id || index}`}>
                             {columns.map((column) => (
                                 <TableCell key={column.key} align={column.align || "left"}>
-                                    {column.format ? column.format(row, t) : displayValue(row, column)}
+                                    {column.key === "activity"
+                                    && row.not_renewed_activity_status !== "inactive"
+                                    && onOpenActivity ? (
+                                        <Button
+                                            variant="text"
+                                            size="small"
+                                            onClick={() => onOpenActivity(row)}
+                                            style={{ padding: 0, minWidth: 0, textTransform: "none" }}
+                                        >
+                                            {formatActivityStatus(row.not_renewed_activity_status, t)}
+                                        </Button>
+                                    ) : column.key === "history" && onOpenHistory ? (
+                                        <Button
+                                            variant="text"
+                                            size="small"
+                                            onClick={() => onOpenHistory(row)}
+                                            style={{ padding: 0, minWidth: 0, textTransform: "none" }}
+                                        >
+                                            {t("retention.history.open")}
+                                        </Button>
+                                    ) : column.format ? column.format(row, t) : displayValue(row, column)}
                                 </TableCell>
                             ))}
                         </TableRow>
@@ -734,14 +779,182 @@ export const RetentionDetailTable = ({ rows, tableKey, t }) => {
 };
 
 
-export const RetentionSummaryTableCard = ({ title, rows, tableKey, onExpand, t }) => (
-    <Paper style={{ padding: "16px" }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} style={{ marginBottom: "8px" }}>
-            <h2 style={{ margin: 0 }}>{title}</h2>
-            <Button size="small" variant="outlined" onClick={onExpand}>{t("common.openTable")}</Button>
-        </Stack>
-        <RetentionDetailTable rows={(rows || []).slice(0, 5)} tableKey={tableKey} t={t} />
-    </Paper>
+export const RetentionActivityDialog = ({
+    open,
+    onClose,
+    loading,
+    error,
+    details,
+    t,
+}) => (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
+        <DialogTitle>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                <span>
+                    {t("retention.activity.title")}
+                    {details?.client ? `: ${details.client}` : ""}
+                </span>
+                <IconButton aria-label={t("common.close")} onClick={onClose} size="small">
+                    <CloseIcon />
+                </IconButton>
+            </Stack>
+        </DialogTitle>
+        <DialogContent>
+            {loading && <LinearProgress />}
+            {error && <Alert severity="error">{error}</Alert>}
+            {details && (
+                <div style={{ display: "grid", gap: "20px" }}>
+                    <Paper variant="outlined" style={{ padding: "16px" }}>
+                        <h3 style={{ marginTop: 0 }}>{t("retention.activity.lastTrackedPurchase")}</h3>
+                        <div style={{
+                            display: "grid",
+                            gap: "12px",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                        }}>
+                            {[
+                                [t("common.service"), details.last_tracked_purchase.service, false],
+                                [t("common.studio"), details.last_tracked_purchase.studio, false],
+                                [t("retention.activity.saleDate"), details.last_tracked_purchase.sale_date, true],
+                                [t("retention.activity.activationDate"), details.last_tracked_purchase.activation_date, true],
+                                [t("common.expiration"), details.last_tracked_purchase.expiration_date, true],
+                            ].map(([label, value, isDate]) => (
+                                <div key={label}>
+                                    <div style={{ color: "#666", fontSize: "12px" }}>{label}</div>
+                                    <div>{value ? (isDate ? formatDisplayDate(value, t) : value) : "N/A"}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </Paper>
+                    {[
+                        {
+                            key: "followup",
+                            title: t("retention.activity.followupPeriod"),
+                            period: details.followup_period,
+                        },
+                        {
+                            key: "later",
+                            title: t("retention.activity.laterActivity"),
+                            period: details.later_period,
+                        },
+                    ].map(({ key, title, period }) => (
+                        <div key={key}>
+                            <h3 style={{ marginBottom: "4px" }}>{title}</h3>
+                            <div style={{ color: "#666", fontSize: "14px", marginBottom: "10px" }}>
+                                {formatDisplayDate(period.from, t)} - {formatDisplayDate(period.to, t)}
+                            </div>
+                            {period.visits.length ? (
+                                <TableContainer component={Paper} variant="outlined">
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>{t("common.date")}</TableCell>
+                                                <TableCell>{t("retention.activity.time")}</TableCell>
+                                                <TableCell>{t("common.studio")}</TableCell>
+                                                <TableCell>{t("retention.activity.pricingOption")}</TableCell>
+                                                <TableCell>{t("retention.activity.payment")}</TableCell>
+                                                <TableCell align="right">{t("common.revenue")}</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {period.visits.map((visit) => (
+                                                <TableRow key={visit.id}>
+                                                    <TableCell>{formatDisplayDate(visit.date, t)}</TableCell>
+                                                    <TableCell>{visit.time || "N/A"}</TableCell>
+                                                    <TableCell>{visit.studio || t("common.unknown")}</TableCell>
+                                                    <TableCell>{visit.pricing_option || "N/A"}</TableCell>
+                                                    <TableCell>
+                                                        {visit.payment_status === "paid"
+                                                            ? t("retention.activity.paid")
+                                                            : t("retention.activity.unpaid")}
+                                                    </TableCell>
+                                                    <TableCell align="right">
+                                                        {visit.revenue === null ? "N/A" : formatMoney(visit.revenue)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            ) : (
+                                <Alert severity="info">
+                                    {key === "followup"
+                                        ? t("retention.activity.noFollowupVisits")
+                                        : t("retention.activity.noLaterVisits")}
+                                </Alert>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </DialogContent>
+    </Dialog>
+);
+
+
+export const RetentionPurchaseHistoryDialog = ({
+    open,
+    onClose,
+    loading,
+    error,
+    details,
+    t,
+}) => (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
+        <DialogTitle>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+                <span>
+                    {t("retention.history.title")}
+                    {details?.client ? `: ${details.client}` : ""}
+                </span>
+                <IconButton aria-label={t("common.close")} onClick={onClose} size="small">
+                    <CloseIcon />
+                </IconButton>
+            </Stack>
+        </DialogTitle>
+        <DialogContent>
+            {loading && <LinearProgress />}
+            {error && <Alert severity="error">{error}</Alert>}
+            {details && (
+                <>
+                    <div style={{ marginBottom: "12px", color: "#666" }}>
+                        {details.count} {t("retention.history.purchases")}
+                    </div>
+                    {details.purchases.length ? (
+                        <TableContainer component={Paper} variant="outlined">
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>{t("common.service")}</TableCell>
+                                        <TableCell>{t("common.studio")}</TableCell>
+                                        <TableCell>{t("retention.activity.saleDate")}</TableCell>
+                                        <TableCell>{t("retention.activity.activationDate")}</TableCell>
+                                        <TableCell>{t("common.expiration")}</TableCell>
+                                        <TableCell align="right">{t("common.amount")}</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {details.purchases.map((purchase) => (
+                                        <TableRow key={purchase.id}>
+                                            <TableCell>{purchase.service || "N/A"}</TableCell>
+                                            <TableCell>{purchase.studio || t("common.unknown")}</TableCell>
+                                            <TableCell>{formatDisplayDate(purchase.sale_date, t)}</TableCell>
+                                            <TableCell>{formatDisplayDate(purchase.activation_date, t)}</TableCell>
+                                            <TableCell>{formatDisplayDate(purchase.expiration_date, t)}</TableCell>
+                                            <TableCell align="right">
+                                                {purchase.amount === null ? "N/A" : formatMoney(purchase.amount)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    ) : (
+                        <Alert severity="info">{t("retention.history.noPurchases")}</Alert>
+                    )}
+                </>
+            )}
+        </DialogContent>
+    </Dialog>
 );
 
 

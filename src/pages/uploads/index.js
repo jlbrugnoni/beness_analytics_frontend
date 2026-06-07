@@ -48,6 +48,7 @@ const ImpactGrid = ({ impact }) => {
             <SummaryBox label="Already Added" value={impact.current_records_unchanged} />
             <SummaryBox label="Current Records In File" value={impact.current_records_in_file} />
             <SummaryBox label="Attendance Collisions" value={impact.natural_key_collisions} />
+            <SummaryBox label="Ambiguous Rows" value={impact.ambiguous_rows || 0} />
         </div>
     );
 };
@@ -116,6 +117,7 @@ const importMetricLabels = {
     service_purchases_created: "Service Purchases Created",
     service_purchases_changed: "Service Purchases Changed",
     service_purchases_identical: "Service Purchases Identical",
+    service_purchase_ambiguous_rows: "Ambiguous Purchase Rows Skipped",
     scheduled_classes_created: "Scheduled Classes Created",
     scheduled_classes_changed: "Scheduled Classes Changed",
     scheduled_classes_identical: "Scheduled Classes Identical",
@@ -145,10 +147,13 @@ export default function Uploads() {
     const [preview, setPreview] = useState(null);
     const [importResult, setImportResult] = useState(null);
     const [scheduleAutomation, setScheduleAutomation] = useState(null);
+    const [retentionAutomation, setRetentionAutomation] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
     const [resetting, setResetting] = useState(false);
+    const [repairingPurchases, setRepairingPurchases] = useState(false);
+    const [purchaseRepairResult, setPurchaseRepairResult] = useState(null);
     const [roomCapacities, setRoomCapacities] = useState({});
 
     const authHeaders = useMemo(() => ({
@@ -188,6 +193,7 @@ export default function Uploads() {
         setPreview(null);
         setImportResult(null);
         setScheduleAutomation(null);
+        setRetentionAutomation(null);
         setRoomCapacities({});
     }, [site, studio, reportType]);
 
@@ -206,6 +212,7 @@ export default function Uploads() {
         setPreview(null);
         setImportResult(null);
         setScheduleAutomation(null);
+        setRetentionAutomation(null);
         setRoomCapacities({});
 
         const formData = new FormData();
@@ -247,6 +254,7 @@ export default function Uploads() {
         setError("");
         setImportResult(null);
         setScheduleAutomation(null);
+        setRetentionAutomation(null);
 
         const formData = new FormData();
         formData.append("site", site);
@@ -275,6 +283,7 @@ export default function Uploads() {
             });
             setImportResult(response.data.import);
             setScheduleAutomation(response.data.schedule_automation || null);
+            setRetentionAutomation(response.data.retention_automation || null);
             setPreview(null);
             setFile(null);
             setRoomCapacities({});
@@ -295,6 +304,7 @@ export default function Uploads() {
         setError("");
         setImportResult(null);
         setScheduleAutomation(null);
+        setRetentionAutomation(null);
 
         try {
             const response = await axios.post(
@@ -309,6 +319,46 @@ export default function Uploads() {
             setError(err.response?.data?.error || "Error resetting analytics data.");
         } finally {
             setResetting(false);
+        }
+    };
+
+    const handlePurchaseRepairAudit = async () => {
+        setRepairingPurchases(true);
+        setError("");
+        setPurchaseRepairResult(null);
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/data/report-imports/repair-sales-by-service-purchases/`,
+                { site, dry_run: true },
+                authHeaders,
+            );
+            setPurchaseRepairResult(response.data);
+        } catch (err) {
+            setError(err.response?.data?.error || "Error auditing purchase repairs.");
+        } finally {
+            setRepairingPurchases(false);
+        }
+    };
+
+    const handlePurchaseRepairApply = async () => {
+        const confirmation = window.prompt(
+            "This will merge safe duplicate Sales by Service purchases, leave ambiguous groups unchanged, and rebuild affected retention snapshots. Type REPAIR PURCHASES to continue."
+        );
+        if (confirmation !== "REPAIR PURCHASES") return;
+
+        setRepairingPurchases(true);
+        setError("");
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/data/report-imports/repair-sales-by-service-purchases/`,
+                { site, apply: true, confirmation },
+                authHeaders,
+            );
+            setPurchaseRepairResult(response.data);
+        } catch (err) {
+            setError(err.response?.data?.error || "Error applying purchase repairs.");
+        } finally {
+            setRepairingPurchases(false);
         }
     };
 
@@ -428,17 +478,85 @@ export default function Uploads() {
                                 <Button variant="text">Manage Data Tables</Button>
                             </Link>
                             {canResetData && (
-                                <Button
-                                    variant="outlined"
-                                    color="error"
-                                    onClick={handleResetAnalyticsData}
-                                    disabled={resetting}
-                                >
-                                    {resetting ? "Resetting..." : "Reset Analytics Data"}
-                                </Button>
+                                <>
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handlePurchaseRepairAudit}
+                                        disabled={repairingPurchases}
+                                    >
+                                        {repairingPurchases ? "Auditing..." : "Audit Purchase Repairs"}
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        color="warning"
+                                        onClick={handlePurchaseRepairApply}
+                                        disabled={repairingPurchases || !purchaseRepairResult?.safe_group_count}
+                                    >
+                                        Apply Safe Purchase Repairs
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        color="error"
+                                        onClick={handleResetAnalyticsData}
+                                        disabled={resetting}
+                                    >
+                                        {resetting ? "Resetting..." : "Reset Analytics Data"}
+                                    </Button>
+                                </>
                             )}
                         </div>
                     </Paper>
+
+                    {purchaseRepairResult && (
+                        <Paper style={{ padding: "18px" }}>
+                            <h2 style={{ marginTop: 0 }}>Sales by Service Purchase Repair</h2>
+                            <Alert severity={purchaseRepairResult.dry_run ? "info" : "success"} style={{ marginBottom: "16px" }}>
+                                {purchaseRepairResult.dry_run
+                                    ? "Dry-run only. No purchases were changed."
+                                    : "Safe purchase repairs were applied."}
+                            </Alert>
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+                                <SummaryBox label="Safe Groups" value={purchaseRepairResult.safe_group_count || 0} />
+                                <SummaryBox label="Records To Merge" value={purchaseRepairResult.safe_purchase_records_to_merge || 0} />
+                                <SummaryBox label="Ambiguous Groups" value={purchaseRepairResult.ambiguous_group_count || 0} />
+                                <SummaryBox label="Merged Records" value={purchaseRepairResult.merged_purchase_records || 0} />
+                                <SummaryBox label="Snapshots Rebuilt" value={purchaseRepairResult.rebuilt_snapshots?.length || 0} />
+                            </div>
+                            {!!purchaseRepairResult.ambiguous_groups?.length && (
+                                <Alert severity="warning" style={{ marginTop: "16px" }}>
+                                    Ambiguous groups were left unchanged. Review the first rows below before deciding if manual cleanup is needed.
+                                </Alert>
+                            )}
+                            {!!purchaseRepairResult.ambiguous_groups?.length && (
+                                <TableContainer style={{ marginTop: "16px", maxHeight: 320 }}>
+                                    <Table size="small" stickyHeader>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Client</TableCell>
+                                                <TableCell>Studio</TableCell>
+                                                <TableCell>Service</TableCell>
+                                                <TableCell>Sale Date</TableCell>
+                                                <TableCell>Records</TableCell>
+                                                <TableCell>Reason</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {purchaseRepairResult.ambiguous_groups.slice(0, 25).map((group, index) => (
+                                                <TableRow key={`${group.client_id}-${group.sale_date}-${index}`}>
+                                                    <TableCell>{group.client}</TableCell>
+                                                    <TableCell>{group.studio || "N/A"}</TableCell>
+                                                    <TableCell>{group.service}</TableCell>
+                                                    <TableCell>{group.sale_date}</TableCell>
+                                                    <TableCell>{group.purchase_ids?.join(", ")}</TableCell>
+                                                    <TableCell>{group.reason}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
+                        </Paper>
+                    )}
 
                     {preview && (
                         <>
@@ -736,6 +854,25 @@ export default function Uploads() {
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
+                                </Paper>
+                            )}
+
+                            {retentionAutomation && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Retention Automation</h2>
+                                    {retentionAutomation.error ? (
+                                        <Alert severity="warning">{retentionAutomation.error}</Alert>
+                                    ) : retentionAutomation.skipped ? (
+                                        <Alert severity="info">
+                                            {retentionAutomation.reason || "Retention snapshot automation skipped."}
+                                        </Alert>
+                                    ) : (
+                                        <Alert severity="success">
+                                            Rebuilt {retentionAutomation.rebuilt?.length || 0} monthly retention snapshots
+                                            {" "}({retentionAutomation.rebuilt?.[0]?.month} to{" "}
+                                            {retentionAutomation.rebuilt?.at(-1)?.month}).
+                                        </Alert>
+                                    )}
                                 </Paper>
                             )}
 

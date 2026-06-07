@@ -431,7 +431,9 @@ export default function AttendancePage() {
                         <IconButton size="small" onClick={() => router.push("/dashboard")}>
                             <ArrowBackIcon fontSize="small" />
                         </IconButton>
-                        <Typography variant="body2" color="text.secondary">Dashboard</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            {t("dashboard.title")} / {t("dashboard.hub.attendance.title")}
+                        </Typography>
                     </Stack>
 
                     {error && <Alert severity="error">{error}</Alert>}

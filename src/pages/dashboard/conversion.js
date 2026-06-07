@@ -413,7 +413,9 @@ export default function ConversionPage() {
                         <IconButton size="small" onClick={() => router.push("/dashboard")}>
                             <ArrowBackIcon fontSize="small" />
                         </IconButton>
-                        <Typography variant="body2" color="text.secondary">Dashboard</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            {t("dashboard.title")} / {t("dashboard.hub.conversion.title")}
+                        </Typography>
                     </Stack>
 
                     {/* Mode toggle */}
