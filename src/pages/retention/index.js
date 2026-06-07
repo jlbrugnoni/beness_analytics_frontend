@@ -123,6 +123,7 @@ const retentionDefaultState = () => {
             date_from: monthRange(defaultMonth).date_from,
             date_to: monthRange(defaultMonth).date_to,
             status: "not_renewed",
+            activity: "all",
             search: "",
         },
     };
@@ -141,6 +142,7 @@ const hasRetentionQuery = (query) => [
     "date_from",
     "date_to",
     "status",
+    "activity",
     "search",
 ].some((key) => firstQueryValue(query?.[key]));
 
@@ -155,6 +157,7 @@ const retentionStateFromQuery = (query, fallbackState) => ({
         date_from: firstQueryValue(query.date_from) || fallbackState.filters.date_from,
         date_to: firstQueryValue(query.date_to) || fallbackState.filters.date_to,
         status: firstQueryValue(query.status) || fallbackState.filters.status,
+        activity: firstQueryValue(query.activity) || fallbackState.filters.activity,
         search: firstQueryValue(query.search) || "",
     },
 });
@@ -168,6 +171,9 @@ const retentionQueryFromState = (periodMode, filters) => {
         date_to: filters.date_to,
         status: filters.status,
     };
+    if (filters.status === "not_renewed" && filters.activity !== "all") {
+        query.activity = filters.activity;
+    }
     if (filters.site) query.site = filters.site;
     if (filters.studio) query.studio = filters.studio;
     if (filters.search) query.search = filters.search;
@@ -208,6 +214,12 @@ export default function RetentionFollowUp() {
     const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
     const [rows, setRows] = useState([]);
     const [count, setCount] = useState(0);
+    const [activityCounts, setActivityCounts] = useState({
+        all: 0,
+        attending_unpaid: 0,
+        attending_paid: 0,
+        inactive: 0,
+    });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [activityOpen, setActivityOpen] = useState(false);
@@ -259,12 +271,21 @@ export default function RetentionFollowUp() {
                 search: nextFilters.search,
                 ...dateFilters,
             };
+            if (nextFilters.status === "not_renewed" && nextFilters.activity !== "all") {
+                requestFilters.activity = nextFilters.activity;
+            }
             Object.entries(requestFilters).forEach(([key, value]) => {
                 if (value) params.set(key, value);
             });
             const response = await axios.get(`${backendUrl}/api/data/analytics/retention-followup/?${params.toString()}`, authHeaders);
             setRows(response.data.rows || []);
             setCount(response.data.count || 0);
+            setActivityCounts(response.data.activity_counts || {
+                all: 0,
+                attending_unpaid: 0,
+                attending_paid: 0,
+                inactive: 0,
+            });
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading retention follow-up.");
         } finally {
@@ -459,6 +480,12 @@ export default function RetentionFollowUp() {
         fetchRows("specific_month", nextFilters);
     };
 
+    const selectActivity = (activity) => {
+        const nextFilters = { ...filters, activity };
+        setFilters(nextFilters);
+        fetchRows(periodMode, nextFilters);
+    };
+
     return (
         <MainPage>
             <Head>
@@ -530,7 +557,11 @@ export default function RetentionFollowUp() {
                                 select
                                 label={t("common.status")}
                                 value={filters.status}
-                                onChange={(event) => setFilters({ ...filters, status: event.target.value })}
+                                onChange={(event) => setFilters({
+                                    ...filters,
+                                    status: event.target.value,
+                                    activity: "all",
+                                })}
                             >
                                 <MenuItem value="not_renewed">{t("retention.status.notRenewed")}</MenuItem>
                                 <MenuItem value="retained">{t("retention.status.retained")}</MenuItem>
@@ -627,11 +658,34 @@ export default function RetentionFollowUp() {
                         </div>
                     </Paper>
 
-                    <Alert severity="info">
-                        {t("retention.info")}
-                    </Alert>
-
                     <Paper style={{ padding: "16px" }}>
+                        {filters.status === "not_renewed" && (
+                            <div style={{ marginBottom: "16px" }}>
+                                <div style={{ color: "#666", fontSize: "13px", marginBottom: "8px" }}>
+                                    {t("retention.activity.filter")}
+                                </div>
+                                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                                    {[
+                                        { value: "all", label: t("retention.activity.all"), color: "primary" },
+                                        { value: "attending_unpaid", label: t("dashboard.activity.attendingUnpaid"), color: "warning" },
+                                        { value: "attending_paid", label: t("dashboard.activity.attendingPaid"), color: "success" },
+                                        { value: "inactive", label: t("dashboard.activity.inactive"), color: "inherit" },
+                                    ].map((option) => (
+                                        <Button
+                                            key={option.value}
+                                            size="small"
+                                            color={option.color}
+                                            variant={filters.activity === option.value ? "contained" : "outlined"}
+                                            onClick={() => selectActivity(option.value)}
+                                            disabled={loading}
+                                            style={{ textTransform: "none" }}
+                                        >
+                                            {option.label} ({activityCounts[option.value] || 0})
+                                        </Button>
+                                    ))}
+                                </Stack>
+                            </div>
+                        )}
                         <h2 style={{ marginTop: 0 }}>{count.toLocaleString()} {t("common.records")}</h2>
                         <TableContainer style={{ maxHeight: 620 }}>
                             <Table size="small" stickyHeader>
