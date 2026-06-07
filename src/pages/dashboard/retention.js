@@ -27,6 +27,7 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+import TablePagination from "@mui/material/TablePagination";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
@@ -47,7 +48,9 @@ import {
     InsightCard,
     MemberMixHistoryChart,
     MemberTrendChart,
+    RetentionActivityDialog,
     RetentionDetailTable,
+    RetentionPurchaseHistoryDialog,
     RetentionHealthTrendChart,
     monthOptions,
     monthParts,
@@ -143,6 +146,17 @@ export default function RetentionPage() {
     const [retentionTables, setRetentionTables] = useState(null);
     const [retentionTablesLoading, setRetentionTablesLoading] = useState(false);
     const [activeRetentionTable, setActiveRetentionTable] = useState("not_renewed");
+    const [activityOpen, setActivityOpen] = useState(false);
+    const [activityLoading, setActivityLoading] = useState(false);
+    const [activityError, setActivityError] = useState("");
+    const [activityDetails, setActivityDetails] = useState(null);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyError, setHistoryError] = useState("");
+    const [historyDetails, setHistoryDetails] = useState(null);
+    const [retentionTableSearch, setRetentionTableSearch] = useState("");
+    const [retentionTablePage, setRetentionTablePage] = useState(0);
+    const [retentionTableRowsPerPage, setRetentionTableRowsPerPage] = useState(25);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -164,6 +178,20 @@ export default function RetentionPage() {
     const visibleStudios = filters.site
         ? studios.filter((studio) => String(studio.site) === String(filters.site))
         : studios;
+    const expandedRetentionRows = retentionTables?.[activeRetentionTable]?.rows || [];
+    const normalizedRetentionSearch = retentionTableSearch.trim().toLowerCase();
+    const filteredExpandedRetentionRows = normalizedRetentionSearch
+        ? expandedRetentionRows.filter((row) => [
+            row.client,
+            row.client_mindbody_id,
+            row.studio,
+            row.service,
+        ].some((value) => String(value || "").toLowerCase().includes(normalizedRetentionSearch)))
+        : expandedRetentionRows;
+    const paginatedExpandedRetentionRows = filteredExpandedRetentionRows.slice(
+        retentionTablePage * retentionTableRowsPerPage,
+        retentionTablePage * retentionTableRowsPerPage + retentionTableRowsPerPage,
+    );
     const selectedMonthParts = monthParts(filters.month);
 
     const retentionFollowUpHref = {
@@ -349,6 +377,8 @@ export default function RetentionPage() {
     const openRetentionTable = async (tableKey) => {
         setActiveRetentionTable(tableKey);
         setExpandedInsight("retention_tables");
+        setRetentionTableSearch("");
+        setRetentionTablePage(0);
         if (retentionTables) return;
         setRetentionTablesLoading(true);
         try {
@@ -368,6 +398,50 @@ export default function RetentionPage() {
             setError(err.response?.data?.detail || "Error loading retention table.");
         } finally {
             setRetentionTablesLoading(false);
+        }
+    };
+
+    const openActivity = async (row) => {
+        if (
+            row.status !== "not_renewed"
+            || row.not_renewed_activity_status === "inactive"
+        ) return;
+        setActivityOpen(true);
+        setActivityLoading(true);
+        setActivityError("");
+        setActivityDetails(null);
+        try {
+            const response = await axios.get(
+                `${backendUrl}/api/data/analytics/retention-followup/${row.id}/activity/`,
+                authHeaders,
+            );
+            setActivityDetails(response.data);
+        } catch (err) {
+            setActivityError(
+                err.response?.data?.detail || t("retention.activity.loadError"),
+            );
+        } finally {
+            setActivityLoading(false);
+        }
+    };
+
+    const openHistory = async (row) => {
+        setHistoryOpen(true);
+        setHistoryLoading(true);
+        setHistoryError("");
+        setHistoryDetails(null);
+        try {
+            const response = await axios.get(
+                `${backendUrl}/api/data/analytics/retention-followup/${row.id}/purchase-history/`,
+                authHeaders,
+            );
+            setHistoryDetails(response.data);
+        } catch (err) {
+            setHistoryError(
+                err.response?.data?.detail || t("retention.history.loadError"),
+            );
+        } finally {
+            setHistoryLoading(false);
         }
     };
 
@@ -611,6 +685,8 @@ export default function RetentionPage() {
                             rows={retentionPreviewTables[activeRetentionTable]?.rows || []}
                             tableKey={activeRetentionTable}
                             t={t}
+                            onOpenActivity={openActivity}
+                            onOpenHistory={openHistory}
                         />
                     </Paper>
 
@@ -675,7 +751,10 @@ export default function RetentionPage() {
                 <DialogContent>
                     <Tabs
                         value={activeRetentionTable}
-                        onChange={(_, value) => setActiveRetentionTable(value)}
+                        onChange={(_, value) => {
+                            setActiveRetentionTable(value);
+                            setRetentionTablePage(0);
+                        }}
                         variant="scrollable"
                         scrollButtons="auto"
                         style={{ marginBottom: "16px" }}
@@ -685,17 +764,66 @@ export default function RetentionPage() {
                         <Tab label={`${t("retention.status.new")} (${formatNumber(retentionTables?.new_members?.count || 0)})`} value="new_members" />
                         <Tab label={`${t("retention.status.reactivated")} (${formatNumber(retentionTables?.reactivated?.count || 0)})`} value="reactivated" />
                     </Tabs>
+                    <TextField
+                        fullWidth
+                        size="small"
+                        label={t("common.search")}
+                        value={retentionTableSearch}
+                        onChange={(event) => {
+                            setRetentionTableSearch(event.target.value);
+                            setRetentionTablePage(0);
+                        }}
+                        style={{ marginBottom: "12px" }}
+                    />
                     {retentionTablesLoading ? (
                         <LinearProgress />
                     ) : (
-                        <RetentionDetailTable
-                            rows={retentionTables?.[activeRetentionTable]?.rows || []}
-                            tableKey={activeRetentionTable}
-                            t={t}
-                        />
+                        <>
+                            <RetentionDetailTable
+                                rows={paginatedExpandedRetentionRows}
+                                tableKey={activeRetentionTable}
+                                t={t}
+                                onOpenActivity={openActivity}
+                                onOpenHistory={openHistory}
+                            />
+                            <TablePagination
+                                component="div"
+                                count={filteredExpandedRetentionRows.length}
+                                page={retentionTablePage}
+                                onPageChange={(_, page) => setRetentionTablePage(page)}
+                                rowsPerPage={retentionTableRowsPerPage}
+                                onRowsPerPageChange={(event) => {
+                                    setRetentionTableRowsPerPage(Number(event.target.value));
+                                    setRetentionTablePage(0);
+                                }}
+                                rowsPerPageOptions={[25, 50, 100]}
+                            />
+                            {retentionTables?.[activeRetentionTable]?.count > expandedRetentionRows.length && (
+                                <Alert severity="info">
+                                    {t("retention.dashboard.loadedLimit", "The dashboard loaded the first 500 records. Use the Retention Follow-up page for the complete filtered list.")}
+                                </Alert>
+                            )}
+                        </>
                     )}
                 </DialogContent>
             </Dialog>
+
+            <RetentionActivityDialog
+                open={activityOpen}
+                onClose={() => setActivityOpen(false)}
+                loading={activityLoading}
+                error={activityError}
+                details={activityDetails}
+                t={t}
+            />
+            <RetentionPurchaseHistoryDialog
+                open={historyOpen}
+                onClose={() => setHistoryOpen(false)}
+                loading={historyLoading}
+                error={historyError}
+                details={historyDetails}
+                t={t}
+            />
         </MainPage>
     );
 }
