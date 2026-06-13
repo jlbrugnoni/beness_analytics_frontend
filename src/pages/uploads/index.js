@@ -148,12 +148,17 @@ export default function Uploads() {
     const [importResult, setImportResult] = useState(null);
     const [scheduleAutomation, setScheduleAutomation] = useState(null);
     const [retentionAutomation, setRetentionAutomation] = useState(null);
+    const [clientMetricsAutomation, setClientMetricsAutomation] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [repairingPurchases, setRepairingPurchases] = useState(false);
     const [purchaseRepairResult, setPurchaseRepairResult] = useState(null);
+    const [rebuildingClientMetrics, setRebuildingClientMetrics] = useState(false);
+    const [clientMetricDateFrom, setClientMetricDateFrom] = useState("");
+    const [clientMetricDateTo, setClientMetricDateTo] = useState("");
+    const [clientMetricRebuildResult, setClientMetricRebuildResult] = useState(null);
     const [roomCapacities, setRoomCapacities] = useState({});
 
     const authHeaders = useMemo(() => ({
@@ -194,6 +199,7 @@ export default function Uploads() {
         setImportResult(null);
         setScheduleAutomation(null);
         setRetentionAutomation(null);
+        setClientMetricsAutomation(null);
         setRoomCapacities({});
     }, [site, studio, reportType]);
 
@@ -284,6 +290,7 @@ export default function Uploads() {
             setImportResult(response.data.import);
             setScheduleAutomation(response.data.schedule_automation || null);
             setRetentionAutomation(response.data.retention_automation || null);
+            setClientMetricsAutomation(response.data.client_metrics_automation || null);
             setPreview(null);
             setFile(null);
             setRoomCapacities({});
@@ -305,6 +312,7 @@ export default function Uploads() {
         setImportResult(null);
         setScheduleAutomation(null);
         setRetentionAutomation(null);
+        setClientMetricsAutomation(null);
 
         try {
             const response = await axios.post(
@@ -359,6 +367,44 @@ export default function Uploads() {
             setError(err.response?.data?.error || "Error applying purchase repairs.");
         } finally {
             setRepairingPurchases(false);
+        }
+    };
+
+    const handleClientMetricRebuild = async () => {
+        if (!site || !clientMetricDateFrom || !clientMetricDateTo) {
+            setError("Select a site, start date, and end date for the client metric rebuild.");
+            return;
+        }
+        if (clientMetricDateFrom > clientMetricDateTo) {
+            setError("Client metric start date cannot be after the end date.");
+            return;
+        }
+        if (!window.confirm(
+            `Rebuild client metrics for ${clientMetricDateFrom} through ${clientMetricDateTo}?`
+        )) return;
+
+        setRebuildingClientMetrics(true);
+        setError("");
+        setClientMetricRebuildResult(null);
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/data/analytics/client-metrics/rebuild/`,
+                {
+                    site,
+                    date_from: clientMetricDateFrom,
+                    date_to: clientMetricDateTo,
+                },
+                authHeaders,
+            );
+            setClientMetricRebuildResult(response.data);
+        } catch (err) {
+            setError(
+                err.response?.data?.detail
+                || err.response?.data?.error
+                || "Error rebuilding client metrics."
+            );
+        } finally {
+            setRebuildingClientMetrics(false);
         }
     };
 
@@ -506,6 +552,49 @@ export default function Uploads() {
                             )}
                         </div>
                     </Paper>
+
+                    {canResetData && (
+                        <Paper style={{ padding: "18px", display: "grid", gap: "14px" }}>
+                            <div>
+                                <h2 style={{ margin: 0 }}>Client Metric Maintenance</h2>
+                                <p style={{ marginBottom: 0, color: "#666" }}>
+                                    Rebuild monthly and weekly client metrics from existing imported records.
+                                </p>
+                            </div>
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+                                <TextField
+                                    type="date"
+                                    label="Date From"
+                                    value={clientMetricDateFrom}
+                                    onChange={(event) => setClientMetricDateFrom(event.target.value)}
+                                    InputLabelProps={{ shrink: true }}
+                                />
+                                <TextField
+                                    type="date"
+                                    label="Date To"
+                                    value={clientMetricDateTo}
+                                    onChange={(event) => setClientMetricDateTo(event.target.value)}
+                                    InputLabelProps={{ shrink: true }}
+                                />
+                                <Button
+                                    variant="contained"
+                                    onClick={handleClientMetricRebuild}
+                                    disabled={rebuildingClientMetrics || !site || !clientMetricDateFrom || !clientMetricDateTo}
+                                >
+                                    {rebuildingClientMetrics ? "Rebuilding..." : "Rebuild Client Metrics"}
+                                </Button>
+                            </div>
+                            {clientMetricRebuildResult && (
+                                <Alert severity="success">
+                                    Rebuilt {clientMetricRebuildResult.sites?.[0]?.retention?.length || 0} retention snapshots,
+                                    {" "}{clientMetricRebuildResult.sites?.[0]?.monthly?.length || 0} monthly periods
+                                    {" "}and {clientMetricRebuildResult.sites?.[0]?.weekly?.length || 0} weekly periods.
+                                    {" "}Created {clientMetricRebuildResult.total_monthly_rows || 0} monthly rows
+                                    {" "}and {clientMetricRebuildResult.total_weekly_rows || 0} weekly rows.
+                                </Alert>
+                            )}
+                        </Paper>
+                    )}
 
                     {purchaseRepairResult && (
                         <Paper style={{ padding: "18px" }}>
@@ -871,6 +960,22 @@ export default function Uploads() {
                                             Rebuilt {retentionAutomation.rebuilt?.length || 0} monthly retention snapshots
                                             {" "}({retentionAutomation.rebuilt?.[0]?.month} to{" "}
                                             {retentionAutomation.rebuilt?.at(-1)?.month}).
+                                        </Alert>
+                                    )}
+                                </Paper>
+                            )}
+
+                            {clientMetricsAutomation && (
+                                <Paper style={{ padding: "18px" }}>
+                                    <h2 style={{ marginTop: 0 }}>Client Metric Automation</h2>
+                                    {clientMetricsAutomation.error ? (
+                                        <Alert severity="warning">{clientMetricsAutomation.error}</Alert>
+                                    ) : clientMetricsAutomation.skipped ? (
+                                        <Alert severity="info">No client metric periods required rebuilding.</Alert>
+                                    ) : (
+                                        <Alert severity="success">
+                                            Rebuilt {clientMetricsAutomation.monthly?.length || 0} monthly periods
+                                            {" "}and {clientMetricsAutomation.weekly?.length || 0} weekly periods.
                                         </Alert>
                                     )}
                                 </Paper>
