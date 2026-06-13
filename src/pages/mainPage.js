@@ -43,7 +43,7 @@ const navItems = [
     { href: "/imported", labelKey: "nav.imported", key: "imported", icon: AssessmentIcon, capability: "can_upload_data" },
     { href: "/data", labelKey: "nav.data", key: "data", icon: StorageIcon },
     { href: "/manual", labelKey: "nav.manual", key: "manual", icon: MenuBookIcon },
-    { href: "/datos/usuarios", labelKey: "nav.users", key: "usuarios", icon: PeopleIcon, capability: "can_manage_users" },
+    { href: "/clients", labelKey: "nav.clients", key: "clients", icon: PeopleIcon },
     { href: "/settings", labelKey: "nav.settings", key: "settings", icon: SettingsIcon },
 ];
 

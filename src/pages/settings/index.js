@@ -20,6 +20,7 @@ export default function Settings() {
     const { language, languages, setLanguage, t } = useI18n();
     const [feedback, setFeedback] = useState(null);
     const canViewAdminLogs = Boolean(access.capabilities?.can_view_admin_logs);
+    const canManageUsers = Boolean(access.capabilities?.can_manage_users);
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
     const handleLanguageChange = async (event) => {
@@ -75,6 +76,17 @@ export default function Settings() {
                             <div>
                                 <Link href="/settings/login-logs">
                                     <Button variant="outlined">{t("settings.openLoginLogs")}</Button>
+                                </Link>
+                            </div>
+                        </Paper>
+                    )}
+                    {canManageUsers && (
+                        <Paper style={{ padding: "18px", display: "grid", gap: "10px" }}>
+                            <h2 style={{ margin: 0 }}>{t("settings.userManagement")}</h2>
+                            <p style={{ margin: 0, color: "#666" }}>{t("settings.userManagementHelp")}</p>
+                            <div>
+                                <Link href="/datos/usuarios">
+                                    <Button variant="outlined">{t("settings.openUsers")}</Button>
                                 </Link>
                             </div>
                         </Paper>
