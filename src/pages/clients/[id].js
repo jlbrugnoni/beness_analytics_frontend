@@ -13,6 +13,15 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Tab from "@mui/material/Tab";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TablePagination from "@mui/material/TablePagination";
+import TableRow from "@mui/material/TableRow";
+import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
@@ -83,8 +92,7 @@ function SummaryPanel({ title, summary, t }) {
         [t("clients.lateCancelRate"), formatPercent(summary.late_cancel_rate)],
         [t("clients.noShows"), formatNumber(summary.no_shows)],
         [t("clients.lateCancels"), formatNumber(summary.late_cancels)],
-        [t("clients.serviceSpending"), formatMoney(summary.service_spending, t("common.restricted"))],
-        [t("clients.totalSales"), formatMoney(summary.total_sales_spending, t("common.restricted"))],
+        [t("clients.totalSpending"), formatMoney(summary.total_spending, t("common.restricted"))],
     ];
     const dates = [
         [t("clients.firstVisit"), summary.first_visit_date],
@@ -116,6 +124,176 @@ function SummaryPanel({ title, summary, t }) {
                     </div>
                 ))}
             </div>
+        </Paper>
+    );
+}
+
+
+const historyTypeLabel = (value, t) => ({
+    attendance: t("clients.history.attendance"),
+    purchase: t("clients.history.purchases"),
+    membership: t("clients.history.membership"),
+}[value] || value);
+
+
+const outcomeLabel = (value, t) => ({
+    attended: t("clients.history.attended"),
+    no_show: t("clients.history.noShow"),
+    late_cancel: t("clients.history.lateCancel"),
+}[value] || value);
+
+
+const historyDetail = (row, t) => {
+    if (row.type === "attendance") {
+        return [row.pricing_option, row.staff].filter(Boolean).join(" | ") || "N/A";
+    }
+    if (row.type === "purchase") {
+        return [row.item, ...(row.sale_numbers || [])].filter(Boolean).join(" | ") || "N/A";
+    }
+    return [statusLabel(row.status, t), row.service].filter(Boolean).join(" | ");
+};
+
+
+function ClientHistory({ clientId, token, backendUrl, authHeaders, t }) {
+    const [historyType, setHistoryType] = useState("attendance");
+    const [rows, setRows] = useState([]);
+    const [count, setCount] = useState(0);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+
+    const fetchHistory = useCallback(async () => {
+        if (!token || !clientId) return;
+        setLoading(true);
+        setError("");
+        const params = new URLSearchParams({
+            type: historyType,
+            page: String(page + 1),
+            page_size: String(rowsPerPage),
+        });
+        try {
+            const response = await axios.get(
+                `${backendUrl}/api/data/analytics/clients/${clientId}/history/?${params.toString()}`,
+                authHeaders,
+            );
+            setRows(response.data.results || []);
+            setCount(response.data.count || 0);
+        } catch (err) {
+            setError(err.response?.data?.detail || t("clients.history.loadError"));
+        } finally {
+            setLoading(false);
+        }
+    }, [token, clientId, historyType, page, rowsPerPage, backendUrl, authHeaders, t]);
+
+    useEffect(() => {
+        fetchHistory();
+    }, [fetchHistory]);
+
+    const changeType = (event, value) => {
+        setHistoryType(value);
+        setPage(0);
+    };
+
+    const historyTabs = [
+        ["attendance", "clients.history.attendance"],
+        ["purchases", "clients.history.purchases"],
+        ["membership", "clients.history.membership"],
+        ["timeline", "clients.history.timeline"],
+    ];
+
+    return (
+        <Paper style={{ overflow: "hidden" }}>
+            <div style={{ padding: "18px 18px 0" }}>
+                <h2 style={{ margin: 0 }}>{t("clients.history.title")}</h2>
+            </div>
+            <Tabs
+                value={historyType}
+                onChange={changeType}
+                variant="scrollable"
+                scrollButtons="auto"
+                style={{ padding: "0 10px" }}
+            >
+                {historyTabs.map(([value, key]) => (
+                    <Tab key={value} value={value} label={t(key)} />
+                ))}
+            </Tabs>
+            {error && <Alert severity="error">{error}</Alert>}
+            <TableContainer>
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>{t("common.date")}</TableCell>
+                            {historyType === "timeline" && (
+                                <TableCell>{t("common.type")}</TableCell>
+                            )}
+                            <TableCell>{t("clients.history.detail")}</TableCell>
+                            <TableCell>{t("common.studio")}</TableCell>
+                            <TableCell>{t("clients.history.result")}</TableCell>
+                            <TableCell align="right">{t("clients.history.amount")}</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {!loading && rows.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={historyType === "timeline" ? 6 : 5} align="center">
+                                    {t("common.noRecordsFound")}
+                                </TableCell>
+                            </TableRow>
+                        )}
+                        {rows.map((row) => (
+                            <TableRow key={`${row.type}-${row.id}`} hover>
+                                <TableCell>
+                                    <div>{row.date}</div>
+                                    {row.time && <small>{row.time}</small>}
+                                </TableCell>
+                                {historyType === "timeline" && (
+                                    <TableCell>{historyTypeLabel(row.type, t)}</TableCell>
+                                )}
+                                <TableCell>
+                                    <div>{historyDetail(row, t)}</div>
+                                    {row.activation_date && (
+                                        <small>
+                                            {t("clients.activationDate")}: {row.activation_date}
+                                            {" | "}
+                                            {t("clients.expirationDate")}: {row.expiration_date || "N/A"}
+                                        </small>
+                                    )}
+                                </TableCell>
+                                <TableCell>{row.studio || t("common.unknown")}</TableCell>
+                                <TableCell>
+                                    {row.outcome
+                                        ? outcomeLabel(row.outcome, t)
+                                        : row.status
+                                            ? statusLabel(row.status, t)
+                                            : row.track_retention
+                                                ? t("clients.history.tracked")
+                                                : ""}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.amount !== undefined
+                                        ? formatMoney(row.amount, t("common.restricted"))
+                                        : row.revenue !== undefined
+                                            ? formatMoney(row.revenue, t("common.restricted"))
+                                            : ""}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+            <TablePagination
+                component="div"
+                count={count}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                onPageChange={(event, value) => setPage(value)}
+                onRowsPerPageChange={(event) => {
+                    setRowsPerPage(Number(event.target.value));
+                    setPage(0);
+                }}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+            />
         </Paper>
     );
 }
@@ -356,6 +534,13 @@ export default function ClientProfile() {
                             t={t}
                         />
                     )}
+                    <ClientHistory
+                        clientId={router.query.id}
+                        token={token}
+                        backendUrl={backendUrl}
+                        authHeaders={authHeaders}
+                        t={t}
+                    />
                 </div>
             </div>
         </MainPage>

@@ -413,14 +413,13 @@ export default function ClientsDirectory() {
                                         <TableCell align="right"><SortLabel field="attendance_rate">{t("clients.attendanceRate")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="no_show_rate">{t("clients.noShowRate")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="late_cancel_rate">{t("clients.lateCancelRate")}</SortLabel></TableCell>
-                                        <TableCell align="right"><SortLabel field="service_spending">{t("clients.serviceSpending")}</SortLabel></TableCell>
-                                        <TableCell align="right"><SortLabel field="total_sales_spending">{t("clients.totalSales")}</SortLabel></TableCell>
+                                        <TableCell align="right"><SortLabel field="total_spending">{t("clients.totalSpending")}</SortLabel></TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {!loading && rows.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={11} align="center">{t("common.noRecordsFound")}</TableCell>
+                                            <TableCell colSpan={10} align="center">{t("common.noRecordsFound")}</TableCell>
                                         </TableRow>
                                     )}
                                     {rows.map((row) => (
@@ -463,8 +462,7 @@ export default function ClientsDirectory() {
                                             <TableCell align="right">{formatPercent(row.attendance_rate)}</TableCell>
                                             <TableCell align="right">{formatPercent(row.no_show_rate)}</TableCell>
                                             <TableCell align="right">{formatPercent(row.late_cancel_rate)}</TableCell>
-                                            <TableCell align="right">{formatMoney(row.service_spending, t("common.restricted"))}</TableCell>
-                                            <TableCell align="right">{formatMoney(row.total_sales_spending, t("common.restricted"))}</TableCell>
+                                            <TableCell align="right">{formatMoney(row.total_spending, t("common.restricted"))}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
