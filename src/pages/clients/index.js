@@ -252,6 +252,16 @@ export default function ClientsDirectory() {
         );
     };
 
+    const openClient = (clientId) => router.push({
+        pathname: "/clients/[id]",
+        query: {
+            id: clientId,
+            period: appliedFilters.metric_period,
+            month: appliedFilters.month,
+            return_to: router.asPath,
+        },
+    });
+
     return (
         <MainPage>
             <Head>
@@ -428,15 +438,7 @@ export default function ClientsDirectory() {
                                             hover
                                             tabIndex={0}
                                             style={{ cursor: "pointer" }}
-                                            onClick={() => router.push({
-                                                pathname: "/clients/[id]",
-                                                query: {
-                                                    id: row.client_id,
-                                                    period: appliedFilters.metric_period,
-                                                    month: appliedFilters.month,
-                                                    return_to: router.asPath,
-                                                },
-                                            })}
+                                            onClick={() => openClient(row.client_id)}
                                             onKeyDown={(event) => {
                                                 if (event.key === "Enter") event.currentTarget.click();
                                             }}

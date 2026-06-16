@@ -377,9 +377,14 @@ export default function ClientProfile() {
     const membership = profile?.current_membership;
     const contact = [profile?.client?.email, profile?.client?.phone].filter(Boolean).join(" | ");
     const returnToValue = firstQueryValue(router.query.return_to);
-    const returnTo = typeof returnToValue === "string" && returnToValue.startsWith("/clients")
-        ? returnToValue
-        : "/clients";
+    const validReturnTo = typeof returnToValue === "string" && (
+        returnToValue.startsWith("/clients")
+        || returnToValue.startsWith("/dashboard/top-clients")
+    );
+    const returnTo = validReturnTo ? returnToValue : "/clients";
+    const returnLabel = returnTo.startsWith("/dashboard/top-clients")
+        ? t("clients.backToTopClients")
+        : t("clients.backToDirectory");
 
     return (
         <MainPage>
@@ -388,7 +393,7 @@ export default function ClientProfile() {
             </Head>
             <div className={styles.container}>
                 <Button startIcon={<ArrowBackIcon />} onClick={() => router.push(returnTo)}>
-                    {t("clients.backToDirectory")}
+                    {returnLabel}
                 </Button>
                 <div className={styles.titleContainer}>
                     <div>

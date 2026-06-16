@@ -7,6 +7,7 @@ import CalendarViewWeekIcon from "@mui/icons-material/CalendarViewWeek";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
 import GroupIcon from "@mui/icons-material/Group";
+import LeaderboardIcon from "@mui/icons-material/Leaderboard";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 
 import MainPage from "@/pages/mainPage";
@@ -46,6 +47,14 @@ const MONTHLY_SECTIONS = [
         icon: GroupIcon,
         titleKey: "dashboard.hub.retention.title",
         descriptionKey: "dashboard.hub.retention.description",
+        badgeKey: "dashboard.hub.badge.monthly",
+        badgeColor: "primary",
+    },
+    {
+        href: "/dashboard/top-clients",
+        icon: LeaderboardIcon,
+        titleKey: "dashboard.hub.topClients.title",
+        descriptionKey: "dashboard.hub.topClients.description",
         badgeKey: "dashboard.hub.badge.monthly",
         badgeColor: "primary",
     },
