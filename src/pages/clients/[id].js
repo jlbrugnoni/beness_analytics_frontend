@@ -86,6 +86,7 @@ function SummaryPanel({ title, summary, t }) {
         [t("clients.visits"), formatNumber(summary.attended_visits)],
         [t("clients.totalBookings"), formatNumber(summary.total_bookings)],
         [t("clients.activeWeeks"), formatNumber(summary.active_weeks)],
+        [t("clients.trackedPurchases"), formatNumber(summary.tracked_purchase_count)],
         [t("clients.membershipMonths"), formatNumber(summary.membership_months)],
         [t("clients.attendanceRate"), formatPercent(summary.attendance_rate)],
         [t("clients.noShowRate"), formatPercent(summary.no_show_rate)],
@@ -95,6 +96,7 @@ function SummaryPanel({ title, summary, t }) {
         [t("clients.totalSpending"), formatMoney(summary.total_spending, t("common.restricted"))],
     ];
     const dates = [
+        [t("clients.clientSince"), summary.client_since],
         [t("clients.firstVisit"), summary.first_visit_date],
         [t("clients.lastVisit"), summary.last_visit_date],
         [t("clients.firstPurchase"), summary.first_purchase_date],

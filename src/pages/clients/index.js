@@ -102,6 +102,22 @@ const directoryQuery = (filters, ordering, page, rowsPerPage) => ({
 });
 
 
+const clientDirectoryParams = (filters, ordering, page, rowsPerPage) => {
+    const params = new URLSearchParams({
+        period: filters.period,
+        metric_period: filters.metric_period,
+        month: filters.month,
+        ordering,
+        page: String(page + 1),
+        page_size: String(rowsPerPage),
+    });
+    ["site", "studio", "status", "search"].forEach((key) => {
+        if (filters[key]) params.set(key, filters[key]);
+    });
+    return params;
+};
+
+
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 const formatPercent = (value) => `${Number(value || 0).toLocaleString(undefined, {
     minimumFractionDigits: 0,
@@ -127,6 +143,26 @@ const statusLabel = (status, t) => {
 };
 
 
+const csvValue = (value) => {
+    if (value === null || value === undefined) return "";
+    const text = String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replaceAll("\"", "\"\"")}"` : text;
+};
+
+
+const downloadTextFile = (fileName, text, mimeType) => {
+    const blob = new Blob([text], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+};
+
+
 export default function ClientsDirectory() {
     const router = useRouter();
     const token = useFetchToken();
@@ -142,6 +178,7 @@ export default function ClientsDirectory() {
     const [rowsPerPage, setRowsPerPage] = useState(initialState.rowsPerPage);
     const [count, setCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [error, setError] = useState("");
     const [hydrated, setHydrated] = useState(false);
     const [metricsFiltersOpen, setMetricsFiltersOpen] = useState(false);
@@ -165,17 +202,7 @@ export default function ClientsDirectory() {
         if (!token || !hydrated) return;
         setLoading(true);
         setError("");
-        const params = new URLSearchParams({
-            period: appliedFilters.period,
-            metric_period: appliedFilters.metric_period,
-            month: appliedFilters.month,
-            ordering,
-            page: String(page + 1),
-            page_size: String(rowsPerPage),
-        });
-        ["site", "studio", "status", "search"].forEach((key) => {
-            if (appliedFilters[key]) params.set(key, appliedFilters[key]);
-        });
+        const params = clientDirectoryParams(appliedFilters, ordering, page, rowsPerPage);
         try {
             const response = await axios.get(
                 `${backendUrl}/api/data/analytics/clients/?${params.toString()}`,
@@ -261,6 +288,62 @@ export default function ClientsDirectory() {
             return_to: router.asPath,
         },
     });
+
+    const exportCsv = async () => {
+        if (!token) return;
+        setExporting(true);
+        setError("");
+        try {
+            const pageSize = 100;
+            let nextPage = 0;
+            let pages = 1;
+            let exportRows = [];
+            while (nextPage < pages) {
+                const params = clientDirectoryParams(appliedFilters, ordering, nextPage, pageSize);
+                const response = await axios.get(
+                    `${backendUrl}/api/data/analytics/clients/?${params.toString()}`,
+                    authHeaders,
+                );
+                exportRows = exportRows.concat(response.data.results || []);
+                pages = response.data.pages || 0;
+                nextPage += 1;
+                if (!pages) break;
+            }
+
+            const columns = [
+                [t("common.client"), (row) => row.client],
+                ["Mindbody ID", (row) => row.mindbody_id],
+                ["Email", (row) => row.email],
+                ["Phone", (row) => row.phone],
+                [t("common.site"), (row) => row.site],
+                [t("common.status"), (row) => statusLabel(row.membership_status, t)],
+                [t("clients.primaryStudio"), (row) => row.primary_studio],
+                [t("clients.lastVisit"), (row) => row.last_visit_date],
+                [t("clients.daysSinceLastVisit"), (row) => row.days_since_last_visit],
+                [t("clients.visits"), (row) => row.attended_visits],
+                [t("clients.activeWeeks"), (row) => row.active_weeks],
+                [t("clients.trackedPurchases"), (row) => row.tracked_purchase_count],
+                [t("clients.clientSince"), (row) => row.client_since],
+                [t("clients.totalBookings"), (row) => row.total_bookings],
+                [t("clients.attendanceRate"), (row) => row.attendance_rate],
+                [t("clients.noShowRate"), (row) => row.no_show_rate],
+                [t("clients.lateCancelRate"), (row) => row.late_cancel_rate],
+                [t("clients.totalSpending"), (row) => row.total_spending],
+            ];
+            const csvLines = [
+                columns.map(([header]) => csvValue(header)).join(","),
+                ...exportRows.map((row) => (
+                    columns.map(([, getter]) => csvValue(getter(row))).join(",")
+                )),
+            ];
+            const fileName = `clients-${appliedFilters.month}-${new Date().toISOString().slice(0, 10)}.csv`;
+            downloadTextFile(fileName, csvLines.join("\n"), "text/csv;charset=utf-8");
+        } catch (err) {
+            setError(err.response?.data?.detail || t("clients.exportError"));
+        } finally {
+            setExporting(false);
+        }
+    };
 
     return (
         <MainPage>
@@ -359,6 +442,14 @@ export default function ClientsDirectory() {
                             <Button variant="contained" onClick={() => applyFilters()} disabled={loading}>
                                 {loading ? t("common.loading") : t("common.apply")}
                             </Button>
+                            <Button
+                                variant="outlined"
+                                onClick={exportCsv}
+                                disabled={loading || exporting || count === 0}
+                                style={{ marginLeft: "10px" }}
+                            >
+                                {exporting ? t("clients.exportingCsv") : t("clients.downloadCsv")}
+                            </Button>
                         </div>
                         <div style={{ borderTop: "1px solid #eee", paddingTop: "10px" }}>
                             <Button
@@ -420,6 +511,8 @@ export default function ClientsDirectory() {
                                         <TableCell><SortLabel field="last_visit_date">{t("clients.lastVisit")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="attended_visits">{t("clients.visits")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="active_weeks">{t("clients.activeWeeks")}</SortLabel></TableCell>
+                                        <TableCell align="right"><SortLabel field="tracked_purchase_count">{t("clients.trackedPurchases")}</SortLabel></TableCell>
+                                        <TableCell><SortLabel field="client_since">{t("clients.clientSince")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="attendance_rate">{t("clients.attendanceRate")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="no_show_rate">{t("clients.noShowRate")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="late_cancel_rate">{t("clients.lateCancelRate")}</SortLabel></TableCell>
@@ -429,7 +522,7 @@ export default function ClientsDirectory() {
                                 <TableBody>
                                     {!loading && rows.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={10} align="center">{t("common.noRecordsFound")}</TableCell>
+                                            <TableCell colSpan={12} align="center">{t("common.noRecordsFound")}</TableCell>
                                         </TableRow>
                                     )}
                                     {rows.map((row) => (
@@ -461,6 +554,8 @@ export default function ClientsDirectory() {
                                             </TableCell>
                                             <TableCell align="right">{formatNumber(row.attended_visits)}</TableCell>
                                             <TableCell align="right">{formatNumber(row.active_weeks)}</TableCell>
+                                            <TableCell align="right">{formatNumber(row.tracked_purchase_count)}</TableCell>
+                                            <TableCell>{row.client_since || "N/A"}</TableCell>
                                             <TableCell align="right">{formatPercent(row.attendance_rate)}</TableCell>
                                             <TableCell align="right">{formatPercent(row.no_show_rate)}</TableCell>
                                             <TableCell align="right">{formatPercent(row.late_cancel_rate)}</TableCell>
