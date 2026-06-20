@@ -86,6 +86,11 @@ function SummaryPanel({ title, summary, t }) {
         [t("clients.visits"), formatNumber(summary.attended_visits)],
         [t("clients.totalBookings"), formatNumber(summary.total_bookings)],
         [t("clients.activeWeeks"), formatNumber(summary.active_weeks)],
+        [t("clients.regularity8Weeks"), formatPercent(summary.regularity_8_weeks)],
+        [
+            t("clients.avgVisitsActiveWeek8"),
+            formatNumber(summary.average_visits_per_active_week_8),
+        ],
         [t("clients.trackedPurchases"), formatNumber(summary.tracked_purchase_count)],
         [t("clients.membershipMonths"), formatNumber(summary.membership_months)],
         [t("clients.attendanceRate"), formatPercent(summary.attendance_rate)],

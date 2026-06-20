@@ -322,6 +322,8 @@ export default function ClientsDirectory() {
                 [t("clients.daysSinceLastVisit"), (row) => row.days_since_last_visit],
                 [t("clients.visits"), (row) => row.attended_visits],
                 [t("clients.activeWeeks"), (row) => row.active_weeks],
+                [t("clients.regularity8Weeks"), (row) => row.regularity_8_weeks],
+                [t("clients.avgVisitsActiveWeek8"), (row) => row.average_visits_per_active_week_8],
                 [t("clients.trackedPurchases"), (row) => row.tracked_purchase_count],
                 [t("clients.clientSince"), (row) => row.client_since],
                 [t("clients.totalBookings"), (row) => row.total_bookings],
@@ -511,6 +513,7 @@ export default function ClientsDirectory() {
                                         <TableCell><SortLabel field="last_visit_date">{t("clients.lastVisit")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="attended_visits">{t("clients.visits")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="active_weeks">{t("clients.activeWeeks")}</SortLabel></TableCell>
+                                        <TableCell align="right"><SortLabel field="regularity_8_weeks">{t("clients.regularity8Weeks")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="tracked_purchase_count">{t("clients.trackedPurchases")}</SortLabel></TableCell>
                                         <TableCell><SortLabel field="client_since">{t("clients.clientSince")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="attendance_rate">{t("clients.attendanceRate")}</SortLabel></TableCell>
@@ -522,7 +525,7 @@ export default function ClientsDirectory() {
                                 <TableBody>
                                     {!loading && rows.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={12} align="center">{t("common.noRecordsFound")}</TableCell>
+                                            <TableCell colSpan={13} align="center">{t("common.noRecordsFound")}</TableCell>
                                         </TableRow>
                                     )}
                                     {rows.map((row) => (
@@ -554,6 +557,7 @@ export default function ClientsDirectory() {
                                             </TableCell>
                                             <TableCell align="right">{formatNumber(row.attended_visits)}</TableCell>
                                             <TableCell align="right">{formatNumber(row.active_weeks)}</TableCell>
+                                            <TableCell align="right">{formatPercent(row.regularity_8_weeks)}</TableCell>
                                             <TableCell align="right">{formatNumber(row.tracked_purchase_count)}</TableCell>
                                             <TableCell>{row.client_since || "N/A"}</TableCell>
                                             <TableCell align="right">{formatPercent(row.attendance_rate)}</TableCell>
