@@ -10,6 +10,7 @@ import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
@@ -141,6 +142,13 @@ const statusLabel = (status, t) => {
     };
     return status ? t(labels[status], status) : t("common.none");
 };
+
+
+const healthLabel = (label, t) => t(`clients.health.${label.key}`, label.key);
+const healthRule = (label, t) => t(`clients.healthRule.${label.rule}`, label.rule);
+const healthLabelsText = (labels, t) => (labels || [])
+    .map((label) => healthLabel(label, t))
+    .join(" | ");
 
 
 const csvValue = (value) => {
@@ -319,6 +327,7 @@ export default function ClientsDirectory() {
                 ["Phone", (row) => row.phone],
                 [t("common.site"), (row) => row.site],
                 [t("common.status"), (row) => statusLabel(row.membership_status, t)],
+                [t("clients.health.title"), (row) => healthLabelsText(row.health_labels, t)],
                 [t("clients.primaryStudio"), (row) => row.primary_studio],
                 [t("clients.lastVisit"), (row) => row.last_visit_date],
                 [t("clients.daysSinceLastVisit"), (row) => row.days_since_last_visit],
@@ -520,6 +529,7 @@ export default function ClientsDirectory() {
                                     <TableRow>
                                         <TableCell><SortLabel field="client">{t("common.client")}</SortLabel></TableCell>
                                         <TableCell><SortLabel field="membership_status">{t("common.status")}</SortLabel></TableCell>
+                                        <TableCell>{t("clients.health.title")}</TableCell>
                                         <TableCell><SortLabel field="primary_studio">{t("clients.primaryStudio")}</SortLabel></TableCell>
                                         <TableCell><SortLabel field="last_visit_date">{t("clients.lastVisit")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="attended_visits">{t("clients.visits")}</SortLabel></TableCell>
@@ -540,7 +550,7 @@ export default function ClientsDirectory() {
                                 <TableBody>
                                     {!loading && rows.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={17} align="center">{t("common.noRecordsFound")}</TableCell>
+                                            <TableCell colSpan={18} align="center">{t("common.noRecordsFound")}</TableCell>
                                         </TableRow>
                                     )}
                                     {rows.map((row) => (
@@ -561,6 +571,25 @@ export default function ClientsDirectory() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>{statusLabel(row.membership_status, t)}</TableCell>
+                                            <TableCell>
+                                                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                                                    {(row.health_labels || []).slice(0, 3).map((label) => (
+                                                        <Chip
+                                                            key={label.key}
+                                                            size="small"
+                                                            label={healthLabel(label, t)}
+                                                            title={healthRule(label, t)}
+                                                        />
+                                                    ))}
+                                                    {(row.health_labels || []).length > 3 && (
+                                                        <Chip
+                                                            size="small"
+                                                            label={`+${row.health_labels.length - 3}`}
+                                                            title={healthLabelsText(row.health_labels.slice(3), t)}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </TableCell>
                                             <TableCell>{row.primary_studio || t("common.unknown")}</TableCell>
                                             <TableCell>
                                                 <div>{row.last_visit_date || "N/A"}</div>

@@ -10,6 +10,7 @@ import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
@@ -68,6 +69,10 @@ const statusLabel = (status, t) => {
     };
     return status ? t(labels[status], status) : "N/A";
 };
+
+
+const healthLabel = (label, t) => t(`clients.health.${label.key}`, label.key);
+const healthRule = (label, t) => t(`clients.healthRule.${label.rule}`, label.rule);
 
 
 function MetricCard({ label, value }) {
@@ -578,6 +583,28 @@ export default function ClientProfile() {
                             </div>
                         )}
                     </Paper>
+
+                    {!!profile?.health_labels?.length && (
+                        <Paper style={{ padding: "18px", display: "grid", gap: "12px" }}>
+                            <h2 style={{ margin: 0 }}>{t("clients.health.title")}</h2>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                {profile.health_labels.map((label) => (
+                                    <Chip
+                                        key={label.key}
+                                        label={healthLabel(label, t)}
+                                        title={healthRule(label, t)}
+                                    />
+                                ))}
+                            </div>
+                            <div style={{ display: "grid", gap: "6px", color: "#666", fontSize: "13px" }}>
+                                {profile.health_labels.map((label) => (
+                                    <div key={label.rule}>
+                                        <strong>{healthLabel(label, t)}:</strong> {healthRule(label, t)}
+                                    </div>
+                                ))}
+                            </div>
+                        </Paper>
+                    )}
 
                     <SummaryPanel
                         title={t("clients.selectedPeriod")}
