@@ -389,6 +389,7 @@ export default function ClientProfile() {
     };
 
     const membership = profile?.current_membership;
+    const continuity = profile?.membership_continuity;
     const contact = [profile?.client?.email, profile?.client?.phone].filter(Boolean).join(" | ");
     const returnToValue = firstQueryValue(router.query.return_to);
     const validReturnTo = typeof returnToValue === "string" && (
@@ -541,6 +542,38 @@ export default function ClientProfile() {
                                 <MetricCard
                                     label={t("clients.expirationDate")}
                                     value={formatDate(membership.expiration_date)}
+                                />
+                            </div>
+                        )}
+                        {continuity && (
+                            <div style={{
+                                display: "grid",
+                                gap: "12px",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                            }}>
+                                <MetricCard
+                                    label={t("clients.totalMembershipMonths")}
+                                    value={formatNumber(continuity.total_membership_months)}
+                                />
+                                <MetricCard
+                                    label={t("clients.currentMembershipStreak")}
+                                    value={formatNumber(continuity.current_membership_streak_months)}
+                                />
+                                <MetricCard
+                                    label={t("clients.renewals")}
+                                    value={formatNumber(continuity.renewal_count)}
+                                />
+                                <MetricCard
+                                    label={t("clients.reactivations")}
+                                    value={formatNumber(continuity.reactivation_count)}
+                                />
+                                <MetricCard
+                                    label={t("clients.notRenewedEvents")}
+                                    value={formatNumber(continuity.not_renewed_count)}
+                                />
+                                <MetricCard
+                                    label={t("clients.longestMembershipGap")}
+                                    value={formatNumber(continuity.longest_membership_gap_months)}
                                 />
                             </div>
                         )}
