@@ -263,6 +263,7 @@ export default function TopClientsPage() {
         )],
         ["most_active_weeks", "clients.rankings.mostActiveWeeks", formatNumber],
         ["most_regular_8_weeks", "clients.rankings.mostRegular8Weeks", formatPercent],
+        ["longest_current_streak", "clients.rankings.longestCurrentStreak", formatNumber],
         ["best_attendance_rate", "clients.rankings.bestAttendanceRate", formatPercent],
         ["highest_no_show_rate", "clients.rankings.highestNoShowRate", formatPercent],
         ["most_recently_active", "clients.rankings.mostRecentlyActive", (value) => value || "N/A"],

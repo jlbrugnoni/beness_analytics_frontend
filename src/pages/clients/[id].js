@@ -91,6 +91,13 @@ function SummaryPanel({ title, summary, t }) {
             t("clients.avgVisitsActiveWeek8"),
             formatNumber(summary.average_visits_per_active_week_8),
         ],
+        [t("clients.currentStreak"), formatNumber(summary.current_attendance_streak)],
+        [t("clients.longestStreak"), formatNumber(summary.longest_attendance_streak)],
+        [t("clients.inactiveWeeks"), formatNumber(summary.consecutive_inactive_weeks)],
+        [
+            t("clients.memberInactiveWeeks"),
+            formatNumber(summary.active_membership_inactive_weeks),
+        ],
         [t("clients.trackedPurchases"), formatNumber(summary.tracked_purchase_count)],
         [t("clients.membershipMonths"), formatNumber(summary.membership_months)],
         [t("clients.attendanceRate"), formatPercent(summary.attendance_rate)],
@@ -418,6 +425,11 @@ export default function ClientProfile() {
 
                 <div style={{ width: "95%", display: "grid", gap: "16px" }}>
                     {error && <Alert severity="error">{error}</Alert>}
+                    {profile?.streak_as_of_week && (
+                        <div style={{ color: "#666", fontSize: "13px" }}>
+                            {t("clients.streakAsOf")}: <strong>{profile.streak_as_of_week}</strong>
+                        </div>
+                    )}
                     <div>
                         <Button
                             variant="outlined"
