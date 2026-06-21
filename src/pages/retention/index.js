@@ -37,6 +37,14 @@ const formatActivityStatus = (value, t) => ({
     attending_unpaid: t("dashboard.activity.attendingUnpaid"),
     attending_paid: t("dashboard.activity.attendingPaid"),
 }[value] || "N/A");
+const formatPriorityLevel = (value, t) => ({
+    high: t("retention.priority.high"),
+    medium: t("retention.priority.medium"),
+    low: t("retention.priority.low"),
+}[value] || "N/A");
+const formatPriorityReasons = (reasons, t) => (reasons || [])
+    .map((reason) => t(`retention.priority.reason.${reason}`))
+    .join(" | ");
 const formatRetentionStatus = (value, t) => ({
     not_renewed: t("retention.status.notRenewed"),
     retained: t("retention.status.retained"),
@@ -312,6 +320,9 @@ export default function RetentionFollowUp() {
             "First Membership Purchase",
             "Last Membership Purchase",
             "Lifetime Membership Value",
+            "Priority",
+            "Priority Score",
+            "Priority Reasons",
             "Not Renewed Activity",
             "Post-expiration Attendance",
             "Post-expiration Unpaid Attendance",
@@ -337,6 +348,9 @@ export default function RetentionFollowUp() {
             row.first_membership_purchase_date,
             row.last_membership_purchase_date,
             row.lifetime_membership_value,
+            formatPriorityLevel(row.priority_level, t),
+            row.priority_score,
+            formatPriorityReasons(row.priority_reasons, t),
             formatActivityStatus(row.not_renewed_activity_status, t),
             row.post_expiration_attendance_count,
             row.post_expiration_unpaid_attendance_count,
@@ -474,6 +488,7 @@ export default function RetentionFollowUp() {
         ? t("retention.period.dateRange")
         : `${t(`months.${activeMonthParts.month}`)} ${activeMonthParts.year}`;
     const showingNewNonMembers = filters.status === "new_non_members";
+    const showingNotRenewed = filters.status === "not_renewed";
 
     const navigateMonth = (direction) => {
         const nextFilters = {
@@ -705,6 +720,9 @@ export default function RetentionFollowUp() {
                                             <TableCell>{t("dashboard.table.purchaseDate")}</TableCell>
                                         ) : (
                                             <>
+                                                {showingNotRenewed && (
+                                                    <TableCell>{t("retention.priority.title")}</TableCell>
+                                                )}
                                                 <TableCell>{t("common.activity")}</TableCell>
                                                 <TableCell align="right">{t("common.days")}</TableCell>
                                             </>
@@ -732,6 +750,16 @@ export default function RetentionFollowUp() {
                                                 <TableCell>{row.sale_date || "N/A"}</TableCell>
                                             ) : (
                                                 <>
+                                                    {showingNotRenewed && (
+                                                        <TableCell>
+                                                            <div>{formatPriorityLevel(row.priority_level, t)}</div>
+                                                            {!!row.priority_score && (
+                                                                <div style={{ color: "#666", fontSize: "12px" }}>
+                                                                    {row.priority_score} {t("retention.priority.points")}
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                    )}
                                                     <TableCell>
                                                         {row.status === "not_renewed"
                                                         && row.not_renewed_activity_status !== "inactive" ? (
@@ -777,7 +805,7 @@ export default function RetentionFollowUp() {
                                     ))}
                                     {!rows.length && (
                                         <TableRow>
-                                            <TableCell colSpan={showingNewNonMembers ? 7 : 9}>{t("common.noData")}</TableCell>
+                                            <TableCell colSpan={showingNewNonMembers ? 7 : (showingNotRenewed ? 10 : 9)}>{t("common.noData")}</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

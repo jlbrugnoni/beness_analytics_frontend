@@ -152,6 +152,11 @@ export const formatActivityStatus = (value, t) => ({
     attending_unpaid: t("dashboard.activity.attendingUnpaid"),
     attending_paid: t("dashboard.activity.attendingPaid"),
 }[value] || "N/A");
+export const formatPriorityLevel = (value, t) => ({
+    high: t("retention.priority.high"),
+    medium: t("retention.priority.medium"),
+    low: t("retention.priority.low"),
+}[value] || "N/A");
 
 export const formatRetentionStatus = (value, t) => ({
     not_renewed: t("dashboard.status.notRenewed"),
@@ -643,6 +648,9 @@ export const retentionTableColumns = {
         { key: "client", label: "Client" },
         { key: "studio", label: "Studio" },
         { key: "service", label: "Service" },
+        { key: "priority", label: "Priority", format: (row, t) => (
+            `${formatPriorityLevel(row.priority_level, t)}${row.priority_score ? ` (${row.priority_score})` : ""}`
+        ) },
         { key: "activity", label: "Activity", format: (row, t) => formatActivityStatus(row.not_renewed_activity_status, t) },
         { key: "sale_date", label: "Last Purchase" },
         { key: "expiration_date", label: "Expiration" },
@@ -708,6 +716,7 @@ export const RetentionDetailTable = ({
         Client: t("common.client"),
         Studio: t("common.studio"),
         Service: t("common.service"),
+        Priority: t("retention.priority.title"),
         Activity: t("common.activity"),
         "Last Purchase": t("dashboard.table.lastPurchase"),
         Expiration: t("common.expiration"),
