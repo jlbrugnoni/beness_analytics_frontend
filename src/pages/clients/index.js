@@ -144,6 +144,16 @@ const statusLabel = (status, t) => {
 };
 
 
+const statusContextLabel = (context, t) => ({
+    status_as_of_month: t("clients.statusContext.statusAsOfMonth"),
+    latest_status_in_period: t("clients.statusContext.latestStatusInPeriod"),
+    retained_every_month: t("clients.statusContext.retainedEveryMonth"),
+    not_renewed_still_inactive: t("clients.statusContext.notRenewedStillInactive"),
+    new_in_period: t("clients.statusContext.newInPeriod"),
+    reactivated_in_period: t("clients.statusContext.reactivatedInPeriod"),
+}[context] || "");
+
+
 const healthLabel = (label, t) => t(`clients.health.${label.key}`, label.key);
 const healthRule = (label, t) => t(`clients.healthRule.${label.rule}`, label.rule);
 const healthLabelsText = (labels, t) => (labels || [])
@@ -400,21 +410,8 @@ export default function ClientsDirectory() {
                                     <MenuItem key={studio.id} value={studio.id}>{studio.name}</MenuItem>
                                 ))}
                             </TextField>
-                            <TextField
-                                select
-                                size="small"
-                                label={t("clients.populationPeriod")}
-                                value={filters.period}
-                                onChange={(event) => setFilter("period", event.target.value)}
-                            >
-                                <MenuItem value="month">{t("clients.period.month")}</MenuItem>
-                                <MenuItem value="last_3_months">{t("clients.period.last3")}</MenuItem>
-                                <MenuItem value="last_6_months">{t("clients.period.last6")}</MenuItem>
-                                <MenuItem value="last_12_months">{t("clients.period.last12")}</MenuItem>
-                                <MenuItem value="lifetime">{t("common.lifetime")}</MenuItem>
-                            </TextField>
-                            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                <IconButton size="small" onClick={() => changeMonth(-1)}>
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: "4px" }}>
+                                <IconButton size="small" onClick={() => changeMonth(-1)} style={{ marginTop: "6px" }}>
                                     <ArrowBackIosNewIcon fontSize="small" />
                                 </IconButton>
                                 <TextField
@@ -426,7 +423,7 @@ export default function ClientsDirectory() {
                                     InputLabelProps={{ shrink: true }}
                                     fullWidth
                                 />
-                                <IconButton size="small" onClick={() => changeMonth(1)}>
+                                <IconButton size="small" onClick={() => changeMonth(1)} style={{ marginTop: "6px" }}>
                                     <ArrowForwardIosIcon fontSize="small" />
                                 </IconButton>
                             </div>
@@ -481,16 +478,7 @@ export default function ClientsDirectory() {
                             >
                                 {metricsFiltersOpen
                                     ? t("clients.hideMetricsOptions")
-                                    : `${t("clients.metricsOptions")}: ${t(
-                                        filters.metric_period === "lifetime"
-                                            ? "common.lifetime"
-                                            : `clients.period.${{
-                                                month: "month",
-                                                last_3_months: "last3",
-                                                last_6_months: "last6",
-                                                last_12_months: "last12",
-                                            }[filters.metric_period]}`,
-                                    )}`}
+                                    : t("clients.metricsOptions")}
                             </Button>
                         </div>
                         {metricsFiltersOpen && (
@@ -501,6 +489,20 @@ export default function ClientsDirectory() {
                                 flexWrap: "wrap",
                                 paddingTop: "4px",
                             }}>
+                                <TextField
+                                    select
+                                    size="small"
+                                    label={t("clients.populationPeriod")}
+                                    value={filters.period}
+                                    onChange={(event) => setFilter("period", event.target.value)}
+                                    style={{ minWidth: "220px" }}
+                                >
+                                    <MenuItem value="month">{t("clients.period.month")}</MenuItem>
+                                    <MenuItem value="last_3_months">{t("clients.period.last3")}</MenuItem>
+                                    <MenuItem value="last_6_months">{t("clients.period.last6")}</MenuItem>
+                                    <MenuItem value="last_12_months">{t("clients.period.last12")}</MenuItem>
+                                    <MenuItem value="lifetime">{t("common.lifetime")}</MenuItem>
+                                </TextField>
                                 <TextField
                                     select
                                     size="small"
@@ -529,28 +531,39 @@ export default function ClientsDirectory() {
                                     <TableRow>
                                         <TableCell><SortLabel field="client">{t("common.client")}</SortLabel></TableCell>
                                         <TableCell><SortLabel field="membership_status">{t("common.status")}</SortLabel></TableCell>
-                                        <TableCell>{t("clients.health.title")}</TableCell>
+                                        <TableCell>
+                                            <Button
+                                                variant="text"
+                                                size="small"
+                                                color="inherit"
+                                                disableRipple
+                                                tabIndex={-1}
+                                                style={{
+                                                    fontWeight: 700,
+                                                    minWidth: 0,
+                                                    paddingLeft: 0,
+                                                    pointerEvents: "none",
+                                                }}
+                                            >
+                                                {t("clients.health.title")}
+                                            </Button>
+                                        </TableCell>
                                         <TableCell><SortLabel field="primary_studio">{t("clients.primaryStudio")}</SortLabel></TableCell>
                                         <TableCell><SortLabel field="last_visit_date">{t("clients.lastVisit")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="attended_visits">{t("clients.visits")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="active_weeks">{t("clients.activeWeeks")}</SortLabel></TableCell>
-                                        <TableCell align="right"><SortLabel field="regularity_8_weeks">{t("clients.regularity8Weeks")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="current_attendance_streak">{t("clients.currentStreak")}</SortLabel></TableCell>
-                                        <TableCell align="right"><SortLabel field="consecutive_inactive_weeks">{t("clients.inactiveWeeks")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="total_membership_months">{t("clients.totalMembershipMonths")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="current_membership_streak_months">{t("clients.currentMembershipStreak")}</SortLabel></TableCell>
-                                        <TableCell align="right"><SortLabel field="tracked_purchase_count">{t("clients.trackedPurchases")}</SortLabel></TableCell>
                                         <TableCell><SortLabel field="client_since">{t("clients.clientSince")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="attendance_rate">{t("clients.attendanceRate")}</SortLabel></TableCell>
-                                        <TableCell align="right"><SortLabel field="no_show_rate">{t("clients.noShowRate")}</SortLabel></TableCell>
-                                        <TableCell align="right"><SortLabel field="late_cancel_rate">{t("clients.lateCancelRate")}</SortLabel></TableCell>
                                         <TableCell align="right"><SortLabel field="total_spending">{t("clients.totalSpending")}</SortLabel></TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {!loading && rows.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={18} align="center">{t("common.noRecordsFound")}</TableCell>
+                                            <TableCell colSpan={13} align="center">{t("common.noRecordsFound")}</TableCell>
                                         </TableRow>
                                     )}
                                     {rows.map((row) => (
@@ -570,25 +583,37 @@ export default function ClientsDirectory() {
                                                     {row.mindbody_id || "N/A"}
                                                 </div>
                                             </TableCell>
-                                            <TableCell>{statusLabel(row.membership_status, t)}</TableCell>
                                             <TableCell>
-                                                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                                                    {(row.health_labels || []).slice(0, 3).map((label) => (
-                                                        <Chip
-                                                            key={label.key}
-                                                            size="small"
-                                                            label={healthLabel(label, t)}
-                                                            title={healthRule(label, t)}
-                                                        />
-                                                    ))}
-                                                    {(row.health_labels || []).length > 3 && (
-                                                        <Chip
-                                                            size="small"
-                                                            label={`+${row.health_labels.length - 3}`}
-                                                            title={healthLabelsText(row.health_labels.slice(3), t)}
-                                                        />
-                                                    )}
-                                                </div>
+                                                <div>{statusLabel(row.membership_status, t)}</div>
+                                                {row.membership_status_context
+                                                && row.membership_status_context !== "status_as_of_month" && (
+                                                    <div style={{ color: "#666", fontSize: "12px" }}>
+                                                        {statusContextLabel(row.membership_status_context, t)}
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {(row.health_labels || []).length ? (
+                                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                                                        {(row.health_labels || []).slice(0, 3).map((label) => (
+                                                            <Chip
+                                                                key={label.key}
+                                                                size="small"
+                                                                label={healthLabel(label, t)}
+                                                                title={healthRule(label, t)}
+                                                            />
+                                                        ))}
+                                                        {(row.health_labels || []).length > 3 && (
+                                                            <Chip
+                                                                size="small"
+                                                                label={`+${row.health_labels.length - 3}`}
+                                                                title={healthLabelsText(row.health_labels.slice(3), t)}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span style={{ color: "#666" }}>{t("clients.health.none")}</span>
+                                                )}
                                             </TableCell>
                                             <TableCell>{row.primary_studio || t("common.unknown")}</TableCell>
                                             <TableCell>
@@ -601,16 +626,11 @@ export default function ClientsDirectory() {
                                             </TableCell>
                                             <TableCell align="right">{formatNumber(row.attended_visits)}</TableCell>
                                             <TableCell align="right">{formatNumber(row.active_weeks)}</TableCell>
-                                            <TableCell align="right">{formatPercent(row.regularity_8_weeks)}</TableCell>
                                             <TableCell align="right">{formatNumber(row.current_attendance_streak)}</TableCell>
-                                            <TableCell align="right">{formatNumber(row.consecutive_inactive_weeks)}</TableCell>
                                             <TableCell align="right">{formatNumber(row.total_membership_months)}</TableCell>
                                             <TableCell align="right">{formatNumber(row.current_membership_streak_months)}</TableCell>
-                                            <TableCell align="right">{formatNumber(row.tracked_purchase_count)}</TableCell>
                                             <TableCell>{row.client_since || "N/A"}</TableCell>
                                             <TableCell align="right">{formatPercent(row.attendance_rate)}</TableCell>
-                                            <TableCell align="right">{formatPercent(row.no_show_rate)}</TableCell>
-                                            <TableCell align="right">{formatPercent(row.late_cancel_rate)}</TableCell>
                                             <TableCell align="right">{formatMoney(row.total_spending, t("common.restricted"))}</TableCell>
                                         </TableRow>
                                     ))}

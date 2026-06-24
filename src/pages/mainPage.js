@@ -21,10 +21,13 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import StorageIcon from "@mui/icons-material/Storage";
 
 import IconButton from "@mui/material/IconButton";
+import Autocomplete from "@mui/material/Autocomplete";
+import CircularProgress from "@mui/material/CircularProgress";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
+import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 
 import usePermissions from "@/hooks/usePermissions";
@@ -37,13 +40,13 @@ import routePermissions from "@/constants/routePermissions";
 const navItems = [
     { href: "/home", labelKey: "nav.home", key: "home", icon: HomeIcon },
     { href: "/dashboard", labelKey: "nav.dashboard", key: "dashboard", icon: DashboardIcon },
+    { href: "/clients", labelKey: "nav.clients", key: "clients", icon: PeopleIcon },
     { href: "/retention", labelKey: "nav.retention", key: "retention", icon: ReplayIcon },
     { href: "/schedule", labelKey: "nav.schedule", key: "schedule", icon: EventNoteIcon },
     { href: "/uploads", labelKey: "nav.uploads", key: "uploads", icon: CloudUploadIcon, capability: "can_upload_data" },
     { href: "/imported", labelKey: "nav.imported", key: "imported", icon: AssessmentIcon, capability: "can_upload_data" },
     { href: "/data", labelKey: "nav.data", key: "data", icon: StorageIcon },
     { href: "/manual", labelKey: "nav.manual", key: "manual", icon: MenuBookIcon },
-    { href: "/clients", labelKey: "nav.clients", key: "clients", icon: PeopleIcon },
     { href: "/settings", labelKey: "nav.settings", key: "settings", icon: SettingsIcon },
 ];
 
@@ -56,6 +59,9 @@ export default function MainPage({ children }) {
     const [showPage, setShowPage] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [permissionsChecked, setPermissionsChecked] = useState(false);
+    const [clientSearchInput, setClientSearchInput] = useState("");
+    const [clientSearchOptions, setClientSearchOptions] = useState([]);
+    const [clientSearchLoading, setClientSearchLoading] = useState(false);
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const permissions = usePermissions();
     const access = useAccess();
@@ -139,6 +145,37 @@ export default function MainPage({ children }) {
         }
     }, [permissions, access, router.asPath]);
 
+    useEffect(() => {
+        if (!showPage || clientSearchInput.trim().length < 2) {
+            setClientSearchOptions([]);
+            setClientSearchLoading(false);
+            return undefined;
+        }
+
+        const timeoutId = setTimeout(async () => {
+            const token = sessionStorage.getItem("token");
+            if (!token) return;
+            setClientSearchLoading(true);
+            try {
+                const response = await axios.get(
+                    `${backendUrl}/api/data/analytics/clients/search/`,
+                    {
+                        params: { q: clientSearchInput.trim() },
+                        headers: { Authorization: `Token ${token}` },
+                    },
+                );
+                setClientSearchOptions(response.data.results || []);
+            } catch (error) {
+                console.error("Client search error:", error);
+                setClientSearchOptions([]);
+            } finally {
+                setClientSearchLoading(false);
+            }
+        }, 350);
+
+        return () => clearTimeout(timeoutId);
+    }, [backendUrl, clientSearchInput, showPage]);
+
     if (isLoading || !showPage || !permissions || !permissionsChecked) {
         return null;
     }
@@ -172,6 +209,19 @@ export default function MainPage({ children }) {
         }
     };
 
+    const openSearchedClient = (client) => {
+        if (!client?.id) return;
+        setClientSearchInput("");
+        setClientSearchOptions([]);
+        router.push({
+            pathname: "/clients/[id]",
+            query: {
+                id: client.id,
+                return_to: router.asPath,
+            },
+        });
+    };
+
     return (
         <>
             {navVisible && (
@@ -183,6 +233,50 @@ export default function MainPage({ children }) {
                     <IconButton onClick={handleHamburger} size="small" className={styles.hamburger}>
                         <MenuIcon />
                     </IconButton>
+                    <Autocomplete
+                        className={styles.clientSearch}
+                        size="small"
+                        options={clientSearchOptions}
+                        loading={clientSearchLoading}
+                        inputValue={clientSearchInput}
+                        value={null}
+                        filterOptions={(options) => options}
+                        getOptionLabel={(option) => option?.name || ""}
+                        noOptionsText={
+                            clientSearchInput.trim().length < 2
+                                ? t("clients.headerSearch.minChars")
+                                : t("clients.headerSearch.noResults")
+                        }
+                        onInputChange={(_, value) => setClientSearchInput(value)}
+                        onChange={(_, value) => openSearchedClient(value)}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                placeholder={t("clients.headerSearch.placeholder")}
+                                InputProps={{
+                                    ...params.InputProps,
+                                    endAdornment: (
+                                        <>
+                                            {clientSearchLoading && (
+                                                <CircularProgress color="inherit" size={16} />
+                                            )}
+                                            {params.InputProps.endAdornment}
+                                        </>
+                                    ),
+                                }}
+                            />
+                        )}
+                        renderOption={(props, option) => (
+                            <li {...props} key={option.id}>
+                                <div>
+                                    <div style={{ fontWeight: 600 }}>{option.name}</div>
+                                    <div style={{ color: "#666", fontSize: "12px" }}>
+                                        {option.mindbody_id || "N/A"} | {option.site || t("common.unknown")}
+                                    </div>
+                                </div>
+                            </li>
+                        )}
+                    />
                 </div>
 
                 <Image

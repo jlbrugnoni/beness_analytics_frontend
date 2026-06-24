@@ -11,6 +11,9 @@ import styles from "@/styles/tablePage.module.css";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
@@ -75,21 +78,40 @@ const healthLabel = (label, t) => t(`clients.health.${label.key}`, label.key);
 const healthRule = (label, t) => t(`clients.healthRule.${label.rule}`, label.rule);
 
 
+const healthChipColor = (key) => ({
+    high_value_at_risk: "error",
+    membership_expired: "warning",
+    recently_inactive: "warning",
+    member_not_attending: "warning",
+    active_consistent: "success",
+    reactivated: "success",
+    new_client: "info",
+    frequent_no_shows: "error",
+    frequent_late_cancels: "error",
+}[key] || "default");
+
+
 function MetricCard({ label, value }) {
     return (
         <Paper variant="outlined" style={{ padding: "14px", minHeight: "76px" }}>
             <div style={{ color: "#666", fontSize: "13px", marginBottom: "7px" }}>{label}</div>
-            <div style={{ fontSize: "20px", fontWeight: 700 }}>{value}</div>
+            <div style={{
+                fontSize: "20px",
+                fontWeight: 700,
+                overflowWrap: "anywhere",
+                lineHeight: 1.25,
+            }}>
+                {value}
+            </div>
         </Paper>
     );
 }
 
 
-function SummaryPanel({ title, summary, t }) {
+function SummaryPanel({ title, summary, continuity, t }) {
     if (!summary) return null;
     const cards = [
         [t("clients.visits"), formatNumber(summary.attended_visits)],
-        [t("clients.totalBookings"), formatNumber(summary.total_bookings)],
         [t("clients.activeWeeks"), formatNumber(summary.active_weeks)],
         [t("clients.regularity8Weeks"), formatPercent(summary.regularity_8_weeks)],
         [
@@ -99,11 +121,6 @@ function SummaryPanel({ title, summary, t }) {
         [t("clients.currentStreak"), formatNumber(summary.current_attendance_streak)],
         [t("clients.longestStreak"), formatNumber(summary.longest_attendance_streak)],
         [t("clients.inactiveWeeks"), formatNumber(summary.consecutive_inactive_weeks)],
-        [
-            t("clients.memberInactiveWeeks"),
-            formatNumber(summary.active_membership_inactive_weeks),
-        ],
-        [t("clients.trackedPurchases"), formatNumber(summary.tracked_purchase_count)],
         [t("clients.membershipMonths"), formatNumber(summary.membership_months)],
         [t("clients.attendanceRate"), formatPercent(summary.attendance_rate)],
         [t("clients.noShowRate"), formatPercent(summary.no_show_rate)],
@@ -112,6 +129,14 @@ function SummaryPanel({ title, summary, t }) {
         [t("clients.lateCancels"), formatNumber(summary.late_cancels)],
         [t("clients.totalSpending"), formatMoney(summary.total_spending, t("common.restricted"))],
     ];
+    const continuityCards = continuity ? [
+        [t("clients.totalMembershipMonths"), formatNumber(continuity.total_membership_months)],
+        [t("clients.currentMembershipStreak"), formatNumber(continuity.current_membership_streak_months)],
+        [t("clients.renewals"), formatNumber(continuity.renewal_count)],
+        [t("clients.reactivations"), formatNumber(continuity.reactivation_count)],
+        [t("clients.notRenewedEvents"), formatNumber(continuity.not_renewed_count)],
+        [t("clients.longestMembershipGap"), formatNumber(continuity.longest_membership_gap_months)],
+    ] : [];
     const dates = [
         [t("clients.clientSince"), summary.client_since],
         [t("clients.firstVisit"), summary.first_visit_date],
@@ -128,6 +153,9 @@ function SummaryPanel({ title, summary, t }) {
                 gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))",
             }}>
                 {cards.map(([label, value]) => (
+                    <MetricCard key={label} label={label} value={value} />
+                ))}
+                {continuityCards.map(([label, value]) => (
                     <MetricCard key={label} label={label} value={value} />
                 ))}
             </div>
@@ -332,6 +360,7 @@ export default function ClientProfile() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [periodOptionsOpen, setPeriodOptionsOpen] = useState(false);
+    const [selectedHealthLabel, setSelectedHealthLabel] = useState(null);
 
     useEffect(() => {
         if (!router.isReady) return;
@@ -394,7 +423,6 @@ export default function ClientProfile() {
     };
 
     const membership = profile?.current_membership;
-    const continuity = profile?.membership_continuity;
     const contact = [profile?.client?.email, profile?.client?.phone].filter(Boolean).join(" | ");
     const returnToValue = firstQueryValue(router.query.return_to);
     const validReturnTo = typeof returnToValue === "string" && (
@@ -420,6 +448,32 @@ export default function ClientProfile() {
                         <h1 className={styles.title} style={{ marginBottom: "4px" }}>
                             {profile?.client?.name || t("clients.title")}
                         </h1>
+                        {profile && (
+                            <div style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: "6px",
+                                margin: "6px 0",
+                            }}>
+                                {profile.health_labels?.length ? (
+                                    profile.health_labels.map((label) => (
+                                        <Chip
+                                            key={label.key}
+                                            size="small"
+                                            color={healthChipColor(label.key)}
+                                            label={healthLabel(label, t)}
+                                            onClick={() => setSelectedHealthLabel(label)}
+                                            title={healthRule(label, t)}
+                                        />
+                                    ))
+                                ) : (
+                                    <Chip
+                                        size="small"
+                                        label={t("clients.health.none")}
+                                    />
+                                )}
+                            </div>
+                        )}
                         {profile?.client && (
                             <div style={{ color: "#666" }}>
                                 {profile.client.site} | {profile.client.mindbody_id || "N/A"} |{" "}
@@ -520,14 +574,17 @@ export default function ClientProfile() {
                                 gap: "12px",
                                 gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
                             }}>
-                                <MetricCard
-                                    label={t("common.status")}
-                                    value={statusLabel(membership.status, t)}
-                                />
-                                <MetricCard
-                                    label={t("clients.membershipAsOf")}
-                                    value={formatDate(membership.month)}
-                                />
+                                <Paper variant="outlined" style={{ padding: "14px", minHeight: "76px" }}>
+                                    <div style={{ color: "#666", fontSize: "13px", marginBottom: "7px" }}>
+                                        {t("common.status")}
+                                    </div>
+                                    <div style={{ fontSize: "20px", fontWeight: 700, lineHeight: 1.25 }}>
+                                        {statusLabel(membership.status, t)}
+                                    </div>
+                                    <div style={{ color: "#666", fontSize: "12px", marginTop: "4px" }}>
+                                        {t("clients.membershipAsOf")}: {formatDate(membership.month)}
+                                    </div>
+                                </Paper>
                                 <MetricCard
                                     label={t("common.studio")}
                                     value={membership.studio || t("common.unknown")}
@@ -550,71 +607,19 @@ export default function ClientProfile() {
                                 />
                             </div>
                         )}
-                        {continuity && (
-                            <div style={{
-                                display: "grid",
-                                gap: "12px",
-                                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                            }}>
-                                <MetricCard
-                                    label={t("clients.totalMembershipMonths")}
-                                    value={formatNumber(continuity.total_membership_months)}
-                                />
-                                <MetricCard
-                                    label={t("clients.currentMembershipStreak")}
-                                    value={formatNumber(continuity.current_membership_streak_months)}
-                                />
-                                <MetricCard
-                                    label={t("clients.renewals")}
-                                    value={formatNumber(continuity.renewal_count)}
-                                />
-                                <MetricCard
-                                    label={t("clients.reactivations")}
-                                    value={formatNumber(continuity.reactivation_count)}
-                                />
-                                <MetricCard
-                                    label={t("clients.notRenewedEvents")}
-                                    value={formatNumber(continuity.not_renewed_count)}
-                                />
-                                <MetricCard
-                                    label={t("clients.longestMembershipGap")}
-                                    value={formatNumber(continuity.longest_membership_gap_months)}
-                                />
-                            </div>
-                        )}
                     </Paper>
-
-                    {!!profile?.health_labels?.length && (
-                        <Paper style={{ padding: "18px", display: "grid", gap: "12px" }}>
-                            <h2 style={{ margin: 0 }}>{t("clients.health.title")}</h2>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                                {profile.health_labels.map((label) => (
-                                    <Chip
-                                        key={label.key}
-                                        label={healthLabel(label, t)}
-                                        title={healthRule(label, t)}
-                                    />
-                                ))}
-                            </div>
-                            <div style={{ display: "grid", gap: "6px", color: "#666", fontSize: "13px" }}>
-                                {profile.health_labels.map((label) => (
-                                    <div key={label.rule}>
-                                        <strong>{healthLabel(label, t)}:</strong> {healthRule(label, t)}
-                                    </div>
-                                ))}
-                            </div>
-                        </Paper>
-                    )}
 
                     <SummaryPanel
                         title={t("clients.selectedPeriod")}
                         summary={profile?.selected_period}
+                        continuity={profile?.selected_period_membership_continuity}
                         t={t}
                     />
                     {profile?.period?.mode !== "lifetime" && (
                         <SummaryPanel
                             title={t("clients.lifetimeSummary")}
                             summary={profile?.lifetime}
+                            continuity={profile?.lifetime_membership_continuity}
                             t={t}
                         />
                     )}
@@ -627,6 +632,35 @@ export default function ClientProfile() {
                     />
                 </div>
             </div>
+            <Dialog
+                open={Boolean(selectedHealthLabel)}
+                onClose={() => setSelectedHealthLabel(null)}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>
+                    {selectedHealthLabel
+                        ? healthLabel(selectedHealthLabel, t)
+                        : t("clients.health.title")}
+                </DialogTitle>
+                <DialogContent>
+                    {selectedHealthLabel ? (
+                        <div>
+                            <Chip
+                                size="small"
+                                color={healthChipColor(selectedHealthLabel.key)}
+                                label={healthLabel(selectedHealthLabel, t)}
+                                style={{ marginBottom: "10px" }}
+                            />
+                            <div style={{ color: "#666", fontSize: "14px" }}>
+                                {healthRule(selectedHealthLabel, t)}
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ color: "#666" }}>{t("clients.health.none")}</div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </MainPage>
     );
 }
