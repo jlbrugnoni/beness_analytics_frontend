@@ -200,9 +200,11 @@ export default function SchedulePage() {
     const [matching, setMatching] = useState(false);
     const [reconcilingClasses, setReconcilingClasses] = useState(false);
     const [syncingCapacity, setSyncingCapacity] = useState(false);
+    const [cancelingDay, setCancelingDay] = useState("");
     const [matchResult, setMatchResult] = useState(null);
     const [classReconcileResult, setClassReconcileResult] = useState(null);
     const [capacitySyncResult, setCapacitySyncResult] = useState(null);
+    const [cancelDayResult, setCancelDayResult] = useState(null);
     const [attendanceClass, setAttendanceClass] = useState(null);
     const [attendanceRows, setAttendanceRows] = useState([]);
     const [attendanceLoading, setAttendanceLoading] = useState(false);
@@ -379,6 +381,54 @@ export default function SchedulePage() {
         }
     };
 
+    const handleCancelDay = async (day) => {
+        if (!site) return;
+        const dayClasses = classes.filter((item) => item.class_date === day.value);
+        const classesToCancel = dayClasses.filter((item) => item.status !== "cancelled");
+        const attendanceCount = dayClasses.reduce((total, item) => total + Number(item.attended_count || 0), 0);
+        const selectedSite = sites.find((item) => String(item.id) === String(site));
+        const selectedStudio = studios.find((item) => String(item.id) === String(studio));
+        const selectedRoom = rooms.find((item) => String(item.id) === String(room));
+        const scopeLabel = [
+            selectedSite?.name,
+            selectedStudio?.name || t("schedule.allStudios"),
+            selectedRoom?.name || t("schedule.allRooms"),
+        ].filter(Boolean).join(" / ");
+        const confirmed = window.confirm(
+            `${t("schedule.cancelDayConfirmTitle")}\n\n` +
+            `${t("schedule.cancelDayDate")}: ${day.label} ${day.value}\n` +
+            `${t("schedule.cancelDayScope")}: ${scopeLabel}\n` +
+            `${t("schedule.cancelDayClasses")}: ${classesToCancel.length}\n` +
+            `${t("schedule.cancelDayAttendance")}: ${attendanceCount}\n\n` +
+            `${t("schedule.cancelDayConfirmBody")}`,
+        );
+        if (!confirmed) return;
+
+        setCancelingDay(day.value);
+        setError("");
+        setCancelDayResult(null);
+        try {
+            const payload = {
+                site,
+                date: day.value,
+                reason: t("schedule.holidayCancellationReason"),
+            };
+            if (studio) payload.studio = studio;
+            if (room) payload.room = room;
+            const response = await axios.post(
+                `${backendUrl}/api/data/scheduled-classes/cancel-day/`,
+                payload,
+                authHeaders,
+            );
+            setCancelDayResult(response.data);
+            await loadClasses();
+        } catch (err) {
+            setError(err.response?.data?.error || "Error cancelling day.");
+        } finally {
+            setCancelingDay("");
+        }
+    };
+
     const filteredStudios = studios.filter((item) => !site || String(item.site) === String(site));
     const filteredRooms = rooms.filter((item) => {
         if (site && String(item.site) !== String(site)) return false;
@@ -388,6 +438,10 @@ export default function SchedulePage() {
     const visibleClasses = scheduleStatus
         ? classes.filter((item) => item.schedule_status === scheduleStatus)
         : classes;
+    const allClassesByDate = weekDays.reduce((acc, day) => {
+        acc[day.value] = classes.filter((item) => item.class_date === day.value);
+        return acc;
+    }, {});
     const classesByDate = weekDays.reduce((acc, day) => {
         acc[day.value] = visibleClasses.filter((item) => item.class_date === day.value);
         return acc;
@@ -531,6 +585,14 @@ export default function SchedulePage() {
                         </Alert>
                     )}
 
+                    {cancelDayResult && (
+                        <Alert severity="success">
+                            {t("schedule.cancelDayComplete")} {cancelDayResult.classes_cancelled}{" "}
+                            {t("schedule.cancelDayClassesCancelled")}. {t("schedule.cancelDayAttendance")}{" "}
+                            {cancelDayResult.attended_count || 0}.
+                        </Alert>
+                    )}
+
                     <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
                         <SummaryCard label={t("schedule.classes")} value={summary.total} />
                         <SummaryCard label={t("common.capacity")} value={summary.capacity} />
@@ -564,9 +626,22 @@ export default function SchedulePage() {
                     }}>
                         {weekDays.map((day) => (
                             <Paper key={day.value} style={{ padding: "12px", minHeight: "260px" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "12px" }}>
-                                    <h2 style={{ margin: 0, fontSize: "18px" }}>{day.label}</h2>
-                                    <span style={{ color: "#666", fontSize: "13px" }}>{day.value}</span>
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "flex-start", marginBottom: "12px" }}>
+                                    <div>
+                                        <h2 style={{ margin: 0, fontSize: "18px" }}>{day.label}</h2>
+                                        <span style={{ color: "#666", fontSize: "13px" }}>{day.value}</span>
+                                    </div>
+                                    {canEditData && (
+                                        <Button
+                                            size="small"
+                                            color="warning"
+                                            variant="outlined"
+                                            disabled={!site || cancelingDay === day.value || !(allClassesByDate[day.value] || []).length}
+                                            onClick={() => handleCancelDay(day)}
+                                        >
+                                            {cancelingDay === day.value ? t("schedule.cancelingDay") : t("schedule.cancelDay")}
+                                        </Button>
+                                    )}
                                 </div>
                                 <div style={{ display: "grid", gap: "10px" }}>
                                     {(classesByDate[day.value] || []).map((item) => (
