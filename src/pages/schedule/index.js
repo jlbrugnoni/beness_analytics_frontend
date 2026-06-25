@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import InfoIcon from "@mui/icons-material/Info";
 
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
@@ -13,9 +14,19 @@ import styles from "@/styles/tablePage.module.css";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
 
 
 const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -112,7 +123,7 @@ const WarningCard = ({ label, value }) => (
 );
 
 
-const ClassCard = ({ item, onResolve, canEditData, t }) => {
+const ClassCard = ({ item, onResolve, onViewAttendance, canEditData, t }) => {
     const colors = scheduleStatusColors[item.schedule_status] || statusColors[item.status] || statusColors.scheduled;
     const scheduleLabel = item.schedule_status_label || item.schedule_status?.replaceAll("_", " ") || "Scheduled";
     const isClosed = ["cancelled", "unavailable"].includes(item.status);
@@ -147,6 +158,11 @@ const ClassCard = ({ item, onResolve, canEditData, t }) => {
                 ) : null}
                 <Chip size="small" label={item.source_label || item.source || `${t("common.source")} N/A`} />
                 {isClosed && <Chip size="small" color="warning" label={item.status?.replaceAll("_", " ")} />}
+            </div>
+            <div>
+                <Button size="small" variant="text" onClick={() => onViewAttendance(item)}>
+                    {t("schedule.viewAttendance")}
+                </Button>
             </div>
             {item.reason && <div style={{ fontSize: "12px" }}>{item.reason}</div>}
             {canEditData && <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -187,6 +203,10 @@ export default function SchedulePage() {
     const [matchResult, setMatchResult] = useState(null);
     const [classReconcileResult, setClassReconcileResult] = useState(null);
     const [capacitySyncResult, setCapacitySyncResult] = useState(null);
+    const [attendanceClass, setAttendanceClass] = useState(null);
+    const [attendanceRows, setAttendanceRows] = useState([]);
+    const [attendanceLoading, setAttendanceLoading] = useState(false);
+    const [attendanceInfoRow, setAttendanceInfoRow] = useState(null);
     const [error, setError] = useState("");
 
     const authHeaders = useMemo(() => ({
@@ -281,13 +301,17 @@ export default function SchedulePage() {
         setError("");
         setMatchResult(null);
         try {
+            const payload = {
+                site,
+                date_from: weekStart,
+                date_to: weekDays[6].value,
+                repair_attendance_duplicates: true,
+            };
+            if (studio) payload.studio = studio;
+
             const response = await axios.post(
                 `${backendUrl}/api/data/analytics/class-matches/rebuild/`,
-                {
-                    site,
-                    date_from: weekStart,
-                    date_to: weekDays[6].value,
-                },
+                payload,
                 authHeaders,
             );
             setMatchResult(response.data);
@@ -296,6 +320,25 @@ export default function SchedulePage() {
             setError(err.response?.data?.error || "Error rebuilding class matches.");
         } finally {
             setMatching(false);
+        }
+    };
+
+    const handleViewAttendance = async (scheduledClass) => {
+        setAttendanceClass(scheduledClass);
+        setAttendanceRows([]);
+        setAttendanceInfoRow(null);
+        setAttendanceLoading(true);
+        setError("");
+        try {
+            const rows = await fetchAll(
+                `${backendUrl}/api/data/attendance-class-matches/?scheduled_class=${scheduledClass.id}`,
+                authHeaders,
+            );
+            setAttendanceRows(rows);
+        } catch (err) {
+            setError(err.response?.data?.error || "Error loading class attendance.");
+        } finally {
+            setAttendanceLoading(false);
         }
     };
 
@@ -458,7 +501,21 @@ export default function SchedulePage() {
 
                     {matchResult && (
                         <Alert severity="success">
-                            Matches rebuilt: {matchResult.exact_instructor_time} exact, {matchResult.single_class_same_time} by time, {matchResult.ambiguous} ambiguous, {matchResult.unmatched} unmatched.
+                            {t("schedule.attendanceSyncComplete")}{" "}
+                            {matchResult.attendance_duplicate_repair && (
+                                <>
+                                    {t("schedule.attendanceRepairSummary")}{" "}
+                                    {matchResult.attendance_duplicate_repair.duplicate_visits_deleted || 0}{" "}
+                                    {t("schedule.attendanceDuplicatesRemoved")},{" "}
+                                    {matchResult.attendance_duplicate_repair.stale_natural_keys_updated || 0}{" "}
+                                    {t("schedule.attendanceKeysUpdated")}.{" "}
+                                </>
+                            )}
+                            {t("schedule.matchesRebuiltSummary")} {matchResult.exact_instructor_time}{" "}
+                            {t("schedule.matchesExact")}, {matchResult.single_class_same_time}{" "}
+                            {t("schedule.matchesByTime")}, {matchResult.ambiguous}{" "}
+                            {t("schedule.matchesAmbiguous")}, {matchResult.unmatched}{" "}
+                            {t("schedule.matchesUnmatched")}.
                         </Alert>
                     )}
 
@@ -517,6 +574,7 @@ export default function SchedulePage() {
                                             key={`class-${item.id}`}
                                             item={item}
                                             onResolve={handleResolveClass}
+                                            onViewAttendance={handleViewAttendance}
                                             canEditData={canEditData}
                                             t={t}
                                         />
@@ -530,6 +588,80 @@ export default function SchedulePage() {
                     </div>
                 </div>
             </div>
+            <Dialog
+                open={Boolean(attendanceClass)}
+                onClose={() => setAttendanceClass(null)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    {t("schedule.classAttendance")} · {attendanceClass?.name} ·{" "}
+                    {attendanceClass ? `${attendanceClass.class_date} ${shortTime(attendanceClass.start_time)}` : ""}
+                </DialogTitle>
+                <DialogContent>
+                    {attendanceLoading && <Alert severity="info">{t("schedule.loadingAttendance")}</Alert>}
+                    {!attendanceLoading && attendanceRows.length === 0 && (
+                        <Alert severity="info">{t("schedule.noAttendanceForClass")}</Alert>
+                    )}
+                    {!attendanceLoading && attendanceRows.length > 0 && (
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>{t("schedule.client")}</TableCell>
+                                    <TableCell>{t("schedule.mindbodyId")}</TableCell>
+                                    <TableCell>{t("schedule.attendanceTime")}</TableCell>
+                                    <TableCell>{t("schedule.pricingOption")}</TableCell>
+                                    <TableCell>{t("schedule.instructor")}</TableCell>
+                                    <TableCell align="center">{t("schedule.details")}</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {attendanceRows.map((row) => (
+                                    <TableRow key={row.id}>
+                                        <TableCell>{row.client_name || "N/A"}</TableCell>
+                                        <TableCell>{row.client_mindbody_id || "N/A"}</TableCell>
+                                        <TableCell>{row.attendance_time || "N/A"}</TableCell>
+                                        <TableCell>{row.pricing_option_name || "N/A"}</TableCell>
+                                        <TableCell>{row.staff_member_name || "N/A"}</TableCell>
+                                        <TableCell align="center">
+                                            <Tooltip title={t("schedule.viewSourceDetails")}>
+                                                <IconButton size="small" onClick={() => setAttendanceInfoRow(row)}>
+                                                    <InfoIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={Boolean(attendanceInfoRow)}
+                onClose={() => setAttendanceInfoRow(null)}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle>{t("schedule.attendanceSourceDetails")}</DialogTitle>
+                <DialogContent>
+                    <div style={{ display: "grid", gap: "10px", fontSize: "14px" }}>
+                        <div>
+                            <strong>{t("schedule.client")}:</strong>{" "}
+                            {attendanceInfoRow?.client_name || "N/A"}
+                        </div>
+                        <div>
+                            <strong>{t("common.source")}:</strong>{" "}
+                            {attendanceInfoRow?.source_file_name || "N/A"}
+                            {attendanceInfoRow?.source_import_id ? ` (#${attendanceInfoRow.source_import_id})` : ""}
+                        </div>
+                        <div>
+                            <strong>{t("schedule.matchMethod")}:</strong>{" "}
+                            {attendanceInfoRow?.match_method?.replaceAll("_", " ") || "N/A"}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </MainPage>
     );
 }
