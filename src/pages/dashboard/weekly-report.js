@@ -9,6 +9,7 @@ import {
     Bar,
     CartesianGrid,
     ComposedChart,
+    LabelList,
     Legend,
     Line,
     ResponsiveContainer,
@@ -50,6 +51,7 @@ import {
     formatDisplayDate,
     formatNumber,
     formatPercent,
+    formatPercentOneDecimal,
     formatPeriodTitle,
     formatShortWeekdayDate,
     previousWeekRange,
@@ -137,6 +139,19 @@ const formatTooltipValue = (value, name) => {
 };
 
 
+const barValueLabelStyle = { fill: "#ffffff", fontSize: 13, fontWeight: 800 };
+
+
+const formatHourLabel = (value) => {
+    const hour = Number(String(value || "").split(":")[0]);
+    if (Number.isNaN(hour)) return value;
+    if (hour === 0) return "12am";
+    if (hour < 12) return `${hour}am`;
+    if (hour === 12) return "12pm";
+    return `${hour - 12}pm`;
+};
+
+
 function ChartPanel({ title, children }) {
     return (
         <Paper style={{ padding: "16px", display: "grid", gap: "12px", minHeight: 390 }}>
@@ -160,9 +175,9 @@ function TrialClassesChart({ rows, t }) {
                     <XAxis dataKey="label" tick={chartText} />
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
-                    <Legend wrapperStyle={chartLegendStyle} />
-                    <Bar dataKey="trial_bookings" name={t("weeklyReport.metrics.trialBookings")} fill="#8a5cf6" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="attended_trials" name={t("weeklyReport.metrics.attendedTrials")} fill={completedColor} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="attended_trials" name={t("weeklyReport.metrics.attendedTrials")} fill={completedColor} radius={[4, 4, 0, 0]}>
+                        <LabelList dataKey="attended_trials" position="insideTop" formatter={formatNumber} style={barValueLabelStyle} />
+                    </Bar>
                 </ComposedChart>
             </ResponsiveContainer>
         </ChartPanel>
@@ -177,21 +192,15 @@ function ConversionChart({ rows, t }) {
                 <ComposedChart data={rows} margin={{ top: 12, right: 24, bottom: 4, left: 0 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
                     <XAxis dataKey="label" tick={chartText} />
-                    <YAxis yAxisId="left" allowDecimals={false} tick={chartText} />
-                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} tick={chartText} />
+                    <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={chartLegendStyle} />
-                    <Bar yAxisId="left" dataKey="converted_members" name={t("weeklyReport.metrics.convertedMembers")} fill={completedColor} radius={[4, 4, 0, 0]} />
-                    <Bar yAxisId="left" dataKey="converted_non_members" name={t("weeklyReport.metrics.convertedNonMembers")} fill="#d97706" radius={[4, 4, 0, 0]} />
-                    <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="client_conversion_rate"
-                        name={t("weeklyReport.metrics.clientConversionRate")}
-                        stroke="#172033"
-                        strokeWidth={3}
-                        dot={{ r: 4 }}
-                    />
+                    <Bar dataKey="converted_members" stackId="conversions" name={t("weeklyReport.metrics.convertedMembers")} fill={completedColor}>
+                        <LabelList dataKey="converted_members" position="center" formatter={formatNumber} style={barValueLabelStyle} />
+                    </Bar>
+                    <Bar dataKey="converted_non_members" stackId="conversions" name={t("weeklyReport.metrics.convertedNonMembers")} fill="#d97706" radius={[4, 4, 0, 0]}>
+                        <LabelList dataKey="converted_non_members" position="center" formatter={formatNumber} style={barValueLabelStyle} />
+                    </Bar>
                 </ComposedChart>
             </ResponsiveContainer>
         </ChartPanel>
@@ -208,7 +217,6 @@ function OccupancyChart({ rows, t }) {
                     <XAxis dataKey="label" tick={chartText} />
                     <YAxis tickFormatter={(value) => `${value}%`} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
-                    <Legend wrapperStyle={chartLegendStyle} />
                     <Line
                         type="monotone"
                         dataKey="occupation_rate"
@@ -216,7 +224,14 @@ function OccupancyChart({ rows, t }) {
                         stroke={completedColor}
                         strokeWidth={3}
                         dot={{ r: 4 }}
-                    />
+                    >
+                        <LabelList
+                            dataKey="occupation_rate"
+                            position="top"
+                            formatter={(value) => formatPercentOneDecimal(value)}
+                            style={{ fill: "#172033", fontSize: 13, fontWeight: 800 }}
+                        />
+                    </Line>
                 </ComposedChart>
             </ResponsiveContainer>
         </ChartPanel>
@@ -224,7 +239,7 @@ function OccupancyChart({ rows, t }) {
 }
 
 
-function AttendanceChart({ rows, t }) {
+function AssistancesChart({ rows, t }) {
     return (
         <ChartPanel title={t("weeklyReport.charts.attendance")}>
             <ResponsiveContainer>
@@ -233,9 +248,51 @@ function AttendanceChart({ rows, t }) {
                     <XAxis dataKey="label" tick={chartText} />
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
+                    <Bar dataKey="attendance_used" name={t("weeklyReport.metrics.assistances")} fill={completedColor} radius={[4, 4, 0, 0]}>
+                        <LabelList dataKey="attendance_used" position="insideTop" formatter={formatNumber} style={barValueLabelStyle} />
+                    </Bar>
+                </ComposedChart>
+            </ResponsiveContainer>
+        </ChartPanel>
+    );
+}
+
+
+function AssistancesByHourChart({ rows, t }) {
+    return (
+        <ChartPanel title={t("weeklyReport.charts.assistancesByHour")}>
+            <ResponsiveContainer>
+                <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                    <CartesianGrid stroke="#eef1f4" vertical={false} />
+                    <XAxis dataKey="hour_label" interval={0} tick={chartText} />
+                    <YAxis allowDecimals={false} tick={chartText} />
+                    <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
+                    <Bar dataKey="assistances" name={t("weeklyReport.metrics.assistances")} fill="#0891b2" radius={[4, 4, 0, 0]}>
+                        <LabelList dataKey="assistances" position="insideTop" formatter={formatNumber} style={barValueLabelStyle} />
+                    </Bar>
+                </ComposedChart>
+            </ResponsiveContainer>
+        </ChartPanel>
+    );
+}
+
+
+function EffectiveClassesChart({ rows, t }) {
+    return (
+        <ChartPanel title={t("weeklyReport.charts.effectiveClasses")}>
+            <ResponsiveContainer>
+                <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
+                    <CartesianGrid stroke="#eef1f4" vertical={false} />
+                    <XAxis dataKey="label" tick={chartText} />
+                    <YAxis allowDecimals={false} tick={chartText} />
+                    <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={chartLegendStyle} />
-                    <Bar dataKey="attendance_used" name={t("weeklyReport.metrics.assistances")} fill={completedColor} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="effective_classes" name={t("weeklyReport.metrics.effectiveClasses")} fill="#8a5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="effective_classes" stackId="classes" name={t("weeklyReport.metrics.effectiveClasses")} fill="#8a5cf6">
+                        <LabelList dataKey="effective_classes" position="center" formatter={formatNumber} style={barValueLabelStyle} />
+                    </Bar>
+                    <Bar dataKey="not_attended_classes" stackId="classes" name={t("weeklyReport.metrics.notAttendedClasses")} fill="#94a3b8" radius={[4, 4, 0, 0]}>
+                        <LabelList dataKey="not_attended_classes" position="center" formatter={formatNumber} style={barValueLabelStyle} />
+                    </Bar>
                 </ComposedChart>
             </ResponsiveContainer>
         </ChartPanel>
@@ -366,7 +423,15 @@ export default function WeeklyReportPage() {
         occupation_rate: row.occupation_rate || 0,
         attendance_used: row.attendance_used || 0,
         effective_classes: row.effective_classes || 0,
+        not_attended_classes: row.not_attended_classes || 0,
+        total_booked_classes: row.total_booked_classes || row.scheduled_classes || 0,
         scheduled_classes: row.scheduled_classes || 0,
+    }));
+
+    const assistancesByHourRows = (report?.assistances_by_hour || []).map((row) => ({
+        ...row,
+        hour_label: formatHourLabel(row.hour),
+        assistances: row.assistances || 0,
     }));
 
     const currentWeek = weekRows[weekRows.length - 1] || {};
@@ -644,11 +709,13 @@ export default function WeeklyReportPage() {
                         </Paper>
                     </div>
 
-                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 520px), 1fr))" }}>
+                        <OccupancyChart rows={weekRows} t={t} />
                         <TrialClassesChart rows={weekRows} t={t} />
                         <ConversionChart rows={weekRows} t={t} />
-                        <OccupancyChart rows={weekRows} t={t} />
-                        <AttendanceChart rows={weekRows} t={t} />
+                        <AssistancesChart rows={weekRows} t={t} />
+                        <AssistancesByHourChart rows={assistancesByHourRows} t={t} />
+                        <EffectiveClassesChart rows={weekRows} t={t} />
                         <StaffTable rows={report?.staff} weeks={weekRows} t={t} />
                     </div>
                 </div>
