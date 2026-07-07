@@ -1,6 +1,7 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ArticleIcon from "@mui/icons-material/Article";
 import AutoGraphIcon from "@mui/icons-material/AutoGraph";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CalendarViewWeekIcon from "@mui/icons-material/CalendarViewWeek";
@@ -61,6 +62,14 @@ const MONTHLY_SECTIONS = [
 ];
 
 const WEEKLY_SECTIONS = [
+    {
+        href: "/dashboard/weekly-report",
+        icon: ArticleIcon,
+        titleKey: "dashboard.hub.weeklyReport.title",
+        descriptionKey: "dashboard.hub.weeklyReport.description",
+        badgeKey: "dashboard.hub.badge.weekly",
+        badgeColor: "success",
+    },
     {
         href: "/dashboard/weekly",
         icon: CalendarViewWeekIcon,
