@@ -1,10 +1,11 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import DownloadIcon from "@mui/icons-material/Download";
 import {
     Bar,
     CartesianGrid,
@@ -19,6 +20,7 @@ import {
 } from "recharts";
 
 import MainPage from "@/pages/mainPage";
+import benessLogo from "@/images/beness-logo.png";
 import useFetchToken from "@/components/useFetchUserId";
 import useI18n from "@/hooks/useI18n";
 import { normalizeApiNextUrl } from "@/utils/apiPagination";
@@ -152,6 +154,86 @@ const formatHourLabel = (value) => {
 };
 
 
+const buildReportFileName = (scope, dateFrom, dateTo) => {
+    const safeScope = String(scope || "weekly-report")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    return `weekly-report-${safeScope || "all-sites"}-${dateFrom || "from"}-${dateTo || "to"}.png`;
+};
+
+
+const waitForReportPaint = async () => {
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+        await document.fonts.ready;
+    }
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await new Promise((resolve) => setTimeout(resolve, 150));
+};
+
+
+const swapChartSvgsForImages = async (container) => {
+    const swaps = [];
+    const svgs = Array.from(container.querySelectorAll("svg.recharts-surface"));
+
+    await Promise.all(svgs.map((svg) => new Promise((resolve) => {
+        const rect = svg.getBoundingClientRect();
+        if (!rect.width || !rect.height || !svg.parentNode) {
+            resolve();
+            return;
+        }
+
+        const clone = svg.cloneNode(true);
+        clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        clone.setAttribute("width", String(rect.width));
+        clone.setAttribute("height", String(rect.height));
+        clone.setAttribute("viewBox", clone.getAttribute("viewBox") || `0 0 ${rect.width} ${rect.height}`);
+
+        const serialized = new XMLSerializer().serializeToString(clone);
+        const sourceImage = new Image();
+        sourceImage.onload = () => {
+            const canvas = document.createElement("canvas");
+            const scale = window.devicePixelRatio || 1;
+            canvas.width = Math.ceil(rect.width * scale);
+            canvas.height = Math.ceil(rect.height * scale);
+            const context = canvas.getContext("2d");
+            context.scale(scale, scale);
+            context.drawImage(sourceImage, 0, 0, rect.width, rect.height);
+
+            const chartImage = new Image();
+            chartImage.alt = "";
+            chartImage.style.display = "block";
+            chartImage.style.width = `${rect.width}px`;
+            chartImage.style.height = `${rect.height}px`;
+            chartImage.onload = () => {
+                svg.parentNode.replaceChild(chartImage, svg);
+                swaps.push({ image: chartImage, svg });
+                resolve();
+            };
+            chartImage.onerror = () => resolve();
+            chartImage.src = canvas.toDataURL("image/png");
+        };
+        sourceImage.onerror = () => resolve();
+        sourceImage.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`;
+    })));
+
+    await Promise.all(swaps.map(({ image }) => {
+        if (image.decode) {
+            return image.decode().catch(() => {});
+        }
+        return Promise.resolve();
+    }));
+
+    return () => {
+        swaps.reverse().forEach(({ image, svg }) => {
+            if (image.parentNode) {
+                image.parentNode.replaceChild(svg, image);
+            }
+        });
+    };
+};
+
+
 function ChartPanel({ title, children }) {
     return (
         <Paper style={{ padding: "16px", display: "grid", gap: "12px", minHeight: 390 }}>
@@ -166,7 +248,7 @@ function ChartPanel({ title, children }) {
 }
 
 
-function TrialClassesChart({ rows, t }) {
+function TrialClassesChart({ rows, t, animate = true }) {
     return (
         <ChartPanel title={t("weeklyReport.charts.trials")}>
             <ResponsiveContainer>
@@ -175,7 +257,7 @@ function TrialClassesChart({ rows, t }) {
                     <XAxis dataKey="label" tick={chartText} />
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
-                    <Bar dataKey="attended_trials" name={t("weeklyReport.metrics.attendedTrials")} fill={completedColor} radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="attended_trials" name={t("weeklyReport.metrics.attendedTrials")} fill={completedColor} radius={[4, 4, 0, 0]} isAnimationActive={animate}>
                         <LabelList dataKey="attended_trials" position="insideTop" formatter={formatNumber} style={barValueLabelStyle} />
                     </Bar>
                 </ComposedChart>
@@ -185,7 +267,7 @@ function TrialClassesChart({ rows, t }) {
 }
 
 
-function ConversionChart({ rows, t }) {
+function ConversionChart({ rows, t, animate = true }) {
     return (
         <ChartPanel title={t("weeklyReport.charts.conversions")}>
             <ResponsiveContainer>
@@ -195,10 +277,10 @@ function ConversionChart({ rows, t }) {
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={chartLegendStyle} />
-                    <Bar dataKey="converted_members" stackId="conversions" name={t("weeklyReport.metrics.convertedMembers")} fill={completedColor}>
+                    <Bar dataKey="converted_members" stackId="conversions" name={t("weeklyReport.metrics.convertedMembers")} fill={completedColor} isAnimationActive={animate}>
                         <LabelList dataKey="converted_members" position="center" formatter={formatNumber} style={barValueLabelStyle} />
                     </Bar>
-                    <Bar dataKey="converted_non_members" stackId="conversions" name={t("weeklyReport.metrics.convertedNonMembers")} fill="#d97706" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="converted_non_members" stackId="conversions" name={t("weeklyReport.metrics.convertedNonMembers")} fill="#d97706" radius={[4, 4, 0, 0]} isAnimationActive={animate}>
                         <LabelList dataKey="converted_non_members" position="center" formatter={formatNumber} style={barValueLabelStyle} />
                     </Bar>
                 </ComposedChart>
@@ -208,7 +290,7 @@ function ConversionChart({ rows, t }) {
 }
 
 
-function OccupancyChart({ rows, t }) {
+function OccupancyChart({ rows, t, animate = true }) {
     return (
         <ChartPanel title={t("weeklyReport.charts.occupancy")}>
             <ResponsiveContainer>
@@ -223,7 +305,9 @@ function OccupancyChart({ rows, t }) {
                         name={t("common.occupancy")}
                         stroke={completedColor}
                         strokeWidth={3}
-                        dot={{ r: 4 }}
+                        dot={animate ? { r: 4 } : false}
+                        activeDot={animate ? { r: 5 } : false}
+                        isAnimationActive={animate}
                     >
                         <LabelList
                             dataKey="occupation_rate"
@@ -239,7 +323,7 @@ function OccupancyChart({ rows, t }) {
 }
 
 
-function AssistancesChart({ rows, t }) {
+function AssistancesChart({ rows, t, animate = true }) {
     return (
         <ChartPanel title={t("weeklyReport.charts.attendance")}>
             <ResponsiveContainer>
@@ -248,7 +332,7 @@ function AssistancesChart({ rows, t }) {
                     <XAxis dataKey="label" tick={chartText} />
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
-                    <Bar dataKey="attendance_used" name={t("weeklyReport.metrics.assistances")} fill={completedColor} radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="attendance_used" name={t("weeklyReport.metrics.assistances")} fill={completedColor} radius={[4, 4, 0, 0]} isAnimationActive={animate}>
                         <LabelList dataKey="attendance_used" position="insideTop" formatter={formatNumber} style={barValueLabelStyle} />
                     </Bar>
                 </ComposedChart>
@@ -258,7 +342,7 @@ function AssistancesChart({ rows, t }) {
 }
 
 
-function AssistancesByHourChart({ rows, t }) {
+function AssistancesByHourChart({ rows, t, animate = true }) {
     return (
         <ChartPanel title={t("weeklyReport.charts.assistancesByHour")}>
             <ResponsiveContainer>
@@ -267,7 +351,7 @@ function AssistancesByHourChart({ rows, t }) {
                     <XAxis dataKey="hour_label" interval={0} tick={chartText} />
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
-                    <Bar dataKey="assistances" name={t("weeklyReport.metrics.assistances")} fill="#0891b2" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="assistances" name={t("weeklyReport.metrics.assistances")} fill="#0891b2" radius={[4, 4, 0, 0]} isAnimationActive={animate}>
                         <LabelList dataKey="assistances" position="insideTop" formatter={formatNumber} style={barValueLabelStyle} />
                     </Bar>
                 </ComposedChart>
@@ -277,7 +361,7 @@ function AssistancesByHourChart({ rows, t }) {
 }
 
 
-function EffectiveClassesChart({ rows, t }) {
+function EffectiveClassesChart({ rows, t, animate = true }) {
     return (
         <ChartPanel title={t("weeklyReport.charts.effectiveClasses")}>
             <ResponsiveContainer>
@@ -287,10 +371,10 @@ function EffectiveClassesChart({ rows, t }) {
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={chartLegendStyle} />
-                    <Bar dataKey="effective_classes" stackId="classes" name={t("weeklyReport.metrics.effectiveClasses")} fill="#8a5cf6">
+                    <Bar dataKey="effective_classes" stackId="classes" name={t("weeklyReport.metrics.effectiveClasses")} fill="#8a5cf6" isAnimationActive={animate}>
                         <LabelList dataKey="effective_classes" position="center" formatter={formatNumber} style={barValueLabelStyle} />
                     </Bar>
-                    <Bar dataKey="not_attended_classes" stackId="classes" name={t("weeklyReport.metrics.notAttendedClasses")} fill="#94a3b8" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="not_attended_classes" stackId="classes" name={t("weeklyReport.metrics.notAttendedClasses")} fill="#94a3b8" radius={[4, 4, 0, 0]} isAnimationActive={animate}>
                         <LabelList dataKey="not_attended_classes" position="center" formatter={formatNumber} style={barValueLabelStyle} />
                     </Bar>
                 </ComposedChart>
@@ -352,7 +436,7 @@ function StaffTable({ rows, weeks, t }) {
                                         <TableCell key={`${row.key}-${week.week_start}`} align="center">
                                             {weekRow ? (
                                                 <strong>
-                                                    {formatNumber(weekRow.effective_classes)} / {formatNumber(weekRow.assistances)} / {formatPercent(weekRow.occupation_rate)}
+                                                    {formatNumber(weekRow.effective_classes)} / {formatNumber(weekRow.assistances)}
                                                 </strong>
                                             ) : (
                                                 <span style={{ color: "#9ca3af" }}>-</span>
@@ -392,6 +476,8 @@ export default function WeeklyReportPage() {
     const [report, setReport] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [exportingImage, setExportingImage] = useState(false);
+    const reportExportRef = useRef(null);
 
     const authHeaders = useMemo(() => ({
         headers: { Authorization: `Token ${token}` },
@@ -409,6 +495,7 @@ export default function WeeklyReportPage() {
     const selectedSite = sites.find((site) => String(site.id) === String(filters.site));
     const selectedStudio = studios.find((studio) => String(studio.id) === String(filters.studio));
     const reportScope = selectedStudio?.name || selectedSite?.name || t("dashboard.allSites");
+    const reportWeekLabel = `${formatDisplayDate(report?.date_range?.from || activeDateRange.date_from, t)} - ${formatDisplayDate(report?.date_range?.to || activeDateRange.date_to, t)}`;
 
     const weekRows = (report?.weeks || []).map((row) => ({
         ...row,
@@ -433,6 +520,7 @@ export default function WeeklyReportPage() {
         hour_label: formatHourLabel(row.hour),
         assistances: row.assistances || 0,
     }));
+    const chartAnimationActive = !exportingImage;
 
     const currentWeek = weekRows[weekRows.length - 1] || {};
 
@@ -549,6 +637,36 @@ export default function WeeklyReportPage() {
             date_to: nextWeekRange.date_to,
         });
         setPeriodNavigationVersion((v) => v + 1);
+    };
+
+    const downloadReportImage = async () => {
+        if (!reportExportRef.current || !report) return;
+        setExportingImage(true);
+        setError("");
+        let restoreCharts = () => {};
+        try {
+            await waitForReportPaint();
+            restoreCharts = await swapChartSvgsForImages(reportExportRef.current);
+            await waitForReportPaint();
+            const html2canvas = (await import("html2canvas")).default;
+            const canvas = await html2canvas(reportExportRef.current, {
+                backgroundColor: "#ffffff",
+                scale: 2,
+                useCORS: true,
+            });
+            const imageUrl = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.href = imageUrl;
+            link.download = buildReportFileName(reportScope, report?.trend_date_range?.from, report?.trend_date_range?.to);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            setError(err.message || t("weeklyReport.exportError"));
+        } finally {
+            restoreCharts();
+            setExportingImage(false);
+        }
     };
 
     return (
@@ -681,42 +799,79 @@ export default function WeeklyReportPage() {
                         {loading && <LinearProgress />}
                     </Paper>
 
-                    <div style={{ display: "grid", gap: "4px" }}>
-                        <Typography variant="h5" fontWeight={800}>
-                            {t("weeklyReport.title")}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            {reportScope} | {formatDisplayDate(report?.trend_date_range?.from, t)} - {formatDisplayDate(report?.trend_date_range?.to, t)}
-                        </Typography>
-                    </div>
+                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
+                        <div style={{ display: "grid", gap: "4px" }}>
+                            <Typography variant="h5" fontWeight={800}>
+                                {t("weeklyReport.title")}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {reportScope} | {formatDisplayDate(report?.trend_date_range?.from, t)} - {formatDisplayDate(report?.trend_date_range?.to, t)}
+                            </Typography>
+                        </div>
+                        <Button
+                            variant="outlined"
+                            startIcon={<DownloadIcon />}
+                            onClick={downloadReportImage}
+                            disabled={!report || loading || exportingImage}
+                        >
+                            {exportingImage ? t("weeklyReport.exportingImage") : t("weeklyReport.downloadImage")}
+                        </Button>
+                    </Stack>
 
-                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-                        <Paper style={{ padding: "16px" }}>
-                            <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("weeklyReport.metrics.attendedTrials")}</Typography>
-                            <Typography variant="h4" fontWeight={800}>{formatNumber(currentWeek.attended_trials)}</Typography>
-                        </Paper>
-                        <Paper style={{ padding: "16px" }}>
-                            <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("weeklyReport.metrics.convertedMembers")}</Typography>
-                            <Typography variant="h4" fontWeight={800}>{formatNumber(currentWeek.converted_members)}</Typography>
-                        </Paper>
-                        <Paper style={{ padding: "16px" }}>
-                            <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("weeklyReport.metrics.clientConversionRate")}</Typography>
-                            <Typography variant="h4" fontWeight={800}>{formatPercent(currentWeek.client_conversion_rate)}</Typography>
-                        </Paper>
-                        <Paper style={{ padding: "16px" }}>
-                            <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("common.occupancy")}</Typography>
-                            <Typography variant="h4" fontWeight={800}>{formatPercent(currentWeek.occupation_rate)}</Typography>
-                        </Paper>
-                    </div>
+                    <div ref={reportExportRef} style={{ display: "grid", gap: "16px", background: "#ffffff", padding: "16px" }}>
+                        <div
+                            style={{
+                                display: exportingImage ? "grid" : "none",
+                                justifyItems: "center",
+                                gap: "6px",
+                                textAlign: "center",
+                                padding: "8px 0 4px",
+                            }}
+                        >
+                                <img
+                                    src={benessLogo.src}
+                                    alt="Beness"
+                                    style={{ width: 132, height: "auto", display: "block" }}
+                                />
+                                <Typography variant="h5" fontWeight={900} style={{ lineHeight: 1.15 }}>
+                                    {reportScope}
+                                </Typography>
+                                <Typography variant="h6" fontWeight={800} style={{ lineHeight: 1.2 }}>
+                                    {t("weeklyReport.title")}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                                    {reportWeekLabel}
+                                </Typography>
+                        </div>
 
-                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 520px), 1fr))" }}>
-                        <OccupancyChart rows={weekRows} t={t} />
-                        <TrialClassesChart rows={weekRows} t={t} />
-                        <ConversionChart rows={weekRows} t={t} />
-                        <AssistancesChart rows={weekRows} t={t} />
-                        <AssistancesByHourChart rows={assistancesByHourRows} t={t} />
-                        <EffectiveClassesChart rows={weekRows} t={t} />
-                        <StaffTable rows={report?.staff} weeks={weekRows} t={t} />
+                        <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                            <Paper style={{ padding: "16px" }}>
+                                <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("weeklyReport.metrics.attendedTrials")}</Typography>
+                                <Typography variant="h4" fontWeight={800}>{formatNumber(currentWeek.attended_trials)}</Typography>
+                            </Paper>
+                            <Paper style={{ padding: "16px" }}>
+                                <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("weeklyReport.metrics.convertedMembers")}</Typography>
+                                <Typography variant="h4" fontWeight={800}>{formatNumber(currentWeek.converted_members)}</Typography>
+                            </Paper>
+                            <Paper style={{ padding: "16px" }}>
+                                <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("weeklyReport.metrics.clientConversionRate")}</Typography>
+                                <Typography variant="h4" fontWeight={800}>{formatPercent(currentWeek.client_conversion_rate)}</Typography>
+                            </Paper>
+                            <Paper style={{ padding: "16px" }}>
+                                <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("common.occupancy")}</Typography>
+                                <Typography variant="h4" fontWeight={800}>{formatPercent(currentWeek.occupation_rate)}</Typography>
+                            </Paper>
+                        </div>
+
+                        <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 520px), 1fr))" }}>
+                            <OccupancyChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                            <TrialClassesChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                            <ConversionChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                            <AssistancesChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                            <AssistancesByHourChart rows={assistancesByHourRows} t={t} animate={chartAnimationActive} />
+                            <EffectiveClassesChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                            <StaffTable rows={report?.staff} weeks={weekRows} t={t} />
+                        </div>
                     </div>
                 </div>
             </div>
