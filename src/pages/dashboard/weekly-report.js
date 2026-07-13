@@ -64,6 +64,13 @@ import {
 
 const STORAGE_KEY = "beness.dashboard.weeklyReport";
 const DEFAULT_PERIOD_MODE = "current_week";
+const EXPORT_IMAGE_WIDTH = 2500;
+const EXPORT_IMAGE_SCALE = 3;
+const EXPORT_TABLE_WIDTH = 820;
+const EXPORT_CHART_PANEL_HEIGHT = 380;
+const EXPORT_CHART_HEIGHT = 332;
+const EXPORT_CHART_GRID_GAP = 12;
+const EXPORT_CHART_GRID_HEIGHT = EXPORT_CHART_PANEL_HEIGHT * 3 + EXPORT_CHART_GRID_GAP * 2;
 
 
 const buildDefaultState = () => {
@@ -234,13 +241,21 @@ const swapChartSvgsForImages = async (container) => {
 };
 
 
-function ChartPanel({ title, children }) {
+function ChartPanel({ title, children, exportMode = false }) {
     return (
-        <Paper style={{ padding: "16px", display: "grid", gap: "12px", minHeight: 390 }}>
-            <Typography variant="subtitle1" fontWeight={800}>
+        <Paper style={{
+            padding: exportMode ? "10px" : "16px",
+            display: "grid",
+            gap: exportMode ? "6px" : "12px",
+            minHeight: exportMode ? 0 : 390,
+            height: exportMode ? EXPORT_CHART_PANEL_HEIGHT : "auto",
+            boxSizing: "border-box",
+            overflow: exportMode ? "hidden" : "visible",
+        }}>
+            <Typography variant="subtitle1" fontWeight={800} style={{ fontSize: exportMode ? 14 : undefined, lineHeight: 1.15 }}>
                 {title}
             </Typography>
-            <div style={{ width: "100%", height: 320 }}>
+            <div style={{ width: "100%", height: exportMode ? EXPORT_CHART_HEIGHT : 320, minHeight: exportMode ? EXPORT_CHART_HEIGHT : undefined }}>
                 {children}
             </div>
         </Paper>
@@ -248,13 +263,13 @@ function ChartPanel({ title, children }) {
 }
 
 
-function TrialClassesChart({ rows, t, animate = true }) {
+function TrialClassesChart({ rows, t, animate = true, exportMode = false }) {
     return (
-        <ChartPanel title={t("weeklyReport.charts.trials")}>
+        <ChartPanel title={t("weeklyReport.charts.trials")} exportMode={exportMode}>
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
-                    <XAxis dataKey="label" tick={chartText} />
+                    <XAxis dataKey="label" interval={0} tick={chartText} />
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
                     <Bar dataKey="attended_trials" name={t("weeklyReport.metrics.attendedTrials")} fill={completedColor} radius={[4, 4, 0, 0]} isAnimationActive={animate}>
@@ -267,13 +282,13 @@ function TrialClassesChart({ rows, t, animate = true }) {
 }
 
 
-function ConversionChart({ rows, t, animate = true }) {
+function ConversionChart({ rows, t, animate = true, exportMode = false }) {
     return (
-        <ChartPanel title={t("weeklyReport.charts.conversions")}>
+        <ChartPanel title={t("weeklyReport.charts.conversions")} exportMode={exportMode}>
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 24, bottom: 4, left: 0 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
-                    <XAxis dataKey="label" tick={chartText} />
+                    <XAxis dataKey="label" interval={0} tick={chartText} />
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={chartLegendStyle} />
@@ -290,13 +305,13 @@ function ConversionChart({ rows, t, animate = true }) {
 }
 
 
-function OccupancyChart({ rows, t, animate = true }) {
+function OccupancyChart({ rows, t, animate = true, exportMode = false }) {
     return (
-        <ChartPanel title={t("weeklyReport.charts.occupancy")}>
+        <ChartPanel title={t("weeklyReport.charts.occupancy")} exportMode={exportMode}>
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 24, bottom: 4, left: 0 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
-                    <XAxis dataKey="label" tick={chartText} />
+                    <XAxis dataKey="label" interval={0} tick={chartText} />
                     <YAxis tickFormatter={(value) => `${value}%`} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
                     <Line
@@ -323,13 +338,13 @@ function OccupancyChart({ rows, t, animate = true }) {
 }
 
 
-function AssistancesChart({ rows, t, animate = true }) {
+function AssistancesChart({ rows, t, animate = true, exportMode = false }) {
     return (
-        <ChartPanel title={t("weeklyReport.charts.attendance")}>
+        <ChartPanel title={t("weeklyReport.charts.attendance")} exportMode={exportMode}>
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
-                    <XAxis dataKey="label" tick={chartText} />
+                    <XAxis dataKey="label" interval={0} tick={chartText} />
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
                     <Bar dataKey="attendance_used" name={t("weeklyReport.metrics.assistances")} fill={completedColor} radius={[4, 4, 0, 0]} isAnimationActive={animate}>
@@ -342,9 +357,9 @@ function AssistancesChart({ rows, t, animate = true }) {
 }
 
 
-function AssistancesByHourChart({ rows, t, animate = true }) {
+function AssistancesByHourChart({ rows, t, animate = true, exportMode = false }) {
     return (
-        <ChartPanel title={t("weeklyReport.charts.assistancesByHour")}>
+        <ChartPanel title={t("weeklyReport.charts.assistancesByHour")} exportMode={exportMode}>
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
@@ -361,13 +376,13 @@ function AssistancesByHourChart({ rows, t, animate = true }) {
 }
 
 
-function EffectiveClassesChart({ rows, t, animate = true }) {
+function EffectiveClassesChart({ rows, t, animate = true, exportMode = false }) {
     return (
-        <ChartPanel title={t("weeklyReport.charts.effectiveClasses")}>
+        <ChartPanel title={t("weeklyReport.charts.effectiveClasses")} exportMode={exportMode}>
             <ResponsiveContainer>
                 <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 4, left: 0 }}>
                     <CartesianGrid stroke="#eef1f4" vertical={false} />
-                    <XAxis dataKey="label" tick={chartText} />
+                    <XAxis dataKey="label" interval={0} tick={chartText} />
                     <YAxis allowDecimals={false} tick={chartText} />
                     <ChartTooltip formatter={formatTooltipValue} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={chartLegendStyle} />
@@ -384,7 +399,7 @@ function EffectiveClassesChart({ rows, t, animate = true }) {
 }
 
 
-function StaffTable({ rows, weeks, t }) {
+function StaffTable({ rows, weeks, t, exportMode = false }) {
     const instructorRows = Object.values((rows || []).reduce((lookup, row) => {
         const key = row.staff_member_id || row.name || "unassigned";
         if (!lookup[key]) {
@@ -407,20 +422,28 @@ function StaffTable({ rows, weeks, t }) {
     ));
 
     return (
-        <Paper style={{ padding: "16px", gridColumn: "1 / -1" }}>
+        <Paper style={{
+            padding: exportMode ? "10px" : "16px",
+            gridColumn: exportMode ? "auto" : "1 / -1",
+            height: exportMode ? "100%" : "auto",
+            boxSizing: "border-box",
+            overflow: exportMode ? "hidden" : "visible",
+            display: exportMode ? "grid" : "block",
+            gridTemplateRows: exportMode ? "auto auto minmax(0, 1fr)" : undefined,
+        }}>
             <Typography variant="subtitle1" fontWeight={800} style={{ marginBottom: 12 }}>
                 {t("weeklyReport.tables.staff")}
             </Typography>
             <Typography variant="body2" color="text.secondary" style={{ marginTop: -6, marginBottom: 12 }}>
                 {t("weeklyReport.metrics.classesAssistances")}
             </Typography>
-            <TableContainer style={{ maxHeight: 440 }}>
+            <TableContainer style={{ maxHeight: exportMode ? "100%" : 440, overflow: exportMode ? "hidden" : undefined }}>
                 <Table size="small" stickyHeader>
                     <TableHead>
                         <TableRow>
-                            <TableCell>{t("common.instructor")}</TableCell>
+                            <TableCell style={{ fontSize: exportMode ? 14 : undefined, fontWeight: exportMode ? 800 : undefined }}>{t("common.instructor")}</TableCell>
                             {(weeks || []).map((week) => (
-                                <TableCell key={week.week_start} align="center">
+                                <TableCell key={week.week_start} align="center" style={{ fontSize: exportMode ? 14 : undefined, fontWeight: exportMode ? 800 : undefined }}>
                                     {formatShortWeekdayDate(week.week_start, t)}
                                 </TableCell>
                             ))}
@@ -429,11 +452,11 @@ function StaffTable({ rows, weeks, t }) {
                     <TableBody>
                         {instructorRows.map((row) => (
                             <TableRow key={row.key}>
-                                <TableCell>{row.name}</TableCell>
+                                <TableCell style={{ fontSize: exportMode ? 14 : undefined }}>{row.name}</TableCell>
                                 {(weeks || []).map((week) => {
                                     const weekRow = row.weeks[week.week_start];
                                     return (
-                                        <TableCell key={`${row.key}-${week.week_start}`} align="center">
+                                        <TableCell key={`${row.key}-${week.week_start}`} align="center" style={{ fontSize: exportMode ? 14 : undefined }}>
                                             {weekRow ? (
                                                 <strong>
                                                     {formatNumber(weekRow.effective_classes)} / {formatNumber(weekRow.assistances)}
@@ -448,7 +471,7 @@ function StaffTable({ rows, weeks, t }) {
                         ))}
                         {!instructorRows.length && (
                             <TableRow>
-                                <TableCell colSpan={(weeks || []).length + 1}>{t("common.noData")}</TableCell>
+                                <TableCell colSpan={(weeks || []).length + 1} style={{ fontSize: exportMode ? 14 : undefined }}>{t("common.noData")}</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
@@ -649,10 +672,15 @@ export default function WeeklyReportPage() {
             restoreCharts = await swapChartSvgsForImages(reportExportRef.current);
             await waitForReportPaint();
             const html2canvas = (await import("html2canvas")).default;
+            const exportHeight = Math.ceil(reportExportRef.current.scrollHeight);
             const canvas = await html2canvas(reportExportRef.current, {
                 backgroundColor: "#ffffff",
-                scale: 2,
+                scale: EXPORT_IMAGE_SCALE,
                 useCORS: true,
+                width: EXPORT_IMAGE_WIDTH,
+                height: exportHeight,
+                windowWidth: EXPORT_IMAGE_WIDTH,
+                windowHeight: exportHeight,
             });
             const imageUrl = canvas.toDataURL("image/png");
             const link = document.createElement("a");
@@ -818,7 +846,20 @@ export default function WeeklyReportPage() {
                         </Button>
                     </Stack>
 
-                    <div ref={reportExportRef} style={{ display: "grid", gap: "16px", background: "#ffffff", padding: "16px" }}>
+                    <div
+                        ref={reportExportRef}
+                        style={{
+                            display: "grid",
+                            gap: "16px",
+                            background: "#ffffff",
+                            padding: "16px",
+                            boxSizing: "border-box",
+                            width: exportingImage ? `${EXPORT_IMAGE_WIDTH}px` : "100%",
+                            height: "auto",
+                            overflow: "visible",
+                            gridTemplateRows: exportingImage ? "auto auto auto" : undefined,
+                        }}
+                    >
                         <div
                             style={{
                                 display: exportingImage ? "grid" : "none",
@@ -854,8 +895,12 @@ export default function WeeklyReportPage() {
                                 <Typography variant="h4" fontWeight={800}>{formatNumber(currentWeek.converted_members)}</Typography>
                             </Paper>
                             <Paper style={{ padding: "16px" }}>
-                                <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("weeklyReport.metrics.clientConversionRate")}</Typography>
-                                <Typography variant="h4" fontWeight={800}>{formatPercent(currentWeek.client_conversion_rate)}</Typography>
+                                <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("weeklyReport.metrics.assistances")}</Typography>
+                                <Typography variant="h4" fontWeight={800}>{formatNumber(currentWeek.attendance_used)}</Typography>
+                            </Paper>
+                            <Paper style={{ padding: "16px" }}>
+                                <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("weeklyReport.metrics.effectiveClasses")}</Typography>
+                                <Typography variant="h4" fontWeight={800}>{formatNumber(currentWeek.effective_classes)}</Typography>
                             </Paper>
                             <Paper style={{ padding: "16px" }}>
                                 <Typography variant="body2" color="text.secondary" fontWeight={700}>{t("common.occupancy")}</Typography>
@@ -863,15 +908,48 @@ export default function WeeklyReportPage() {
                             </Paper>
                         </div>
 
-                        <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 520px), 1fr))" }}>
-                            <OccupancyChart rows={weekRows} t={t} animate={chartAnimationActive} />
-                            <TrialClassesChart rows={weekRows} t={t} animate={chartAnimationActive} />
-                            <ConversionChart rows={weekRows} t={t} animate={chartAnimationActive} />
-                            <AssistancesChart rows={weekRows} t={t} animate={chartAnimationActive} />
-                            <AssistancesByHourChart rows={assistancesByHourRows} t={t} animate={chartAnimationActive} />
-                            <EffectiveClassesChart rows={weekRows} t={t} animate={chartAnimationActive} />
-                            <StaffTable rows={report?.staff} weeks={weekRows} t={t} />
-                        </div>
+                        {exportingImage ? (
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: `minmax(0, 1fr) ${EXPORT_TABLE_WIDTH}px`,
+                                    gap: "14px",
+                                    minHeight: 0,
+                                    height: EXPORT_CHART_GRID_HEIGHT,
+                                    flex: 1,
+                                    alignItems: "stretch",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: "grid",
+                                        gap: EXPORT_CHART_GRID_GAP,
+                                        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                                        gridTemplateRows: `repeat(3, ${EXPORT_CHART_PANEL_HEIGHT}px)`,
+                                        minHeight: 0,
+                                        height: EXPORT_CHART_GRID_HEIGHT,
+                                    }}
+                                >
+                                    <OccupancyChart rows={weekRows} t={t} animate={chartAnimationActive} exportMode />
+                                    <AssistancesChart rows={weekRows} t={t} animate={chartAnimationActive} exportMode />
+                                    <AssistancesByHourChart rows={assistancesByHourRows} t={t} animate={chartAnimationActive} exportMode />
+                                    <EffectiveClassesChart rows={weekRows} t={t} animate={chartAnimationActive} exportMode />
+                                    <TrialClassesChart rows={weekRows} t={t} animate={chartAnimationActive} exportMode />
+                                    <ConversionChart rows={weekRows} t={t} animate={chartAnimationActive} exportMode />
+                                </div>
+                                <StaffTable rows={report?.staff} weeks={weekRows} t={t} exportMode />
+                            </div>
+                        ) : (
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 520px), 1fr))" }}>
+                                <OccupancyChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                                <AssistancesChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                                <AssistancesByHourChart rows={assistancesByHourRows} t={t} animate={chartAnimationActive} />
+                                <EffectiveClassesChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                                <TrialClassesChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                                <ConversionChart rows={weekRows} t={t} animate={chartAnimationActive} />
+                                <StaffTable rows={report?.staff} weeks={weekRows} t={t} />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
