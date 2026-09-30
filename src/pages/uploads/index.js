@@ -6,6 +6,7 @@ import axios from "axios";
 import MainPage from "@/pages/mainPage";
 import useFetchToken from "@/components/useFetchUserId";
 import useAccess from "@/hooks/useAccess";
+import useI18n from "@/hooks/useI18n";
 import styles from "@/styles/tablePage.module.css";
 
 import Alert from "@mui/material/Alert";
@@ -47,7 +48,7 @@ const ImpactGrid = ({ impact }) => {
             <SummaryBox label="Modified Records" value={impact.current_records_to_update} />
             <SummaryBox label="Already Added" value={impact.current_records_unchanged} />
             <SummaryBox label="Current Records In File" value={impact.current_records_in_file} />
-            <SummaryBox label="Attendance Collisions" value={impact.natural_key_collisions} />
+            <SummaryBox label="Identifier Conflicts" value={impact.natural_key_collisions} />
             <SummaryBox label="Ambiguous Rows" value={impact.ambiguous_rows || 0} />
         </div>
     );
@@ -117,7 +118,9 @@ const importMetricLabels = {
     service_purchases_created: "Service Purchases Created",
     service_purchases_changed: "Service Purchases Changed",
     service_purchases_identical: "Service Purchases Identical",
-    service_purchase_ambiguous_rows: "Ambiguous Purchase Rows Skipped",
+    service_purchase_ambiguous_rows: "Ambiguous Purchase Rows",
+    service_purchase_pending_rows: "Purchase Rows Pending Review",
+    service_purchase_ignored_rows: "Purchase Rows Ignored By Previous Decision",
     scheduled_classes_created: "Scheduled Classes Created",
     scheduled_classes_changed: "Scheduled Classes Changed",
     scheduled_classes_identical: "Scheduled Classes Identical",
@@ -133,6 +136,7 @@ const roomCapacityKey = (row) => row.room_key || `${row.studio}::${row.room}`;
 
 export default function Uploads() {
     const token = useFetchToken();
+    const { t } = useI18n();
     const access = useAccess();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const canViewMoney = Boolean(access.capabilities?.can_view_money);
@@ -451,6 +455,35 @@ export default function Uploads() {
 
                 <div style={{ maxWidth: "980px", display: "grid", gap: "16px" }}>
                     {error && <Alert severity="error">{error}</Alert>}
+                    <Button component={Link} href="/uploads/purchase-matches" variant="outlined" style={{ justifySelf: "start" }}>
+                        {t("purchaseReview.title")}
+                    </Button>
+                    {importResult && (
+                        <Paper style={{ padding: "18px", display: "grid", gap: "12px" }}>
+                            <Alert severity={importResult.service_purchase_pending_rows ? "warning" : "success"}>
+                                {t(importResult.service_purchase_pending_rows ? "purchaseReview.uploadPending" : "purchaseReview.uploadComplete")}
+                                {" · "}{t("purchaseReview.import")}: {importResult.report_import_id}
+                            </Alert>
+                            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
+                                {Object.entries(importMetricLabels).filter(([key]) => importResult[key] !== undefined).map(([key, label]) => (
+                                    <SummaryBox key={key} label={label} value={importResult[key]} />
+                                ))}
+                            </div>
+                            <TableContainer>
+                                <Table size="small">
+                                    <TableHead><TableRow><TableCell>Lookup Table</TableCell><TableCell>Created</TableCell></TableRow></TableHead>
+                                    <TableBody>{Object.entries(importResult.new_lookups || {}).map(([key, value]) => (
+                                        <TableRow key={key}><TableCell style={{ textTransform: "capitalize" }}>{key.replaceAll("_", " ")}</TableCell><TableCell>{value}</TableCell></TableRow>
+                                    ))}</TableBody>
+                                </Table>
+                            </TableContainer>
+                            {Boolean(importResult.service_purchase_pending_rows) && <Alert severity="info">{t("purchaseReview.explanation")}</Alert>}
+                            {[retentionAutomation, clientMetricsAutomation, scheduleAutomation].filter((result) => result?.error).map((result, index) => (
+                                <Alert key={index} severity="warning">{result.error}</Alert>
+                            ))}
+                        </Paper>
+                    )}
+
 
                     <Paper style={{ padding: "18px", display: "grid", gap: "16px" }}>
                         <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
@@ -649,15 +682,10 @@ export default function Uploads() {
 
                     {preview && (
                         <>
+                            {preview.report_type === "sales_by_service" && <Alert severity="info">{t("purchaseReview.previewNote")}</Alert>}
                             {preview.import_context?.studio && (
                                 <Alert severity="info">
                                     This Sales by Service file will be imported as studio: {preview.import_context.studio}.
-                                </Alert>
-                            )}
-
-                            {importResult && (
-                                <Alert severity="success">
-                                    Import completed. Import ID: {importResult.report_import_id}
                                 </Alert>
                             )}
 
@@ -907,37 +935,6 @@ export default function Uploads() {
                                                     <TableRow key={row.row_number}>
                                                         <TableCell>{row.row_number}</TableCell>
                                                         <TableCell>{row.errors.join(", ")}</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                </Paper>
-                            )}
-
-                            {importResult && (
-                                <Paper style={{ padding: "18px" }}>
-                                    <h2 style={{ marginTop: 0 }}>Import Result</h2>
-                                    <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
-                                        {Object.entries(importMetricLabels)
-                                            .filter(([key]) => importResult[key] !== undefined)
-                                            .map(([key, label]) => (
-                                                <SummaryBox key={key} label={label} value={importResult[key]} />
-                                            ))}
-                                    </div>
-                                    <TableContainer style={{ marginTop: "16px" }}>
-                                        <Table size="small">
-                                            <TableHead>
-                                                <TableRow>
-                                                    <TableCell>Lookup Table</TableCell>
-                                                    <TableCell>Created</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {Object.entries(importResult.new_lookups).map(([key, value]) => (
-                                                    <TableRow key={key}>
-                                                        <TableCell style={{ textTransform: "capitalize" }}>{key.replaceAll("_", " ")}</TableCell>
-                                                        <TableCell>{value}</TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>

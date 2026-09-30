@@ -1,4 +1,5 @@
 const routePermissions = {
+    "/uploads/purchase-matches": { capability: "can_upload_data" },
     "/uploads": { capability: "can_upload_data" },
     "/imported": { capability: "can_upload_data" },
     "/datos/usuarios": { capability: "can_manage_users" },
