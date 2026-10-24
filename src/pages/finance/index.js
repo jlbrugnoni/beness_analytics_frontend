@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Head from "next/head";
-import { Alert, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import Link from "next/link";
+import { Alert, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
 import MainPage from "@/pages/mainPage";
 import useAccess from "@/hooks/useAccess";
 import useI18n from "@/hooks/useI18n";
@@ -25,6 +26,7 @@ export default function FinanceHome() {
         <Stack spacing={2} sx={{ p: 3, maxWidth: 1000 }}>
             <h1>{t("finance.title")}</h1>
             <Alert severity="info">{t("finance.stage")}</Alert>
+            {access.capabilities?.can_manage_finance_settings && <Button component={Link} href="/finance/configuration" variant="contained" sx={{ alignSelf: "flex-start" }}>{t("finance.config.title")}</Button>}
             {error && <Alert severity="error">{t(error)}</Alert>}
             {!error && !data && access.finance?.can_enter && <CircularProgress />}
             {data && !data.companies.length && <Typography>{t("finance.empty")}</Typography>}

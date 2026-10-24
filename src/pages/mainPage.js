@@ -74,7 +74,8 @@ export default function MainPage({ children }) {
         if (!requirement) return true;
         if (typeof requirement === "string") return permissions?.includes(requirement);
         if (requirement.permission) return permissions?.includes(requirement.permission);
-        if (requirement.finance) return Boolean(access.finance?.can_enter);
+        if (requirement.finance) return Boolean(access.finance?.can_enter &&
+            (!requirement.capability || access.capabilities?.[requirement.capability]));
         if (requirement.capability) return Boolean(access.capabilities?.[requirement.capability]);
         return true;
     };
