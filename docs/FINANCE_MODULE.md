@@ -12,8 +12,9 @@ Read the business rules, architecture, roadmap, decisions, discovery questions,
 and current progress before implementing finance screens. Maintain business
 definitions in the canonical folder rather than duplicating them here.
 
-Current stage: Phase 2.1 accepted; Phase 2.2 categories implemented and validated,
-client acceptance pending. Q-008 is resolved (D-032–035). Financial configuration
+Current stage: Phase 2.2 accepted; Phase 2.3 mapping discovery in progress.
+See backend PHASE_2_3_DISCOVERY.md / Q-009 for pending payment-label reliability
+questions. No mapping code or new source imports are implemented yet. Q-008 is resolved (D-032–035). Financial configuration
 supports audited company/account/terminal/category edits and shared starting
 catalogs maintained independently by company. See backend
 PHASE_2_2_DELIVERY.md for inherited privacy, boundaries and client tests.
