@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LANGUAGE_CHANGED_EVENT, LANGUAGE_STORAGE_KEY } from "@/i18n/translations";
+export const ACCESS_CHANGED_EVENT = "beness-access-changed";
 
 
 const defaultAccess = {
@@ -8,6 +9,7 @@ const defaultAccess = {
     allowed_sites: [],
     allowed_studios: [],
     has_global_access: false,
+    finance: { enabled: false, can_enter: false },
 };
 
 
@@ -33,9 +35,11 @@ const useAccess = () => {
         refreshAccess();
         window.addEventListener(LANGUAGE_CHANGED_EVENT, refreshAccess);
         window.addEventListener("storage", refreshAccess);
+        window.addEventListener(ACCESS_CHANGED_EVENT, refreshAccess);
         return () => {
             window.removeEventListener(LANGUAGE_CHANGED_EVENT, refreshAccess);
             window.removeEventListener("storage", refreshAccess);
+            window.removeEventListener(ACCESS_CHANGED_EVENT, refreshAccess);
         };
     }, []);
 
@@ -52,6 +56,7 @@ export const hasCapability = (capability) => Boolean(readAccess().capabilities?.
 export const storeAccess = (access) => {
     if (typeof window === "undefined") return;
     sessionStorage.setItem("access", JSON.stringify(access));
+    window.dispatchEvent(new Event(ACCESS_CHANGED_EVENT));
     if (access?.language) {
         sessionStorage.setItem(LANGUAGE_STORAGE_KEY, access.language);
         localStorage.setItem(LANGUAGE_STORAGE_KEY, access.language);

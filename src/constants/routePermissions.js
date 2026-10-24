@@ -1,4 +1,6 @@
 const routePermissions = {
+    "/finance": { finance: true },
+    "/settings/groups": { capability: "can_manage_users" },
     "/uploads/purchase-matches": { capability: "can_upload_data" },
     "/uploads": { capability: "can_upload_data" },
     "/imported": { capability: "can_upload_data" },

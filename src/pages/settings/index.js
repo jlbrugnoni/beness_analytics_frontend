@@ -88,6 +88,9 @@ export default function Settings() {
                                 <Link href="/datos/usuarios">
                                     <Button variant="outlined">{t("settings.openUsers")}</Button>
                                 </Link>
+                                <Link href="/settings/groups">
+                                    <Button variant="outlined" sx={{ ml: 1 }}>{t("access.groups")}</Button>
+                                </Link>
                             </div>
                         </Paper>
                     )}

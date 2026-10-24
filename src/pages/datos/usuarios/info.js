@@ -10,8 +10,12 @@ import EditIcon from "@mui/icons-material/Edit";
 import useFetchToken from "@/components/useFetchUserId";
 
 import Head from "next/head";
+import AccessSummary from "@/components/AccessSummary";
+import useI18n from "@/hooks/useI18n";
+import { capabilityNames } from "@/constants/accessCapabilities";
 
 export default function UserInfoPage() {
+    const { t } = useI18n();
     const router = useRouter();
     const token = useFetchToken();
     const { id } = router.query; // Get user ID from URL
@@ -43,14 +47,7 @@ export default function UserInfoPage() {
         if (id && token) fetchUserData();
     }, [id, token]);
 
-    const capabilityLabels = [
-        ["can_view_money", "View Money"],
-        ["can_upload_data", "Upload Data"],
-        ["can_edit_data", "Edit Data"],
-        ["can_reset_data", "Reset Data"],
-        ["can_manage_users", "Manage Users"],
-        ["can_view_admin_logs", "View Admin Logs"],
-    ];
+    const capabilityLabels = capabilityNames.map((name) => [name, t(`access.${name}`)]);
 
     return (
         <MainPage>
@@ -120,7 +117,7 @@ export default function UserInfoPage() {
                                 )}
                             </Stack>
 
-                            <Typography variant="h6" className={styles.infoLabel}>Capabilities:</Typography>
+                            <Typography variant="h6" className={styles.infoLabel}>Direct grants:</Typography>
                             <Stack direction="row" gap={1} flexWrap="wrap">
                                 {capabilityLabels.map(([key, label]) => (
                                     <Chip
@@ -133,6 +130,7 @@ export default function UserInfoPage() {
                                 ))}
                             </Stack>
 
+                            <AccessSummary access={accessProfile?.effective_access} />
                             <Typography variant="h6" className={styles.infoLabel}>Fecha de Registro:</Typography>
                             <Typography variant="body1">{new Date(user.date_joined).toLocaleDateString()}</Typography>
                         </CardContent>
