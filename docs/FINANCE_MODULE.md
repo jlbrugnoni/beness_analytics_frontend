@@ -12,13 +12,13 @@ Read the business rules, architecture, roadmap, decisions, discovery questions,
 and current progress before implementing finance screens. Maintain business
 definitions in the canonical folder rather than duplicating them here.
 
-Current stage: Phase 2.1 accepted; Phase 2.2 category discovery in progress.
-Category defaults are pending client answers in backend Q-008 / PHASE_2_2_DISCOVERY.md. Financial configuration UI supports audited
-company/account/terminal edits, reference opening balance and statement expectation.
-See backend docs/finance/PHASE_2_1_DELIVERY.md for scope and client tests, and
-INITIAL_CONFIGURATION.md for the supplied DR terminal/rate/savings definitions.
-Categories, fee/tax rules, imports, calculated balances and results are later work.
-Current branch in both repositories: feature/finance-phase-2.
+Current stage: Phase 2.1 accepted; Phase 2.2 categories implemented and validated,
+client acceptance pending. Q-008 is resolved (D-032–035). Financial configuration
+supports audited company/account/terminal/category edits and shared starting
+catalogs maintained independently by company. See backend
+PHASE_2_2_DELIVERY.md for inherited privacy, boundaries and client tests.
+Source/payment mappings, fee/tax rules, imports, calculated balances and results
+remain later work. Current branch in both repositories: feature/finance-phase-2.
 
 Use the same phase branch name in both repositories. Delivery handoffs contain
 What I did and What you should test, with client acceptance recorded separately

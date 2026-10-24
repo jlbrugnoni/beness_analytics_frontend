@@ -7,8 +7,9 @@ import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogAct
 import MainPage from "@/pages/mainPage";
 import useAccess from "@/hooks/useAccess";
 import useI18n from "@/hooks/useI18n";
+import CategoryConfiguration from "@/components/finance/CategoryConfiguration";
 
-const sections = ["companies", "accounts", "terminals"];
+const sections = ["companies", "accounts", "terminals", "categories"];
 const emptyData = { companies: [], accounts: [], terminals: [], sites: [], studios: [] };
 const headers = () => ({ headers: { Authorization: `Token ${sessionStorage.getItem("token")}` } });
 const api = (path) => `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/finance/${path}/`;
@@ -105,7 +106,7 @@ export default function FinanceConfiguration() {
     ] });
     const check = (key) => <FormControlLabel label={t(`finance.config.${key}`)} control={<Switch
         checked={Boolean(form?.[key])} onChange={(_, checked) => set(key, checked)} />} />;
-    const accountTabsBlocked = section !== "companies" && !canSeeAccounts;
+    const accountTabsBlocked = ["accounts", "terminals"].includes(section) && !canSeeAccounts;
     const rows = data[section];
     return <MainPage><Head><title>{t("finance.config.title")} | Beness Analytics</title></Head>
         <Stack spacing={2} sx={{ p: { xs: 2, md: 3 }, maxWidth: 1100 }}>
@@ -119,7 +120,10 @@ export default function FinanceConfiguration() {
                 </Tabs>
                 {feedback && <Alert severity="success">{feedback}</Alert>}
                 {loadError && <Alert severity="error" action={<Button onClick={load}>{t("access.reload")}</Button>}>{t("finance.config.error")}</Alert>}
-                {loading ? <CircularProgress /> : accountTabsBlocked ? <Alert severity="info">{t("finance.config.accountAccess")}</Alert> : <>
+                {loading ? <CircularProgress /> : section === "categories" ? <CategoryConfiguration companies={data.companies}
+                    sites={data.sites} sensitiveAccess={Boolean(access.capabilities?.can_view_sensitive_finance)}
+                    onCompanyUpdated={(company) => setData((old) => ({ ...old, companies: old.companies.map((item) => item.id === company.id ? company : item) }))} />
+                    : accountTabsBlocked ? <Alert severity="info">{t("finance.config.accountAccess")}</Alert> : <>
                     <Button variant="contained" sx={{ alignSelf: "flex-start" }} disabled={loadError || (section === "companies" && !data.sites.length)} onClick={() => open(null)}>{t(`finance.config.add.${section}`)}</Button>
                     {section === "companies" && !data.sites.length && <Alert severity="info">{t("finance.config.siteAccess")}</Alert>}
                     {!loadError && rows.length === 0 && <Typography>{t("finance.config.empty")}</Typography>}
