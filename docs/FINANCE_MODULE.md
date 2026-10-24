@@ -12,8 +12,8 @@ Read the business rules, architecture, roadmap, decisions, discovery questions,
 and current progress before implementing finance screens. Maintain business
 definitions in the canonical folder rather than duplicating them here.
 
-Current stage: Phase 1 accepted; Phase 2.1 accounts/terminals implemented and
-validated, client review pending. Financial configuration UI supports audited
+Current stage: Phase 2.1 accepted; Phase 2.2 category discovery in progress.
+Category defaults are pending client answers in backend Q-008 / PHASE_2_2_DISCOVERY.md. Financial configuration UI supports audited
 company/account/terminal edits, reference opening balance and statement expectation.
 See backend docs/finance/PHASE_2_1_DELIVERY.md for scope and client tests, and
 INITIAL_CONFIGURATION.md for the supplied DR terminal/rate/savings definitions.
