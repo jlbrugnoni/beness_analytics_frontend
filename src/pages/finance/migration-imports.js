@@ -4,6 +4,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import MainPage from "@/pages/mainPage";
+import WorkbookPayments from "@/components/finance/WorkbookPayments";
 import useAccess from "@/hooks/useAccess";
 import useI18n from "@/hooks/useI18n";
 
@@ -95,6 +96,7 @@ export default function MigrationImports() {
                     {canImport && <Button disabled={busy} onClick={download}>{label("download")}</Button>}
                     {rowsLoading ? <CircularProgress /> : !rows.count ? <Typography>{label("noScope")}</Typography> : <TableContainer><Table size="small"><TableHead><TableRow>{["sheet", "row", "date", "amount", "description", "expense_period", "operation_date", "category", "location", "issues", "source"].map((key) => <TableCell key={key}>{label(key === "operation_date" ? "operationDate" : key)}</TableCell>)}</TableRow></TableHead><TableBody>{rows.results.map((row) => <TableRow key={row.id}><TableCell>{row.sheet}</TableCell><TableCell>{row.source_row}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{row.bank_date || "—"}</TableCell><TableCell>{row.amount ?? "—"}</TableCell><TableCell sx={{ minWidth: 180 }}>{row.parsed.manual_description || "—"}</TableCell><TableCell>{row.parsed.expense_period || "—"}</TableCell><TableCell>{row.operation_date || "—"}</TableCell><TableCell>{row.parsed.category || "—"}{row.parsed.subcategory && ` / ${row.parsed.subcategory}`}</TableCell><TableCell>{row.parsed.location || "—"}</TableCell><TableCell sx={{ minWidth: 230 }}>{row.issues.map((issue, index) => <Typography variant="body2" key={index}>{issueText(issue)}</Typography>)}</TableCell><TableCell><Button onClick={() => setDetail(row)}>{label("source")}</Button></TableCell></TableRow>)}</TableBody></Table></TableContainer>}
                     {controls(rows, page, setPage, rowsLoading)}
+                    <WorkbookPayments key={batch.id} batch={batch} />
                 </Stack></Paper>}
             </>}
         </>}
