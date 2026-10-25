@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Head from "next/head";
 import Link from "next/link";
-import { Alert, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
 import MainPage from "@/pages/mainPage";
 import useAccess from "@/hooks/useAccess";
 import useI18n from "@/hooks/useI18n";
@@ -29,7 +29,10 @@ export default function FinanceHome() {
             {access.capabilities?.can_manage_finance_settings && <Button component={Link} href="/finance/configuration" variant="contained" sx={{ alignSelf: "flex-start" }}>{t("finance.config.title")}</Button>}
             {access.capabilities?.can_view_finance_bank_accounts && access.capabilities?.can_view_sensitive_finance && <Button component={Link} href="/finance/imports" variant="outlined" sx={{ alignSelf: "flex-start" }}>{t("finance.import.title")}</Button>}
             {access.capabilities?.can_view_sensitive_finance && <Button component={Link} href="/finance/sales-imports" variant="outlined" sx={{ alignSelf: "flex-start" }}>{t("finance.sales.title")}</Button>}
-            {access.capabilities?.can_view_finance_bank_accounts && access.capabilities?.can_view_sensitive_finance && <Button component={Link} href="/finance/migration-imports" variant="outlined" sx={{ alignSelf: "flex-start" }}>{t("finance.migration.title")}</Button>}
+            {access.capabilities?.can_view_finance_bank_accounts && access.capabilities?.can_view_sensitive_finance && <>
+                <Button component={Link} href="/finance/payment-imports" variant="outlined" sx={{ alignSelf: "flex-start" }}>{t("finance.receipts.title")}</Button>
+                <Box component="details"><Box component="summary" sx={{ cursor: "pointer" }}>{t("finance.receipts.initialSetup")}</Box><Typography sx={{ my: 1 }}>{t("finance.receipts.migrationHelp")}</Typography><Button component={Link} href="/finance/migration-imports" variant="outlined">{t("finance.migration.title")}</Button></Box>
+            </>}
             {error && <Alert severity="error">{t(error)}</Alert>}
             {!error && !data && access.finance?.can_enter && <CircularProgress />}
             {data && !data.companies.length && <Typography>{t("finance.empty")}</Typography>}

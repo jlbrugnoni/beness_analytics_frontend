@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import useAccess from "@/hooks/useAccess";
 import axios from "axios";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import useI18n from "@/hooks/useI18n";
@@ -6,6 +8,8 @@ import useI18n from "@/hooks/useI18n";
 // A derived view of the saved workbook. Loading this panel never posts payments.
 export default function WorkbookPayments({ batch }) {
     const { t } = useI18n();
+    const router = useRouter(); const access = useAccess();
+    const [preparing, setPreparing] = useState(false);
     const label = (key) => t(`finance.payments.${key}`);
     const [opened, setOpened] = useState(false);
     const [scope, setScope] = useState("selected");
@@ -30,6 +34,11 @@ export default function WorkbookPayments({ batch }) {
             .finally(() => { if (active) setPending(false); });
         return () => { active = false; };
     }, [batch.id, opened, scope, review, invoice, page, t]);
+    const prepare = async () => {
+        setPreparing(true); setError("");
+        try { const { data: saved } = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/finance/payment-imports/from-migration/`, { migration_batch: batch.id, scope }, { headers: { Authorization: `Token ${sessionStorage.getItem("token")}` } }); await router.push(`/finance/payment-imports?batch=${saved.id}`); }
+        catch { setError(label("error")); } finally { setPreparing(false); }
+    };
     const issue = (entry) => `${label(`issue.${entry.code}`)} (${label(entry.field)})`;
     const value = (entry) => typeof entry === "boolean" ? label(entry ? "yes" : "no") : entry === "" ? label("empty") : entry ?? "—";
     const summary = data?.filtered_summary;
@@ -50,6 +59,7 @@ export default function WorkbookPayments({ batch }) {
                 <Typography>{label("dates")}: {data.summary.first_date || "—"} – {data.summary.last_date || "—"} · {label("allRows")}: {data.summary.rows}</Typography>
                 <Typography>{label("filtered")}: {summary.rows} · {label("sourceTotal")}: {summary.amount_total} DOP · {label("issues")}: {summary.review_rows} · {label("missingNumbers")}: {summary.missing_numbers}</Typography>
                 <Typography variant="body2">{label("totalsHelp")}</Typography>
+                {access.capabilities?.can_import_finance && !data.file_issues.length && <><Typography variant="body2">{label("prepareHelp")}</Typography><Button variant="outlined" disabled={pending || preparing} onClick={prepare}>{label("prepare")}</Button></>}
                 {!data.count ? <Typography>{label("noRows")}</Typography> : <TableContainer><Table size="small"><TableHead><TableRow>{["source_row", "date", "number", "invoice_code", "amount", "original_method", "method", "location", "invoiceGroup", "issues", "source"].map((key) => <TableCell key={key}>{label(key)}</TableCell>)}</TableRow></TableHead><TableBody>{data.results.map((row) => <TableRow key={row.source_row}>
                     <TableCell>{row.source_row}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{row.date || "—"}</TableCell><TableCell>{row.number || "—"}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{row.invoice_code || "—"}</TableCell><TableCell>{row.amount ?? "—"}</TableCell><TableCell>{row.original_method || "—"}</TableCell><TableCell>{row.method || "—"}</TableCell><TableCell>{row.location || "—"}</TableCell><TableCell>{row.invoice_code ? `${row.invoice_payment_rows} / ${row.invoice_payment_total}` : "—"}</TableCell><TableCell sx={{ minWidth: 240 }}>{row.issues.length ? row.issues.map((entry, index) => <Typography variant="body2" key={index}>{issue(entry)}</Typography>) : label("noIssues")}</TableCell><TableCell><Button onClick={() => setDetail(row)}>{label("source")}</Button></TableCell>
                 </TableRow>)}</TableBody></Table></TableContainer>}

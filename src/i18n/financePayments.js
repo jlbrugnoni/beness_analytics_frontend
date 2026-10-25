@@ -1,6 +1,8 @@
 export const financePaymentTranslations = {
     "en": {
         "title": "Alegra payment preview",
+        "prepare": "Prepare shared payment import",
+        "prepareHelp": "Prepare all payments for the chosen date scope. Invoice and review filters do not limit this selection. You will review the plan before creating financial receipts.",
         "help": "Inspect payments preserved in the Alegra_adm worksheet of this saved workbook. No new upload is needed.",
         "open": "Show Alegra payments",
         "previewOnly": "Source preview only. No payments, sales, bank transactions or confirmed invoice links are created.",
@@ -55,6 +57,7 @@ export const financePaymentTranslations = {
         "formula": "Formula",
         "originalCells": "Original Excel cell evidence",
         "issue": {
+            "payment_status_review": "Payment status needs review before import.",
             "invalid_date": "Missing or invalid payment date.",
             "invalid_amount": "A positive valid payment amount is required.",
             "missing_payment_number": "Payment number is missing; identity needs review.",
@@ -68,11 +71,17 @@ export const financePaymentTranslations = {
             "review_flag_unrecognized": "Previous review flag is unrecognized.",
             "formula_error": "Excel saved a formula error.",
             "cell_error": "Excel saved a cell error.",
-            "formula_cache_missing": "Formula has no saved result."
-        }
+            "formula_cache_missing": "Formula has no saved result.",
+            "currency_review": "Source currency is not DOP; review required."
+        },
+        "currency": "Currency",
+        "customer": "Customer name",
+        "customer_id": "Customer ID"
     },
     "es": {
         "title": "Vista previa de pagos de Alegra",
+        "prepare": "Preparar importación compartida de pagos",
+        "prepareHelp": "Prepara todos los pagos del alcance de fechas elegido. Los filtros de factura y revisión no limitan esta selección. Revisarás el plan antes de registrar cobros financieros.",
         "help": "Revisa los pagos de la hoja Alegra_adm conservada en este archivo. No hace falta volver a subirlo.",
         "open": "Mostrar pagos de Alegra",
         "previewOnly": "Solo vista previa del origen. No se crean pagos, ventas, movimientos bancarios ni vínculos financieros confirmados.",
@@ -127,6 +136,7 @@ export const financePaymentTranslations = {
         "formula": "Fórmula",
         "originalCells": "Evidencia original de celdas de Excel",
         "issue": {
+            "payment_status_review": "El estado del pago requiere revisión antes del registro.",
             "invalid_date": "Fecha de pago ausente o no válida.",
             "invalid_amount": "Se requiere un importe de pago positivo y válido.",
             "missing_payment_number": "Falta el número de pago; hay que revisar su identidad.",
@@ -140,7 +150,11 @@ export const financePaymentTranslations = {
             "review_flag_unrecognized": "Marca de revisión anterior no reconocida.",
             "formula_error": "Excel guardó un error de fórmula.",
             "cell_error": "Excel guardó un error de celda.",
-            "formula_cache_missing": "La fórmula no tiene resultado guardado."
-        }
+            "formula_cache_missing": "La fórmula no tiene resultado guardado.",
+            "currency_review": "La moneda de origen no es DOP; requiere revisión."
+        },
+        "currency": "Moneda",
+        "customer": "Nombre de cliente",
+        "customer_id": "ID de cliente"
     }
 };
