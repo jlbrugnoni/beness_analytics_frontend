@@ -13,7 +13,8 @@ and current progress before implementing finance screens. Maintain business
 definitions in the canonical folder rather than duplicating them here.
 
 Current stage: Phases 0–2 and Phases 3.1–3.2 accepted (D-051, 2026-10-25).
-Phase 3.3.1 Alegra source previews are implemented; client acceptance pending.
+Phase 3.3.1 Alegra source previews accepted (D-056). Phase 3.3.2 sales posting
+discovery is in progress; see backend PHASE_3_3_2_DISCOVERY.md and Q-014.
 Q-013 answered (D-052–055), exact cancellation label pending. See backend
 PHASE_3_3_1_DELIVERY.md for implementation, limits and client test steps.
 See backend PHASE_3_2_DELIVERY.md for current behavior, tests and client steps.
