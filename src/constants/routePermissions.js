@@ -1,4 +1,5 @@
 const routePermissions = {
+    "/finance/imports": { finance: true, capability: "can_view_finance_bank_accounts" },
     "/finance/configuration": { finance: true, capability: "can_manage_finance_settings" },
     "/finance": { finance: true },
     "/settings/groups": { capability: "can_manage_users" },

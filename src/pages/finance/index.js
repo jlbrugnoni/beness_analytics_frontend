@@ -27,6 +27,7 @@ export default function FinanceHome() {
             <h1>{t("finance.title")}</h1>
             <Alert severity="info">{t("finance.stage")}</Alert>
             {access.capabilities?.can_manage_finance_settings && <Button component={Link} href="/finance/configuration" variant="contained" sx={{ alignSelf: "flex-start" }}>{t("finance.config.title")}</Button>}
+            {access.capabilities?.can_view_finance_bank_accounts && access.capabilities?.can_view_sensitive_finance && <Button component={Link} href="/finance/imports" variant="outlined" sx={{ alignSelf: "flex-start" }}>{t("finance.import.title")}</Button>}
             {error && <Alert severity="error">{t(error)}</Alert>}
             {!error && !data && access.finance?.can_enter && <CircularProgress />}
             {data && !data.companies.length && <Typography>{t("finance.empty")}</Typography>}
