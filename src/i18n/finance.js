@@ -2,10 +2,13 @@ import { financeConfigurationTranslations } from "./financeConfiguration";
 
 import { financeCategoryTranslations } from "./financeCategories";
 
+import { financeMappingTranslations } from "./financeMappings";
+
 export const financeTranslations = {
     en: {
         ...financeConfigurationTranslations.en,
         ...financeCategoryTranslations.en,
+        ...financeMappingTranslations.en,
         "nav.finance": "Finance", "finance.title": "Finance",
         "finance.foundation": "Financial workspace",
         "finance.stage": "Your available companies are listed below. Transaction imports and monthly results are not available yet.",
@@ -37,6 +40,7 @@ export const financeTranslations = {
     es: {
         ...financeConfigurationTranslations.es,
         ...financeCategoryTranslations.es,
+        ...financeMappingTranslations.es,
         "nav.finance": "Finanzas", "finance.title": "Finanzas",
         "finance.foundation": "Espacio financiero",
         "finance.stage": "Tus empresas disponibles aparecen a continuación. Las importaciones de movimientos y los resultados mensuales aún no están disponibles.",

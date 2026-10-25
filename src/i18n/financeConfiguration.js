@@ -1,7 +1,7 @@
 export const financeConfigurationTranslations = {
     en: {
         "finance.config.title": "Financial configuration", "finance.config.back": "Back to Finance",
-        "finance.config.intro": "Manage companies, accounts, terminals and categories. Fee rules, imports and calculated balances will follow in later steps.",
+        "finance.config.intro": "Manage companies, accounts, terminals, categories and source mappings. Fee rules, imports and calculated balances will follow in later steps.",
         "finance.config.companies": "Companies", "finance.config.accounts": "Accounts", "finance.config.terminals": "Terminals",
         "finance.config.add.companies": "Add company", "finance.config.add.accounts": "Add account", "finance.config.add.terminals": "Add terminal",
         "finance.config.edit": "Edit", "finance.config.save": "Save", "finance.config.cancel": "Cancel",
@@ -26,7 +26,7 @@ export const financeConfigurationTranslations = {
     },
     es: {
         "finance.config.title": "Configuración financiera", "finance.config.back": "Volver a Finanzas",
-        "finance.config.intro": "Gestiona empresas, cuentas, terminales y categorías. Las comisiones, importaciones y saldos calculados llegarán en los siguientes pasos.",
+        "finance.config.intro": "Gestiona empresas, cuentas, terminales, categorías y equivalencias de origen. Las comisiones, importaciones y saldos calculados llegarán en los siguientes pasos.",
         "finance.config.companies": "Empresas", "finance.config.accounts": "Cuentas", "finance.config.terminals": "Terminales",
         "finance.config.add.companies": "Añadir empresa", "finance.config.add.accounts": "Añadir cuenta", "finance.config.add.terminals": "Añadir terminal",
         "finance.config.edit": "Editar", "finance.config.save": "Guardar", "finance.config.cancel": "Cancelar",

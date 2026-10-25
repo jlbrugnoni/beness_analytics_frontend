@@ -8,8 +8,9 @@ import MainPage from "@/pages/mainPage";
 import useAccess from "@/hooks/useAccess";
 import useI18n from "@/hooks/useI18n";
 import CategoryConfiguration from "@/components/finance/CategoryConfiguration";
+import SourceMappingConfiguration from "@/components/finance/SourceMappingConfiguration";
 
-const sections = ["companies", "accounts", "terminals", "categories"];
+const sections = ["companies", "accounts", "terminals", "categories", "mappings"];
 const emptyData = { companies: [], accounts: [], terminals: [], sites: [], studios: [] };
 const headers = () => ({ headers: { Authorization: `Token ${sessionStorage.getItem("token")}` } });
 const api = (path) => `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/finance/${path}/`;
@@ -120,7 +121,10 @@ export default function FinanceConfiguration() {
                 </Tabs>
                 {feedback && <Alert severity="success">{feedback}</Alert>}
                 {loadError && <Alert severity="error" action={<Button onClick={load}>{t("access.reload")}</Button>}>{t("finance.config.error")}</Alert>}
-                {loading ? <CircularProgress /> : section === "categories" ? <CategoryConfiguration companies={data.companies}
+                {loading ? <CircularProgress /> : section === "mappings" ? <SourceMappingConfiguration companies={data.companies}
+                    sites={data.sites} studios={data.studios} paymentMethods={data.mindbody_payment_methods}
+                    onCompanyUpdated={(company) => setData((old) => ({ ...old, companies: old.companies.map((item) => item.id === company.id ? company : item) }))} />
+                    : section === "categories" ? <CategoryConfiguration companies={data.companies}
                     sites={data.sites} sensitiveAccess={Boolean(access.capabilities?.can_view_sensitive_finance)}
                     onCompanyUpdated={(company) => setData((old) => ({ ...old, companies: old.companies.map((item) => item.id === company.id ? company : item) }))} />
                     : accountTabsBlocked ? <Alert severity="info">{t("finance.config.accountAccess")}</Alert> : <>
