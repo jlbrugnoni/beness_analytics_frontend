@@ -1,3 +1,4 @@
+import { financeMigrationTranslations } from "./financeMigration";
 import { financeSalesPostingTranslations } from "./financeSalesPosting";
 import { financeSalesTranslations } from "./financeSales";
 import { financeConfigurationTranslations } from "./financeConfiguration";
@@ -13,6 +14,7 @@ import { financePostingTranslations } from "./financePosting";
 
 export const financeTranslations = {
     en: {
+        ...Object.fromEntries(Object.entries(financeMigrationTranslations.en).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.migration.${key}.${code}`, text]) : [[`finance.migration.${key}`, value]])),
         ...financeConfigurationTranslations.en,
         ...financeCategoryTranslations.en,
         ...financeMappingTranslations.en,
@@ -50,6 +52,7 @@ export const financeTranslations = {
         "access.can_view_sensitive_finance": "View sensitive financial detail",
     },
     es: {
+        ...Object.fromEntries(Object.entries(financeMigrationTranslations.es).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.migration.${key}.${code}`, text]) : [[`finance.migration.${key}`, value]])),
         ...financeConfigurationTranslations.es,
         ...financeCategoryTranslations.es,
         ...financeMappingTranslations.es,

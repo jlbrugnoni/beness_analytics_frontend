@@ -29,6 +29,7 @@ export default function FinanceHome() {
             {access.capabilities?.can_manage_finance_settings && <Button component={Link} href="/finance/configuration" variant="contained" sx={{ alignSelf: "flex-start" }}>{t("finance.config.title")}</Button>}
             {access.capabilities?.can_view_finance_bank_accounts && access.capabilities?.can_view_sensitive_finance && <Button component={Link} href="/finance/imports" variant="outlined" sx={{ alignSelf: "flex-start" }}>{t("finance.import.title")}</Button>}
             {access.capabilities?.can_view_sensitive_finance && <Button component={Link} href="/finance/sales-imports" variant="outlined" sx={{ alignSelf: "flex-start" }}>{t("finance.sales.title")}</Button>}
+            {access.capabilities?.can_view_finance_bank_accounts && access.capabilities?.can_view_sensitive_finance && <Button component={Link} href="/finance/migration-imports" variant="outlined" sx={{ alignSelf: "flex-start" }}>{t("finance.migration.title")}</Button>}
             {error && <Alert severity="error">{t(error)}</Alert>}
             {!error && !data && access.finance?.can_enter && <CircularProgress />}
             {data && !data.companies.length && <Typography>{t("finance.empty")}</Typography>}

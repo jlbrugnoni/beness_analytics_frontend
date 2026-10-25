@@ -15,8 +15,10 @@ definitions in the canonical folder rather than duplicating them here.
 Current stage: Phases 0–2 and Phases 3.1–3.2 accepted (D-051, 2026-10-25).
 Phase 3.3.1 Alegra source previews accepted (D-056). Phase 3.3.2 sales posting,
 cancellation/replacement review, manual assignments and undo accepted (D-059).
-Phase 3.4 migration discovery is in progress: see backend PHASE_3_4_DISCOVERY.md
-and Q-015. PHASE_3_3_2_DELIVERY.md documents the accepted posting behavior.
+Phase 3.4.1 historical XLSX previews are implemented; client acceptance pending.
+See backend PHASE_3_4_1_DELIVERY.md. Q-015 answered (D-060–063): September 2026
+pilot, unknown cash/bank provenance and no split rows. Current saved full master
+and September 14–30 bank-report paths remain pending. PHASE_3_3_2_DELIVERY.md documents the accepted posting behavior.
 Q-014 answered (D-057–058): Anulada confirmed; cancellation may keep payment.
 Q-013 answered (D-052–055). See backend
 PHASE_3_3_1_DELIVERY.md for implementation, limits and client test steps.
@@ -31,7 +33,9 @@ and undo actions now create or reverse financial bank movements with history.
 Alegra sales previews group invoices/items; separate posting actions record sales
 and reviewed cancellations. Manual studio/channel decisions and no-refund or
 replacement treatment preserve source facts and history. Expense classification,
-reconciliation, calculated balances and monthly results remain future work. Spain aliases and exact Caixa commercial
+reconciliation, calculated balances and monthly results remain future work.
+Enriched workbook previews preserve legacy fields and formula/cache issues without
+financial posting; account/provenance decisions and pilot migration follow. Spain aliases and exact Caixa commercial
 terms remain unguessed. Completed-month pilot approach is accepted; exact month
 will be chosen during migration preparation.
 
