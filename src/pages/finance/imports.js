@@ -6,6 +6,7 @@ import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, Dial
     MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import MainPage from "@/pages/mainPage";
 import useAccess from "@/hooks/useAccess";
+import BankPostingPanel from "@/components/finance/BankPostingPanel";
 import useI18n from "@/hooks/useI18n";
 
 const api = (path) => `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/finance/${path}`;
@@ -148,6 +149,7 @@ export default function BankImports() {
                                 <Typography fontWeight={600}>#{batch.id} · {batch.file_name}</Typography>
                                 <Typography variant="body2">{new Date(batch.created_at).toLocaleString()} · {batch.provider} · {label("valid")}: {batch.summary.valid_rows} · {label("invalid")}: {batch.summary.invalid_rows}</Typography>
                                 <Chip size="small" sx={{ alignSelf: "flex-start" }} label={label(`status.${batch.status}`)} />
+                                {batch.status !== "failed" && <Chip size="small" sx={{ alignSelf: "flex-start" }} label={t(`finance.posting.status.${batch.processing_status || "not_imported"}`)} />}
                             </Stack>
                             <Button disabled={busy} onClick={() => selectBatch(batch)}>{label("open")}</Button>
                         </Stack>
@@ -168,6 +170,10 @@ export default function BankImports() {
                         <Typography>{label("valid")}: {summary.valid_rows} · {label("invalid")}: {summary.invalid_rows} · {label("repeated")}: {summary.repeated_occurrences}</Typography>
                         <Typography variant="body2">{label("coverageHelp")}</Typography>
                         {canImport && <Button disabled={busy} onClick={download}>{label("download")}</Button>}
+                        <BankPostingPanel key={selected.id} batch={selected} onProcessingUpdated={(id, status) => {
+                            setHistory((old) => ({ ...old, results: old.results.map((item) => item.id === id ? { ...item, processing_status: status } : item) }));
+                            setSelected((old) => old?.id === id ? { ...old, processing_status: status } : old);
+                        }} />
                         <TextField select label={label("rowFilter")} value={kind} onChange={(event) => { setKind(event.target.value); setRowsPage(1); }}>
                             {["data", "invalid", "all"].map((key) => <MenuItem key={key} value={key}>{label(`filter.${key}`)}</MenuItem>)}
                         </TextField>

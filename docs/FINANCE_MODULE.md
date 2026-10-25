@@ -12,21 +12,24 @@ Read the business rules, architecture, roadmap, decisions, discovery questions,
 and current progress before implementing finance screens. Maintain business
 definitions in the canonical folder rather than duplicating them here.
 
-Current stage: Phase 2.3 accepted (D-039); Phase 2.4 accepted (D-042); Phase 3.1 accepted (D-048); Phase 3.2 commit/overlap/undo discovery underway. Q-009 is answered (D-037–038). Financial configuration
-supports source aliases and a test area for studio/channel interpretation and
-manual precedence. See backend PHASE_2_3_DELIVERY.md for client steps/boundaries.
-No finance reports are imported and no actual corrections saved by this preview.
-Spain exact method aliases remain unguessed. Fee/date/tax configuration and a read-only calculation preview are implemented.
-Bank previews/history are implemented. Financial commit, reconciliation, calculated
-balances and results remain later work.
-Q-010 is answered (D-040–041). See backend PHASE_2_4_DELIVERY.md for checks,
-client steps and exact boundaries. Approximate Caixa fee/offer terms stay notes.
-Q-011 is answered (D-043–046). See backend PHASE_3_1_DELIVERY.md for bank preview
-steps, access guards and validation. No financial posting or overlap resolution
-is claimed; audited undo and remaining imports follow in later deliveries.
-See backend PHASE_3_2_DISCOVERY.md and Q-012 for pending undo-authority and
-source-correction decisions. No transaction posting has been added yet.
-Current branch in both repositories: feature/finance-phase-2.
+Current stage: Phases 0–2 and Phase 3.1 accepted. Phase 3.2 bank transaction
+posting/review/undo implemented and validated; client acceptance pending.
+See backend PHASE_3_2_DELIVERY.md for current behavior, tests and client steps.
+Q-012 yes/yes is recorded in D-049–050. Source corrections require approval;
+undo authority and all protected-record/account/privacy safeguards are enforced.
+
+Configuration includes companies/accounts/terminals/categories, exact source
+aliases and fee/timing/tax settings. Mapping and policy previews alone create no
+financial records. Bank previews retain original sources; separate posting/review
+and undo actions now create or reverse financial bank movements with history.
+Sales imports, expense/studio classification, reconciliation, calculated balances
+and monthly results remain future work. Spain aliases and exact Caixa commercial
+terms remain unguessed. Completed-month pilot approach is accepted; exact month
+will be chosen during migration preparation.
+
+Dedicated synthetic Posting QA account supports review tests. Existing uploaded
+QA previews are retained. Current branch in both repositories:
+feature/finance-phase-2. No finance push, merge or production deployment.
 
 Use the same phase branch name in both repositories. Delivery handoffs contain
 What I did and What you should test, with client acceptance recorded separately

@@ -7,6 +7,8 @@ import { financeMappingTranslations } from "./financeMappings";
 
 import { financeImportTranslations } from "./financeImports";
 
+import { financePostingTranslations } from "./financePosting";
+
 export const financeTranslations = {
     en: {
         ...financeConfigurationTranslations.en,
@@ -14,9 +16,10 @@ export const financeTranslations = {
         ...financeMappingTranslations.en,
         ...financePolicyTranslations.en,
         ...financeImportTranslations.en,
+        ...financePostingTranslations.en,
         "nav.finance": "Finance", "finance.title": "Finance",
         "finance.foundation": "Financial workspace",
-        "finance.stage": "Configure your financial workspace and preview bank CSV reports. Creating financial transactions and monthly results will follow in later steps.",
+        "finance.stage": "Configure your financial workspace, preview and import bank transactions. Classification, sales reconciliation and monthly results follow in later steps.",
         "finance.empty": "No financial companies are available in your scope. Contact an administrator to configure company access.",
         "finance.denied": "Finance is disabled or your financial access has changed.",
         "finance.currency": "Currency", "finance.country": "Country", "finance.company": "Company",
@@ -48,9 +51,10 @@ export const financeTranslations = {
         ...financeMappingTranslations.es,
         ...financePolicyTranslations.es,
         ...financeImportTranslations.es,
+        ...financePostingTranslations.es,
         "nav.finance": "Finanzas", "finance.title": "Finanzas",
         "finance.foundation": "Espacio financiero",
-        "finance.stage": "Configura tu espacio financiero y revisa informes bancarios CSV. La creación de movimientos financieros y los resultados mensuales llegarán en pasos posteriores.",
+        "finance.stage": "Configura tu espacio financiero, revisa e importa movimientos bancarios. La clasificación, conciliación de ventas y los resultados mensuales llegarán después.",
         "finance.empty": "No hay empresas financieras disponibles en tu ámbito. Contacta con un administrador para configurar el acceso a empresas.",
         "finance.denied": "Finanzas está desactivado o tu acceso financiero ha cambiado.",
         "finance.currency": "Moneda", "finance.country": "País", "finance.company": "Empresa",
