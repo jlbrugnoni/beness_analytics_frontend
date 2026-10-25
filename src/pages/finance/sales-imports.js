@@ -4,6 +4,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import MainPage from "@/pages/mainPage";
+import SalesPostingPanel from "@/components/finance/SalesPostingPanel";
 import useAccess from "@/hooks/useAccess";
 import useI18n from "@/hooks/useI18n";
 
@@ -100,7 +101,7 @@ export default function SalesImports() {
                 <Typography component="h2" variant="h5">{label("history")}</Typography>
                 <Button disabled={busy || loading} onClick={() => setRefresh((old) => old + 1)}>{label("refresh")}</Button>
                 {loading ? <CircularProgress /> : !history.count ? <Typography>{label("empty")}</Typography> : history.results.map((entry) => <Paper variant="outlined" key={entry.id} sx={{ p: 2 }}>
-                    <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center"><Typography sx={{ overflowWrap: "anywhere" }}>#{entry.id} · {entry.file_name}</Typography><Chip label={label(entry.status === "failed" ? "failed" : "parsed")} color={entry.status === "failed" ? "error" : "default"} /><Button disabled={busy} onClick={() => open(entry)}>{label("open")}</Button></Stack>
+                    <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center"><Typography sx={{ overflowWrap: "anywhere" }}>#{entry.id} · {entry.file_name}</Typography><Chip label={label(entry.status === "failed" ? "failed" : "parsed")} color={entry.status === "failed" ? "error" : "default"} /><Chip label={t(`finance.salesPosting.${entry.processing_status || "not_imported"}`)} /><Button disabled={busy} onClick={() => open(entry)}>{label("open")}</Button></Stack>
                 </Paper>)}
                 {controls(history, historyPage, setHistoryPage, loading || busy)}
                 {batch && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
@@ -109,7 +110,7 @@ export default function SalesImports() {
                     {batch.duplicate_of && <Alert severity="info">{label("duplicate")} #{batch.duplicate_of}</Alert>}
                     {batch.file_issues.map((issue) => <Alert key={issue} severity="error">{label(issue)}</Alert>)}
                     <Typography>{label("invoices")}: {batch.summary.invoice_count} · {label("items")}: {batch.summary.item_rows}</Typography>
-                    <Typography>{label("valid")}: {batch.summary.valid_invoices} · {label("review")}: {batch.summary.review_invoices}</Typography>
+                    <Typography>{label("valid")}: {batch.summary.valid_invoices} · {label("review")}: {batch.summary.review_invoices} · {label("cancelled")}: {batch.summary.cancelled_invoices ?? "—"}</Typography>
                     <Typography variant="h6">{label("total")}: {batch.summary.paid_total ?? "—"}</Typography>
                     <Typography variant="body2">{label("coverage")}</Typography>
                     {canImport && <Button disabled={busy} onClick={download}>{label("download")}</Button>}
@@ -120,6 +121,9 @@ export default function SalesImports() {
                         {invoices.results.map((entry) => <TableRow key={entry.id}><TableCell>{entry.code || "—"}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{entry.source.date}</TableCell><TableCell>{entry.source.status}</TableCell><TableCell>{entry.item_count}</TableCell><TableCell>{entry.source.invoice_total}</TableCell><TableCell>{entry.source.item_sum ?? "—"}</TableCell><TableCell sx={{ overflowWrap: "anywhere" }}>{entry.issues.map(issue).join(" ") || label("none")}</TableCell><TableCell><Button onClick={() => { setDetail(entry); setItemPage(1); setRaw(null); }}>{label("details")}</Button></TableCell></TableRow>)}
                     </TableBody></Table></TableContainer>}
                     {controls(invoices, page, setPage, invoiceLoading)}
+                    <SalesPostingPanel key={batch.id} batch={batch} onUpdated={(id, status) => {
+                        setHistory((old) => ({ ...old, results: old.results.map((item) => item.id === id ? { ...item, processing_status: status } : item) }));
+                    }} />
                 </Stack></Paper>}
             </>}
         </>}

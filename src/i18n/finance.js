@@ -1,3 +1,4 @@
+import { financeSalesPostingTranslations } from "./financeSalesPosting";
 import { financeSalesTranslations } from "./financeSales";
 import { financeConfigurationTranslations } from "./financeConfiguration";
 
@@ -17,6 +18,7 @@ export const financeTranslations = {
         ...financeMappingTranslations.en,
         ...financePolicyTranslations.en,
         ...financeImportTranslations.en,
+        ...Object.fromEntries(Object.entries(financeSalesPostingTranslations.en).map(([key, value]) => [`finance.salesPosting.${key}`, value])),
         ...Object.fromEntries(Object.entries(financeSalesTranslations.en).map(([key, value]) => [`finance.sales.${key}`, value])),
         ...financePostingTranslations.en,
         "nav.finance": "Finance", "finance.title": "Finance",
@@ -53,6 +55,7 @@ export const financeTranslations = {
         ...financeMappingTranslations.es,
         ...financePolicyTranslations.es,
         ...financeImportTranslations.es,
+        ...Object.fromEntries(Object.entries(financeSalesPostingTranslations.es).map(([key, value]) => [`finance.salesPosting.${key}`, value])),
         ...Object.fromEntries(Object.entries(financeSalesTranslations.es).map(([key, value]) => [`finance.sales.${key}`, value])),
         ...financePostingTranslations.es,
         "nav.finance": "Finanzas", "finance.title": "Finanzas",

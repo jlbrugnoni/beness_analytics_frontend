@@ -13,9 +13,11 @@ and current progress before implementing finance screens. Maintain business
 definitions in the canonical folder rather than duplicating them here.
 
 Current stage: Phases 0–2 and Phases 3.1–3.2 accepted (D-051, 2026-10-25).
-Phase 3.3.1 Alegra source previews accepted (D-056). Phase 3.3.2 sales posting
-discovery is in progress; see backend PHASE_3_3_2_DISCOVERY.md and Q-014.
-Q-013 answered (D-052–055), exact cancellation label pending. See backend
+Phase 3.3.1 Alegra source previews accepted (D-056). Phase 3.3.2 sales posting,
+cancellation/replacement review, manual assignments and undo are implemented;
+client acceptance pending. See backend PHASE_3_3_2_DELIVERY.md.
+Q-014 answered (D-057–058): Anulada confirmed; cancellation may keep payment.
+Q-013 answered (D-052–055). See backend
 PHASE_3_3_1_DELIVERY.md for implementation, limits and client test steps.
 See backend PHASE_3_2_DELIVERY.md for current behavior, tests and client steps.
 Q-012 yes/yes is recorded in D-049–050. Source corrections require approval;
@@ -25,9 +27,10 @@ Configuration includes companies/accounts/terminals/categories, exact source
 aliases and fee/timing/tax settings. Mapping and policy previews alone create no
 financial records. Bank previews retain original sources; separate posting/review
 and undo actions now create or reverse financial bank movements with history.
-Alegra sales previews group invoices/items and validate totals without posting
-financial sales. Sales posting, expense/studio classification, reconciliation, calculated balances
-and monthly results remain future work. Spain aliases and exact Caixa commercial
+Alegra sales previews group invoices/items; separate posting actions record sales
+and reviewed cancellations. Manual studio/channel decisions and no-refund or
+replacement treatment preserve source facts and history. Expense classification,
+reconciliation, calculated balances and monthly results remain future work. Spain aliases and exact Caixa commercial
 terms remain unguessed. Completed-month pilot approach is accepted; exact month
 will be chosen during migration preparation.
 
