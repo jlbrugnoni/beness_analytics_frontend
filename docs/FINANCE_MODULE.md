@@ -12,8 +12,9 @@ Read the business rules, architecture, roadmap, decisions, discovery questions,
 and current progress before implementing finance screens. Maintain business
 definitions in the canonical folder rather than duplicating them here.
 
-Current stage: Phases 0–2 and Phase 3.1 accepted. Phase 3.2 bank transaction
-posting/review/undo implemented and validated; client acceptance pending.
+Current stage: Phases 0–2 and Phases 3.1–3.2 accepted (D-051, 2026-10-25).
+Phase 3.3 Alegra invoice/item discovery is in progress; Q-013 awaits answers.
+See backend PHASE_3_3_DISCOVERY.md for its scope and questions.
 See backend PHASE_3_2_DELIVERY.md for current behavior, tests and client steps.
 Q-012 yes/yes is recorded in D-049–050. Source corrections require approval;
 undo authority and all protected-record/account/privacy safeguards are enforced.
