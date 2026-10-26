@@ -1,5 +1,8 @@
 export const financeWorkspaceTranslations = {
     "en": {
+        "finance.workspace.requiredField": "Required to mark as reviewed",
+        "finance.workspace.reviewCompleteFirst": "Complete the marked fields to enable recognition. You can save unfinished work.",
+
         "finance.workspace.recognizeTerminals": "Apply terminal mappings to existing credits",
         "finance.workspace.recognizeTerminalsHelp": "New imports recognize terminals automatically. This checks all existing credits for this company, preserving reviewed records and conflicting assignments. Unknown or multiple matches stay for review.",
         "finance.workspace.recognizedCount": "Credits updated",
@@ -198,6 +201,9 @@ export const financeWorkspaceTranslations = {
         "finance.workspace.badOperationDate": "Enter the operation date as YYYY-MM-DD."
     },
     "es": {
+        "finance.workspace.requiredField": "Obligatorio para marcar como revisado",
+        "finance.workspace.reviewCompleteFirst": "Completa los campos marcados para habilitar el reconocimiento. Puedes guardar el trabajo pendiente.",
+
         "finance.workspace.recognizeTerminals": "Aplicar terminales a créditos existentes",
         "finance.workspace.recognizeTerminalsHelp": "Las nuevas importaciones reconocen terminales automáticamente. Esto revisa todos los créditos existentes de esta empresa, preservando registros revisados y asignaciones distintas. Sin coincidencia o con varias, quedan para revisión.",
         "finance.workspace.recognizedCount": "Créditos actualizados",
