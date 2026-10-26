@@ -5,8 +5,7 @@ export const financeReceiptTranslations = {
         "intro": "Upload routine payment reports here. Historical migration uses the same receipts, invoice links and duplicate checks.",
         "denied": "Requires finance, money, bank and sensitive access with whole-company scope.",
         "company": "Company",
-        "csvHelp": "Payment CSV up to 5 MiB. Expected columns: Fecha, Numero, Valor, Asociaciones, Tipo_nota, Metodo_pago. Semicolon, comma or tab; UTF-8 or Windows-1252. Extra historical method/studio columns are optional. Unrecognized layouts stay for review; importing a preview requires a separate confirmation.",
-        "file": "Payment CSV report",
+        "file": "Alegra payment report (.xlsx or .csv)",
         "upload": "Save payment report preview",
         "history": "Payment report history",
         "refresh": "Refresh",
@@ -90,7 +89,8 @@ export const financeReceiptTranslations = {
         "studioReview": "Historical studio label needs matching",
         "storedSource": "Original evidence for existing payment",
         "currentMethod": "Current assigned payment method",
-        "customer_conflict": "Invoice and payment customer differ — review"
+        "customer_conflict": "Invoice and payment customer differ — review",
+        "reportHelp": "Upload the original Alegra payment XLSX directly, up to 5 MiB. The payment worksheet is identified by its columns; no renaming, CSV conversion or manual studio/method columns are required. CSV remains supported. Review the preview before importing payments."
     },
     "es": {
         "title": "Importación de pagos",
@@ -98,8 +98,7 @@ export const financeReceiptTranslations = {
         "intro": "Sube aquí los reportes habituales de pagos. La migración histórica usa los mismos cobros, vínculos a facturas y controles de duplicados.",
         "denied": "Requiere acceso financiero, dinero, cuentas, detalle sensible y alcance de empresa completo.",
         "company": "Empresa",
-        "csvHelp": "CSV de pagos de hasta 5 MiB. Columnas esperadas: Fecha, Numero, Valor, Asociaciones, Tipo_nota, Metodo_pago. Separador punto y coma, coma o tabulación; UTF-8 o Windows-1252. Método/estudio históricos corregidos son opcionales. Los formatos desconocidos quedan para revisión; registrar los cobros requiere confirmación separada.",
-        "file": "Reporte CSV de pagos",
+        "file": "Reporte de pagos de Alegra (.xlsx o .csv)",
         "upload": "Guardar vista previa del reporte",
         "history": "Historial de reportes de pagos",
         "refresh": "Actualizar",
@@ -183,6 +182,7 @@ export const financeReceiptTranslations = {
         "studioReview": "Estudio histórico pendiente de equivalencia",
         "storedSource": "Evidencia original del pago existente",
         "currentMethod": "Método de pago asignado actualmente",
-        "customer_conflict": "Cliente de factura y pago distintos — revisar"
+        "customer_conflict": "Cliente de factura y pago distintos — revisar",
+        "reportHelp": "Sube directamente el XLSX original de pagos de Alegra, hasta 5 MiB. La hoja se identifica por sus columnas; no hace falta renombrarla, convertirla a CSV ni añadir estudio o método corregido. También se admite CSV. Revisa la vista previa antes de registrar pagos."
     }
 };
