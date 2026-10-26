@@ -1,3 +1,4 @@
+import { formatMoney } from "@/utils/formatMoney";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, TextField, Typography } from "@mui/material";
@@ -43,20 +44,20 @@ export default function InvoiceDialog({ record, kind, close, company, studios, c
         {error && <Alert severity="error">{error}</Alert>}{saved && <Alert severity="success">{w("saved")}</Alert>}{loading ? <CircularProgress /> : <>
             <Alert severity="info">{w("readonly")}</Alert>
             {invoice && <>
-                <Stack direction="row" gap={3} useFlexGap flexWrap="wrap"><Typography>{w("date")}: {invoice.source.date}</Typography><Typography>{w("customer")}: {invoice.source.customer || "—"}</Typography><Typography>{w("invoice_total")}: {invoice.source.invoice_total}</Typography><Typography>{w("status")}: {invoice.source.status}</Typography></Stack>
+                <Stack direction="row" gap={3} useFlexGap flexWrap="wrap"><Typography>{w("date")}: {invoice.source.date}</Typography><Typography>{w("customer")}: {invoice.source.customer || "—"}</Typography><Typography>{w("invoice_total")}: {formatMoney(invoice.source.invoice_total)}</Typography><Typography>{w("status")}: {invoice.source.status}</Typography></Stack>
                 <Stack direction="row" gap={1} useFlexGap flexWrap="wrap"><Button onClick={() => setSource({ source: invoice.source, items: invoice.items, file_name: record.file_name, href: `/finance/sales-imports?batch=${record.batch}` })}>{w("source")}</Button><Button onClick={() => audit("sales", invoice)}>{w("audit")}</Button></Stack>
                 {canEdit && !invoice.reconciled ? <Stack direction={{ xs: "column", md: "row" }} gap={2}>
                     <TextField select SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }} label={w("invoiceStudio")} value={edits.invoice?.studio ?? invoice.studio ?? ""} disabled={busy} onChange={(event) => change("invoice", "studio", event.target.value)} sx={{ minWidth: 220 }}><MenuItem value="">{w("unknown")}</MenuItem>{options.studios.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}</TextField>
                     <TextField label={w("note")} value={edits.invoice?.note || ""} disabled={busy} onChange={(event) => change("invoice", "note", event.target.value)} inputProps={{ maxLength: 2000 }} />
                     <Button disabled={busy || !edits.invoice?.note?.trim() || edits.invoice?.studio === undefined} onClick={() => save("sales", invoice, { studio: edits.invoice.studio || null }, "invoice")}>{w("save")}</Button>
                 </Stack> : <Typography>{w("invoiceStudio")}: {invoice.studio_name || w("unknown")}</Typography>}
-                <Box component="details"><Box component="summary" sx={{ cursor: "pointer" }}>{w("items")} ({invoice.items.length})</Box><TableContainer><Table size="small"><TableHead><TableRow>{["item", "quantity", "amount"].map((k) => <TableCell key={k}>{w(k)}</TableCell>)}</TableRow></TableHead><TableBody>{invoice.items.map((item, i) => <TableRow key={i}><TableCell>{item.name}</TableCell><TableCell>{item.quantity}</TableCell><TableCell>{item.total}</TableCell></TableRow>)}</TableBody></Table></TableContainer></Box><Divider />
+                <Box component="details"><Box component="summary" sx={{ cursor: "pointer" }}>{w("items")} ({invoice.items.length})</Box><TableContainer><Table size="small"><TableHead><TableRow>{["item", "quantity", "amount"].map((k) => <TableCell key={k}>{w(k)}</TableCell>)}</TableRow></TableHead><TableBody>{invoice.items.map((item, i) => <TableRow key={i}><TableCell>{item.name}</TableCell><TableCell>{item.quantity}</TableCell><TableCell>{formatMoney(item.total)}</TableCell></TableRow>)}</TableBody></Table></TableContainer></Box><Divider />
             </>}
             <Typography component="h2" variant="h6">{w(kind === "invoices" ? "linkedPayments" : "paymentDetails")} ({payments.count})</Typography>
             {!canPayments ? <Alert severity="info">{w("paymentDetailsAccess")}</Alert> : <>
                 {!payments.count && <Typography>{w("noPayments")}</Typography>}
                 {payments.results.map((payment) => { const edit = edits[payment.id] || {}; return <Paper variant="outlined" key={payment.id} sx={{ p: 2 }}><Stack spacing={2}>
-                    <Stack direction="row" gap={3} useFlexGap flexWrap="wrap"><Typography>{w("number")}: {payment.number}</Typography><Typography>{w("date")}: {payment.source.date}</Typography><Typography>{w("amount")}: {payment.source.amount} {payment.source.currency}</Typography><Typography>{w("original_method")}: {payment.source.original_method}</Typography></Stack>
+                    <Stack direction="row" gap={3} useFlexGap flexWrap="wrap"><Typography>{w("number")}: {payment.number}</Typography><Typography>{w("date")}: {payment.source.date}</Typography><Typography>{w("amount")}: {formatMoney(payment.source.amount)} {payment.source.currency}</Typography><Typography>{w("original_method")}: {payment.source.original_method}</Typography></Stack>
                     {payment.assignments.channel_review && <Alert severity="warning">{t("finance.receipts.methodReview")}</Alert>}
                     {payment.link_issue && <Alert severity="warning">{t(`finance.receipts.${payment.link_issue}`, payment.link_issue)}</Alert>}
                     {canEdit && !payment.reconciled ? <Stack direction={{ xs: "column", md: "row" }} gap={2} useFlexGap flexWrap="wrap">

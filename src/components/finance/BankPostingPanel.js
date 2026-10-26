@@ -1,3 +1,4 @@
+import { formatMoney } from "@/utils/formatMoney";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Button, CircularProgress, Dialog, DialogActions,
@@ -77,7 +78,7 @@ export default function BankPostingPanel({ batch, onProcessingUpdated }) {
         } catch (failure) { setError(errorText(failure)); }
         finally { setBusy(false); }
     };
-    const sourceLine = (source) => `${source?.bank_date || "—"} · ${source?.amount || "—"} ${batch.currency} · ${source?.description || "—"}`;
+    const sourceLine = (source) => `${source?.bank_date || "—"} · ${formatMoney(source?.amount)} ${batch.currency} · ${source?.description || "—"}`;
     const paging = (collection, current, change) => <Stack direction="row" alignItems="center" spacing={1}>
         <Button disabled={busy || !collection?.previous} onClick={() => change(current - 1)}>{t("finance.import.previous")}</Button>
         <Typography>{t("finance.import.page")} {current} · {collection?.count || 0}</Typography>
@@ -99,7 +100,7 @@ export default function BankPostingPanel({ batch, onProcessingUpdated }) {
                 <TableCell>{label("decision")}</TableCell><TableCell>{label("movement")}</TableCell><TableCell>{label("review")}</TableCell>
             </TableRow></TableHead><TableBody>{data.rows.results.map((row) => <TableRow key={row.row_id}>
                 <TableCell>{row.source_line}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{row.source.bank_date || "—"}</TableCell>
-                <TableCell>{row.source.amount || "—"}</TableCell><TableCell sx={{ minWidth: 150, overflowWrap: "anywhere" }}>{row.source.description || "—"}</TableCell>
+                <TableCell>{formatMoney(row.source.amount)}</TableCell><TableCell sx={{ minWidth: 150, overflowWrap: "anywhere" }}>{row.source.description || "—"}</TableCell>
                 <TableCell>{label(`outcome.${row.outcome}`)}</TableCell><TableCell>{row.movement_id || row.target || "—"}</TableCell>
                 <TableCell>{data.can_review && row.resolution === "pending" && <Button disabled={busy} onClick={() => open("review", row)}>{label("review")}</Button>}</TableCell>
             </TableRow>)}</TableBody></Table></TableContainer>

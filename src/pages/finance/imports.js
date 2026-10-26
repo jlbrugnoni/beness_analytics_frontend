@@ -1,3 +1,4 @@
+import { formatMoney } from "@/utils/formatMoney";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
@@ -169,7 +170,7 @@ export default function BankImports() {
                         {selected.file_issues.map((code) => <Alert severity="error" key={code}>{label(`issue.${code}`)}</Alert>)}
                         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                             {[["credits", summary.credit_total], ["debits", summary.debit_total], ["net", summary.net_total]].map(([key, value]) => <Paper key={key} variant="outlined" sx={{ p: 2, flex: 1 }}>
-                                <Typography>{label(key)}</Typography><Typography variant="h6">{value} {currency}</Typography>
+                                <Typography>{label(key)}</Typography><Typography variant="h6">{formatMoney(value)} {currency}</Typography>
                             </Paper>)}
                         </Stack>
                         <Typography>{label("observedDates")}: {summary.first_bank_date || t("finance.config.unknown")} — {summary.last_bank_date || t("finance.config.unknown")}</Typography>
@@ -189,7 +190,7 @@ export default function BankImports() {
                             <TableCell>{row.source_line}{row.source_line_end !== row.source_line && `–${row.source_line_end}`}</TableCell>
                             <TableCell sx={{ whiteSpace: "nowrap" }}>{row.parsed.bank_date || "—"}</TableCell>
                             <TableCell sx={{ minWidth: 180, maxWidth: 350, overflowWrap: "anywhere" }}>{row.parsed.description || (row.kind !== "data" ? label(`kind.${row.kind}`) : "—")}</TableCell>
-                            <TableCell sx={{ whiteSpace: "nowrap" }}>{row.parsed.amount ?? "—"}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{row.parsed.balance ?? "—"}</TableCell>
+                            <TableCell sx={{ whiteSpace: "nowrap" }}>{formatMoney(row.parsed.amount)}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{formatMoney(row.parsed.balance)}</TableCell>
                             <TableCell>{row.issues.map((code) => <Typography key={code} variant="body2" color="error">{label(`issue.${code}`)}</Typography>)}</TableCell>
                             <TableCell><Button onClick={() => setRaw(row)}>{label("source")}</Button></TableCell>
                         </TableRow>)}</TableBody></Table></TableContainer>}

@@ -1,3 +1,4 @@
+import { formatMoney } from "@/utils/formatMoney";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, IconButton, MenuItem, Paper, Stack, TextField, Tooltip, Typography } from "@mui/material";
@@ -58,7 +59,7 @@ export default function BankDialog({ record, close, canEdit, changed, w, t }) {
     return <><Dialog open={Boolean(record)} onClose={() => { if (!busy) close(); }} fullWidth maxWidth="lg"><DialogTitle>{w(debit ? "editDebit" : "editCredit")}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         {error && <Alert severity="error" sx={{ whiteSpace: "pre-wrap" }}>{error}</Alert>}{saved && <Alert severity="success">{w("saved")}</Alert>}
         {loading ? <CircularProgress /> : data && <>
-            <Stack direction="row" alignItems="center" gap={1}><Typography sx={{ flex: 1 }}>{data.source.bank_date} · {data.source.amount} {data.source.currency} · {data.source.description}</Typography><Tooltip title={w("original")}><IconButton aria-label={w("original")} onClick={() => setSource(true)} size="small"><InfoOutlinedIcon fontSize="small" /></IconButton></Tooltip></Stack><Typography variant="body2">{data.file_name}</Typography>
+            <Stack direction="row" alignItems="center" gap={1}><Typography sx={{ flex: 1 }}>{data.source.bank_date} · {formatMoney(data.source.amount)} {data.source.currency} · {data.source.description}</Typography><Tooltip title={w("original")}><IconButton aria-label={w("original")} onClick={() => setSource(true)} size="small"><InfoOutlinedIcon fontSize="small" /></IconButton></Tooltip></Stack><Typography variant="body2">{data.file_name}</Typography>
             {data.reconciled && <Alert severity="warning">{w("reconciledLocked")}</Alert>}
             <TextField label={w("business_description")} value={edit.description || ""} onChange={(event) => change("description", event.target.value)} disabled={!allowed || busy} multiline minRows={2} inputProps={{ maxLength: 2000 }} />
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>

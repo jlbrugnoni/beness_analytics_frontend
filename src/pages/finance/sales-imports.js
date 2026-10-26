@@ -1,3 +1,4 @@
+import { formatMoney } from "@/utils/formatMoney";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
@@ -117,14 +118,14 @@ export default function SalesImports() {
                     {batch.file_issues.map((issue) => <Alert key={issue} severity="error">{label(issue)}</Alert>)}
                     <Typography>{label("invoices")}: {batch.summary.invoice_count} · {label("items")}: {batch.summary.item_rows}</Typography>
                     <Typography>{label("valid")}: {batch.summary.valid_invoices} · {label("review")}: {batch.summary.review_invoices} · {label("cancelled")}: {batch.summary.cancelled_invoices ?? "—"}</Typography>
-                    <Typography variant="h6">{label("total")}: {batch.summary.paid_total ?? "—"}</Typography>
+                    <Typography variant="h6">{label("total")}: {formatMoney(batch.summary.paid_total)}</Typography>
                     <Typography variant="body2">{label("coverage")}</Typography>
                     {canImport && <Button disabled={busy} onClick={download}>{label("download")}</Button>}
                     <TextField select label={label("filter")} value={kind} onChange={(event) => { setKind(event.target.value); setPage(1); }}>
                         <MenuItem value="all">{label("all")}</MenuItem><MenuItem value="review">{label("review")}</MenuItem>
                     </TextField>
                     {invoiceLoading ? <CircularProgress /> : <TableContainer><Table size="small"><TableHead><TableRow>{["code", "date", "status", "items", "amount", "sum", "issues", "details"].map((key) => <TableCell key={key}>{label(key)}</TableCell>)}</TableRow></TableHead><TableBody>
-                        {invoices.results.map((entry) => <TableRow key={entry.id}><TableCell>{entry.code || "—"}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{entry.source.date}</TableCell><TableCell>{entry.source.status}</TableCell><TableCell>{entry.item_count}</TableCell><TableCell>{entry.source.invoice_total}</TableCell><TableCell>{entry.source.item_sum ?? "—"}</TableCell><TableCell sx={{ overflowWrap: "anywhere" }}>{entry.issues.map(issue).join(" ") || label("none")}</TableCell><TableCell><Button onClick={() => { setDetail(entry); setItemPage(1); setRaw(null); }}>{label("details")}</Button></TableCell></TableRow>)}
+                        {invoices.results.map((entry) => <TableRow key={entry.id}><TableCell>{entry.code || "—"}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{entry.source.date}</TableCell><TableCell>{entry.source.status}</TableCell><TableCell>{entry.item_count}</TableCell><TableCell>{formatMoney(entry.source.invoice_total)}</TableCell><TableCell>{formatMoney(entry.source.item_sum)}</TableCell><TableCell sx={{ overflowWrap: "anywhere" }}>{entry.issues.map(issue).join(" ") || label("none")}</TableCell><TableCell><Button onClick={() => { setDetail(entry); setItemPage(1); setRaw(null); }}>{label("details")}</Button></TableCell></TableRow>)}
                     </TableBody></Table></TableContainer>}
                     {controls(invoices, page, setPage, invoiceLoading)}
                     <SalesPostingPanel key={batch.id} batch={batch} onUpdated={(id, status) => {
@@ -135,7 +136,7 @@ export default function SalesImports() {
         </>}
     </Stack><Dialog open={Boolean(detail) && canRead} onClose={() => { setDetail(null); setRaw(null); }} fullWidth maxWidth="lg"><DialogTitle>{label("code")} {detail?.code}</DialogTitle><DialogContent><Stack spacing={2}>
         <Typography>{label("studio")}: {detail?.source.cost_center || "—"} · {label("price")}: {detail?.source.price_list || "—"} · {label("method")}: {detail?.source.payment_method || "—"}</Typography>
-        {itemLoading ? <CircularProgress /> : <TableContainer><Table size="small"><TableHead><TableRow>{["line", "item", "quantity", "itemTotal", "source"].map((key) => <TableCell key={key}>{label(key)}</TableCell>)}</TableRow></TableHead><TableBody>{items.results.map((row) => <TableRow key={row.id}><TableCell>{row.source_line}</TableCell><TableCell>{row.parsed.item_name}</TableCell><TableCell>{row.parsed.quantity}</TableCell><TableCell>{row.parsed.item_total}</TableCell><TableCell><Button onClick={() => setRaw(row)}>{label("source")}</Button></TableCell></TableRow>)}</TableBody></Table></TableContainer>}
+        {itemLoading ? <CircularProgress /> : <TableContainer><Table size="small"><TableHead><TableRow>{["line", "item", "quantity", "itemTotal", "source"].map((key) => <TableCell key={key}>{label(key)}</TableCell>)}</TableRow></TableHead><TableBody>{items.results.map((row) => <TableRow key={row.id}><TableCell>{row.source_line}</TableCell><TableCell>{row.parsed.item_name}</TableCell><TableCell>{row.parsed.quantity}</TableCell><TableCell>{formatMoney(row.parsed.item_total)}</TableCell><TableCell><Button onClick={() => setRaw(row)}>{label("source")}</Button></TableCell></TableRow>)}</TableBody></Table></TableContainer>}
         {controls(items, itemPage, setItemPage, itemLoading)}
         {raw && <Typography component="pre" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{label("source")} · {raw.source_line}{"\n"}{JSON.stringify(raw.raw, null, 2)}</Typography>}
     </Stack></DialogContent><DialogActions><Button onClick={() => { setDetail(null); setRaw(null); }}>{label("close")}</Button></DialogActions></Dialog></MainPage>;

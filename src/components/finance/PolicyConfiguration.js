@@ -1,3 +1,4 @@
+import { formatMoney } from "@/utils/formatMoney";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
@@ -84,7 +85,7 @@ export default function PolicyConfiguration({ companies, sites, onCompanyUpdated
         {choices.map((value) => <MenuItem key={value} value={value}>{key === "channel" ? channelLabel(value) : label(`${key}.${value}`)}</MenuItem>)}</TextField>;
     const check = (key) => <FormControlLabel label={label(key)} control={<Switch checked={Boolean(form?.[key])} onChange={(_, checked) => change(key, checked)} />} />;
     const date = (key) => text(key, { type: "date", InputLabelProps: { shrink: true } });
-    const numeric = (key, step = "0.0001") => text(key, { type: "number", inputProps: { min: 0, step } });
+    const numeric = (key, step = "0.0001") => text(key, { type: "number", inputProps: { min: 0, step }, helperText: key === "separate_fee_amount" && form?.[key] !== "" && form?.[key] != null ? formatMoney(form[key]) : "" });
     return <Stack spacing={2}>
         <Alert severity="info">{label("intro")}</Alert>
         <TextField select label={t("finance.config.company")} value={companyId} disabled={busy} onChange={(event) => {
@@ -106,7 +107,7 @@ export default function PolicyConfiguration({ companies, sites, onCompanyUpdated
                 <Typography>{row.valid_from || label("baseline")} → {row.valid_until || label("openEnd")}</Typography>
                 {section === "fee-policies" && <>
                     <Typography>{label(`deposit_mode.${row.deposit_mode}`)}{row.deposit_mode === "net" && ` · ${label("percentage")}: ${row.percentage == null ? unknown : `${row.percentage}%`}`}</Typography>
-                    <Typography>{label("separate_fee_amount")}: {row.separate_fee_amount == null ? unknown : `${row.separate_fee_amount} ${company?.default_currency} · ${label(`separate_fee_frequency.${row.separate_fee_frequency}`)}`}</Typography>
+                    <Typography>{label("separate_fee_amount")}: {row.separate_fee_amount == null ? unknown : `${formatMoney(row.separate_fee_amount)} ${company?.default_currency} · ${label(`separate_fee_frequency.${row.separate_fee_frequency}`)}`}</Typography>
                     {row.reimbursement_expected && <Typography>{label("reimbursement_expected")} · {row.reimbursement_from || unknown} → {row.reimbursement_until || unknown}</Typography>}
                 </>}
                 {section === "settlement-policies" && <Typography>{row.minimum_hours}–{row.maximum_hours} {label("hours")} · {label(row.weekend_delays ? "weekendsYes" : "weekendsNo")}</Typography>}
@@ -123,11 +124,11 @@ export default function PolicyConfiguration({ companies, sites, onCompanyUpdated
             <Typography variant="h6">{label("preview")}</Typography><Typography>{label("previewHelp")}</Typography>
             <TextField required type="date" label={label("date")} InputLabelProps={{ shrink: true }} value={preview.date} onChange={(event) => { setPreview({ ...preview, date: event.target.value }); setResult(null); }} />
             <TextField select label={label("channel")} value={preview.channel} onChange={(event) => { setPreview({ ...preview, channel: event.target.value }); setResult(null); }}>{channels.map((key) => <MenuItem key={key} value={key}>{channelLabel(key)}</MenuItem>)}</TextField>
-            <TextField required type="number" inputProps={{ min: 0, step: "0.01" }} label={`${label("amount")} (${company.default_currency})`} value={preview.amount} onChange={(event) => { setPreview({ ...preview, amount: event.target.value }); setResult(null); }} />
+            <TextField required type="number" inputProps={{ min: 0, step: "0.01" }} label={`${label("amount")} (${company.default_currency})`} helperText={preview.amount === "" ? "" : formatMoney(preview.amount)} value={preview.amount} onChange={(event) => { setPreview({ ...preview, amount: event.target.value }); setResult(null); }} />
             <Button type="submit" variant="outlined" disabled={busy}>{label("run")}</Button>
             {result && <Stack spacing={1} role="status">
                 <Alert severity={result.requires_review ? "warning" : "info"}>{label(result.requires_review ? "incomplete" : "previewOnly")}</Alert>
-                {["estimated_withheld_fee", "estimated_deposit", "included_tax", "separate_fee_amount"].map((key) => <Typography key={key}>{label(key)}: {result[key] == null ? unknown : `${result[key]} ${result.currency}`}</Typography>)}
+                {["estimated_withheld_fee", "estimated_deposit", "included_tax", "separate_fee_amount"].map((key) => <Typography key={key}>{label(key)}: {result[key] == null ? unknown : `${formatMoney(result[key])} ${result.currency}`}</Typography>)}
                 <Typography>{label("resultInclusive")}</Typography>
                 <Typography>{result.settlement ? `${result.settlement.minimum_hours}–${result.settlement.maximum_hours} ${label("hours")} · ${label(result.settlement.weekend_delays ? "weekendsYes" : "weekendsNo")}` : label("timingUnknown")}</Typography>
             </Stack>}

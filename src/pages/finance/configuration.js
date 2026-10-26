@@ -1,3 +1,4 @@
+import { formatMoney } from "@/utils/formatMoney";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Head from "next/head";
@@ -142,7 +143,7 @@ export default function FinanceConfiguration() {
                                 {section === "companies" && <Typography>{row.country_code} · {row.default_currency}</Typography>}
                                 {section === "accounts" && <>
                                     <Typography>{data.companies.find((item) => item.id === row.company)?.name} · {row.currency} · {t(`finance.config.kind.${row.kind}`)}</Typography>
-                                    <Typography variant="body2">{t("finance.config.opening_balance")}: {row.opening_balance == null ? t("finance.config.unknown") : `${row.opening_balance} ${row.currency} (${row.opening_balance_date})`}</Typography>
+                                    <Typography variant="body2">{t("finance.config.opening_balance")}: {row.opening_balance == null ? t("finance.config.unknown") : `${formatMoney(row.opening_balance)} ${row.currency} (${row.opening_balance_date})`}</Typography>
                                     <Typography variant="body2">{t(row.statement_imports_expected ? "finance.config.statementsYes" : "finance.config.statementsNo")}</Typography>
                                 </>}
                                 {section === "terminals" && <Typography>{row.studio_name} · {t(`finance.config.channel.${row.channel}`)} · {row.account_name}</Typography>}
@@ -182,7 +183,7 @@ export default function FinanceConfiguration() {
                                 onChange={(_, checked) => set("studios", checked ? [...form.studios, studio.id] : form.studios.filter((id) => id !== studio.id))} />} />)}
                             {check("statement_imports_expected")}
                             <Alert severity="info">{t("finance.config.balanceHelp")}</Alert>
-                            {field("opening_balance", { type: "number", inputProps: { step: "0.01" } })}
+                            {field("opening_balance", { type: "number", inputProps: { step: "0.01" }, helperText: form?.opening_balance === "" || form?.opening_balance == null ? "" : formatMoney(form.opening_balance) })}
                             {field("opening_balance_date", { type: "date", InputLabelProps: { shrink: true } })}
                         </>}
                         {formSection === "terminals" && <>
