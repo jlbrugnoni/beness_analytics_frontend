@@ -15,9 +15,9 @@ export const legacy = { bank: "imports", invoices: "sales-imports", payments: "p
 export function useWorkspace() {
     const access = useAccess(); const { t } = useI18n();
     const canRead = Boolean(access.finance?.can_enter && access.capabilities?.can_view_sensitive_finance);
-    const [options, setOptions] = useState({ companies: [], accounts: [], studios: [] });
+    const [options, setOptions] = useState({ companies: [], accounts: [], studios: [], categories: [] });
     const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
-    useEffect(() => { let active = true; setOptions({ companies: [], accounts: [], studios: [] });
+    useEffect(() => { let active = true; setOptions({ companies: [], accounts: [], studios: [], categories: [] });
         if (canRead) { setLoading(true); axios.get(api("workspace/options/"), auth()).then(({ data }) => { if (active) setOptions(data); }).catch(() => { if (active) setError(t("finance.workspace.error")); }).finally(() => { if (active) setLoading(false); }); }
         return () => { active = false; };
     }, [canRead, t]);
