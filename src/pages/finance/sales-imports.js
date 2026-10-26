@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Head from "next/head";
@@ -13,6 +14,7 @@ const auth = () => ({ headers: { Authorization: `Token ${sessionStorage.getItem(
 const empty = { results: [], count: 0 };
 
 export default function SalesImports() {
+    const router = useRouter();
     const { t } = useI18n(); const label = (key) => t(`finance.sales.${key}`);
     const issue = (code) => code.startsWith("inconsistent_") ? `${label("inconsistent")} ${label(code.slice(13))}.` : label(code);
     const access = useAccess();
@@ -33,10 +35,14 @@ export default function SalesImports() {
         let active = true;
         setCompanies([]); setCompanyId(""); setBatch(null); setDetail(null); setRaw(null); setError("");
         if (canRead) axios.get(api("companies/"), auth()).then(({ data }) => {
-            if (active) { setCompanies(data); setCompanyId(data.find((item) => item.active)?.id || data[0]?.id || ""); }
+            if (active) { setCompanies(data); if (!router.query.batch) setCompanyId(data.find((item) => item.active)?.id || data[0]?.id || ""); }
         }).catch(() => { if (active) setError(t("finance.sales.error")); });
         return () => { active = false; uploadVersion.current += 1; };
-    }, [canRead, t]);
+    }, [canRead, t, router.query.batch]);
+    useEffect(() => { let active = true;
+        if (canRead && router.query.batch) axios.get(api(`${encodeURIComponent(router.query.batch)}/`), auth()).then(({ data }) => { if (active) { setCompanyId(data.company); setBatch(data); setPage(1); } }).catch(() => { if (active) setError(t("finance.sales.error")); });
+        return () => { active = false; };
+    }, [canRead, router.query.batch, t]);
     useEffect(() => {
         let active = true; setHistory(empty);
         if (!companyId || !canRead) return undefined;

@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Head from "next/head";
@@ -19,6 +20,7 @@ const allPages = async (path) => {
 };
 
 export default function BankImports() {
+    const router = useRouter();
     const { t } = useI18n();
     const access = useAccess();
     const canRead = Boolean(access.finance?.can_enter && access.capabilities?.can_view_finance_bank_accounts && access.capabilities?.can_view_sensitive_finance);
@@ -60,11 +62,15 @@ export default function BankImports() {
             });
             setAccounts(supported);
             const first = supported.find((item) => item.active && item.company_active && item.statement_imports_expected) || supported.find((item) => item.active && item.company_active) || supported[0];
-            setAccountId(first?.id || ""); setProvider(first?.currency === "EUR" ? "caixa" : "popular");
+            if (!router.query.batch) { setAccountId(first?.id || ""); setProvider(first?.currency === "EUR" ? "caixa" : "popular"); }
         }).catch((failure) => { if (active) setError(failure.response?.status === 403 ? t("finance.import.denied") : t("finance.import.error")); })
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
-    }, [canRead, t]);
+    }, [canRead, t, router.query.batch]);
+    useEffect(() => { let active = true;
+        if (canRead && router.query.batch) axios.get(api(`bank-imports/${encodeURIComponent(router.query.batch)}/`), auth()).then(({ data }) => { if (active) { setAccountId(data.account); setProvider(data.provider); setSelected(data); setRowsPage(1); } }).catch(() => { if (active) setError(t("finance.import.error")); });
+        return () => { active = false; };
+    }, [canRead, router.query.batch, t]);
     const loadHistory = useCallback(async (page) => {
         const current = ++historyVersion.current;
         if (!accountId || !canRead) { setHistory({ results: [], count: 0 }); return; }

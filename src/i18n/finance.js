@@ -1,3 +1,4 @@
+import { financeWorkspaceTranslations } from "./financeWorkspace";
 import { financeReceiptTranslations } from "./financeReceipts";
 import { financePaymentTranslations } from "./financePayments";
 import { financeMigrationTranslations } from "./financeMigration";
@@ -16,6 +17,7 @@ import { financePostingTranslations } from "./financePosting";
 
 export const financeTranslations = {
     en: {
+        ...financeWorkspaceTranslations.en,
         ...Object.fromEntries(Object.entries(financeReceiptTranslations.en).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.receipts.${key}.${code}`, text]) : [[`finance.receipts.${key}`, value]])),
         ...Object.fromEntries(Object.entries(financePaymentTranslations.en).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.payments.${key}.${code}`, text]) : [[`finance.payments.${key}`, value]])),
         ...Object.fromEntries(Object.entries(financeMigrationTranslations.en).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.migration.${key}.${code}`, text]) : [[`finance.migration.${key}`, value]])),
@@ -56,6 +58,7 @@ export const financeTranslations = {
         "access.can_view_sensitive_finance": "View sensitive financial detail",
     },
     es: {
+        ...financeWorkspaceTranslations.es,
         ...Object.fromEntries(Object.entries(financeReceiptTranslations.es).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.receipts.${key}.${code}`, text]) : [[`finance.receipts.${key}`, value]])),
         ...Object.fromEntries(Object.entries(financePaymentTranslations.es).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.payments.${key}.${code}`, text]) : [[`finance.payments.${key}`, value]])),
         ...Object.fromEntries(Object.entries(financeMigrationTranslations.es).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.migration.${key}.${code}`, text]) : [[`finance.migration.${key}`, value]])),
