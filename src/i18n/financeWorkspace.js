@@ -1,5 +1,16 @@
 export const financeWorkspaceTranslations = {
     "en": {
+        "finance.workspace.bankComment": "Comment (optional)",
+        "finance.workspace.classificationUpdated": "Classification updated",
+        "finance.workspace.kindHelp_unknown": "Choose why the money moved. Leave unassigned if unsure; it stays available for review.",
+        "finance.workspace.kindHelp_customer_receipt": "Money received from customers, such as a card settlement. A deposit of cash already recorded is an internal movement.",
+        "finance.workspace.kindHelp_expense": "Operating payments, such as rent, electricity or payroll. Paying by transfer does not make it an internal movement.",
+        "finance.workspace.kindHelp_internal_transfer": "Transfers between your own accounts, or deposits of cash already recorded. Principal is excluded from the management result.",
+        "finance.workspace.kindHelp_fee": "A separately charged bank or processing fee. Do not add fees already withheld from a card settlement twice.",
+        "finance.workspace.kindHelp_fee_reimbursement": "A bank returning a fee, such as the Caixa terminal promotion. This offsets a fee; it is not a sale.",
+        "finance.workspace.kindHelp_refund": "Money returned to a customer (debit), or received back from a supplier (credit).",
+        "finance.workspace.kindHelp_extraordinary": "Non-operating movements under your management policy, such as loans, large equipment or revenue-tax settlements.",
+
         "finance.workspace.records": "Records",
         "finance.workspace.upload": "Upload reports",
         "finance.workspace.settings": "Settings",
@@ -183,6 +194,17 @@ export const financeWorkspaceTranslations = {
         "finance.workspace.badOperationDate": "Enter the operation date as YYYY-MM-DD."
     },
     "es": {
+        "finance.workspace.bankComment": "Comentario (opcional)",
+        "finance.workspace.classificationUpdated": "Clasificación actualizada",
+        "finance.workspace.kindHelp_unknown": "Selecciona por qué se movió el dinero. Si no lo sabes, déjalo sin asignar para revisión.",
+        "finance.workspace.kindHelp_customer_receipt": "Dinero recibido de clientes, como una liquidación de tarjetas. Depositar efectivo ya registrado es un movimiento interno.",
+        "finance.workspace.kindHelp_expense": "Pagos operativos, como alquiler, electricidad o nóminas. Pagar por transferencia no lo convierte en movimiento interno.",
+        "finance.workspace.kindHelp_internal_transfer": "Transferencias entre cuentas propias o depósitos de efectivo ya registrado. El principal se excluye del resultado de gestión.",
+        "finance.workspace.kindHelp_fee": "Comisión bancaria o de procesamiento cobrada por separado. No dupliques comisiones ya retenidas en una liquidación de tarjetas.",
+        "finance.workspace.kindHelp_fee_reimbursement": "El banco devuelve una comisión, como en la promoción del terminal Caixa. Compensa la comisión; no es una venta.",
+        "finance.workspace.kindHelp_refund": "Dinero devuelto a un cliente (débito) o recibido de vuelta de un proveedor (crédito).",
+        "finance.workspace.kindHelp_extraordinary": "Movimientos no operativos según vuestra gestión, como préstamos, grandes equipos o liquidaciones de impuestos sobre ingresos.",
+
         "finance.workspace.records": "Registros",
         "finance.workspace.upload": "Cargar informes",
         "finance.workspace.settings": "Configuración",
