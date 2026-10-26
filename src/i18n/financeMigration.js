@@ -1,5 +1,12 @@
 export const financeMigrationTranslations = {
     en: {
+        bankSection: "Bank movements", alegraSection: "Alegra invoices and payments", alegraImport: "Import both Alegra sheets",
+        alegraHelp: "Bank import does not import invoices or customer payments. Prepare both sheets here, import Alegra invoices first, then Alegra_adm payments. All dates are included. Preparing creates previews only; each import requires confirmation.",
+        invoiceCount: "Invoices", paymentCount: "Payments", sourceTotal: "Source total", prepareAlegra: "Prepare Alegra invoices and payments",
+        invoiceStep: "1. Review and import invoices (Alegra)", paymentStep: "2. Review and import payments (Alegra_adm)",
+        paymentStepHelp: "Import payments after invoices so they link by invoice number. Split payments remain separate. Payments do not create another sale or another bank movement. Missing numbers remain for review.",
+        reviewPayments: "Review / import Alegra_adm payments",
+        reviewMeaning: "The Debitos Conciliado checkbox is preserved as Reviewed when classifications are complete. Ingresos has no equivalent checkbox, so credits require review. Reviewed does not mean matched to invoices or bank reconciliation.",
         start: "From", end: "Until", clearDates: "Show all dates",
         cashRow: "Cash — pending cash import", invalidBankFacts: "Fix the source date or amount before bank import", viewImported: "View imported records",
         copyCompany: "Use this workbook with another company", chooseCompany: "Choose a company", copyPreview: "Copy preview", copyHelp: "Creates a new preview under the chosen company. The original preview is retained; no transactions are imported by copying.",
@@ -29,6 +36,13 @@ export const financeMigrationTranslations = {
         fileIssue: { invalid_payment_csv: "Malformed or unsupported payment CSV.", missing_payment_sheet: "The saved workbook has no Alegra_adm payment sheet.", ambiguous_payment_sheets: "More than one payment table was found; upload one payment report.", missing_payment_header: "Expected payment columns were not found near the top of a worksheet.", no_payments: "No payment entries were found.", file_too_large: "Workbook exceeds 5 MiB.", workbook_limit: "Workbook exceeds safe row, cell or expanded-file limits.", unsupported_macros: "Macro workbooks are not supported.", unsupported_xml: "Workbook XML format is not supported.", invalid_shared_string: "Workbook text reference is invalid.", invalid_boolean: "Workbook checkbox value is invalid.", ambiguous_movement_sheets: "More than one movement sheet has the same recognized name.", invalid_workbook_path: "Workbook sheet reference is invalid.", invalid_cell_reference: "Workbook cell reference is invalid.", duplicate_header: "A recognized column appears more than once.", missing_header: "Expected date, amount and description headers are missing from row 1.", missing_movement_sheet: "Expected Debitos and Ingresos sheets were not found.", invalid_workbook: "The XLSX workbook is malformed or unsupported.", no_movements: "No movement entries were found." },
     },
     es: {
+        bankSection: "Movimientos bancarios", alegraSection: "Facturas y pagos de Alegra", alegraImport: "Importar ambas hojas de Alegra",
+        alegraHelp: "La importación bancaria no importa facturas ni pagos de clientes. Prepare ambas hojas aquí, importe primero las facturas de Alegra y después los pagos de Alegra_adm. Se incluyen todas las fechas. Preparar solo crea vistas previas; cada importación requiere confirmación.",
+        invoiceCount: "Facturas", paymentCount: "Pagos", sourceTotal: "Total de origen", prepareAlegra: "Preparar facturas y pagos de Alegra",
+        invoiceStep: "1. Revisar e importar facturas (Alegra)", paymentStep: "2. Revisar e importar pagos (Alegra_adm)",
+        paymentStepHelp: "Importe pagos después de las facturas para vincularlos por número. Los pagos fraccionados permanecen separados. Los pagos no crean otra venta ni otro movimiento bancario. Los números faltantes quedan pendientes.",
+        reviewPayments: "Revisar / importar pagos de Alegra_adm",
+        reviewMeaning: "La casilla Conciliado de Debitos se conserva como Revisado si la clasificación está completa. Ingresos no tiene esa casilla, por eso sus créditos requieren revisión. Revisado no significa vinculado a facturas ni conciliación bancaria.",
         start: "Desde", end: "Hasta", clearDates: "Mostrar todas las fechas",
         cashRow: "Efectivo — pendiente de importar", invalidBankFacts: "Corrige fecha o importe en el origen antes de importar al banco", viewImported: "Ver registros importados",
         copyCompany: "Usar este archivo con otra empresa", chooseCompany: "Selecciona una empresa", copyPreview: "Copiar vista previa", copyHelp: "Crea una vista previa en la empresa elegida. Se conserva el original; copiar no importa movimientos.",

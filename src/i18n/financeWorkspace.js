@@ -1,5 +1,6 @@
 export const financeWorkspaceTranslations = {
     "en": {
+        "finance.workspace.bankStatusHelp": "Status shows classification review. Matching bank entries to sales is a separate reconciliation step; importing or reviewing does not mark them reconciled.",
         "finance.workspace.historical_manual_description": "Workbook description",
         "finance.workspace.historical_category": "Workbook category",
         "finance.workspace.historical_subcategory": "Workbook subcategory",
@@ -212,6 +213,7 @@ export const financeWorkspaceTranslations = {
         "finance.workspace.badOperationDate": "Enter the operation date as YYYY-MM-DD."
     },
     "es": {
+        "finance.workspace.bankStatusHelp": "El estado indica la revisión de la clasificación. Vincular movimientos con ventas es una conciliación aparte; importar o revisar no los marca conciliados.",
         "finance.workspace.historical_manual_description": "Descripción del archivo",
         "finance.workspace.historical_category": "Categoría del archivo",
         "finance.workspace.historical_subcategory": "Subcategoría del archivo",
