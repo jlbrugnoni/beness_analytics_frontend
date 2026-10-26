@@ -22,7 +22,7 @@ export default function BankDialog({ record, close, canEdit, changed, w, t }) {
     const allowed = canEdit && data?.can_edit && data?.active && !data?.reconciled;
     const debit = data?.source.direction === "debit";
     const kind = edit.movement_kind || "";
-    const expense = debit && ["expense", "fee", "extraordinary"].includes(kind);
+    const expense = debit && kind === "expense";
     const receipt = !debit && kind === "customer_receipt";
     const hasChildren = options.categories.some((c) => c.parent === edit.category && c.active);
     const validMonth = !edit.expense_period || /^[0-9]{4}-(0[1-9]|1[0-2])$/.test(edit.expense_period.slice(0, 7));
@@ -47,7 +47,7 @@ export default function BankDialog({ record, close, canEdit, changed, w, t }) {
     const dirty = Object.entries(edit).some(([key, value]) => value !== (data?.classification || {})[key]);
     const main = options.categories.filter((c) => !c.parent && (c.active || c.id === edit.category));
     const sub = options.categories.filter((c) => c.parent === edit.category && (c.active || c.id === edit.subcategory));
-    const selection = (key, choices, value = edit[key] ?? "", onChange = null, helperText = null) => <TextField required={missing.includes(key)} error={missing.includes(key)} helperText={missing.includes(key) ? w("requiredField") : helperText} select fullWidth SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }} label={w(key)} value={value} disabled={!allowed || busy} onChange={onChange || ((event) => change(key, event.target.value || null))}><MenuItem value="">{w("unknown")}</MenuItem>{choices.map((choice) => <MenuItem key={choice.id ?? choice.value} value={choice.id ?? choice.value}>{choice.name ?? choice.label}{choice.active === false ? ` (${w("inactive")})` : ""}</MenuItem>)}</TextField>;
+    const selection = (key, choices, value = edit[key] ?? "", onChange = null, helperText = null) => <TextField required={missing.includes(key)} error={missing.includes(key)} helperText={missing.includes(key) ? w("requiredField") : helperText} select fullWidth SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }} label={w(key)} value={value} disabled={!allowed || busy} onChange={onChange || ((event) => change(key, event.target.value || null))}>{key !== "movement_kind" && <MenuItem value="">{w("unknown")}</MenuItem>}{choices.map((choice) => <MenuItem key={choice.id ?? choice.value} value={choice.id ?? choice.value}>{choice.name ?? choice.label}{choice.active === false ? ` (${w("inactive")})` : ""}</MenuItem>)}</TextField>;
     const label = (values) => {
         if (!values || !Object.keys(values).length) return w("unclassified");
         return [values.description, options.categories.find((c) => c.id === values.category)?.name, options.categories.find((c) => c.id === values.subcategory)?.name,
@@ -62,7 +62,7 @@ export default function BankDialog({ record, close, canEdit, changed, w, t }) {
             {data.reconciled && <Alert severity="warning">{w("reconciledLocked")}</Alert>}
             <TextField label={w("business_description")} value={edit.description || ""} onChange={(event) => change("description", event.target.value)} disabled={!allowed || busy} multiline minRows={2} inputProps={{ maxLength: 2000 }} />
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-                {selection("movement_kind", options.kinds.filter((k) => debit ? !["customer_receipt", "fee_reimbursement"].includes(k.value) : !["expense", "fee"].includes(k.value)).map((k) => ({ ...k, label: w(`kind_${k.value}`) })), edit.movement_kind || "", (event) => change("movement_kind", event.target.value), w(`kindHelp_${edit.movement_kind || "unknown"}`))}
+                {selection("movement_kind", options.kinds.map((k) => ({ ...k, label: w(k.value === "refund" && debit ? "kind_debit_refund" : `kind_${k.value}`) })), edit.movement_kind || "", (event) => change("movement_kind", event.target.value), w(`kindHelp_${edit.movement_kind || "unknown"}`))}
                 {debit && selection("category", main, edit.category || "", (event) => { setSaved(false); setEdit({ ...edit, category: event.target.value || null, subcategory: null }); })}
                 {debit && selection("subcategory", sub)}
                 {selection("studio", [{ id: "administration", name: w("administration") }, ...options.studios], edit.administration ? "administration" : edit.studio || "", (event) => { setSaved(false); setEdit({ ...edit, studio: event.target.value === "administration" ? null : event.target.value || null, administration: event.target.value === "administration", terminal: null }); })}
