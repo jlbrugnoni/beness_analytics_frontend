@@ -1,5 +1,9 @@
 export const financeWorkspaceTranslations = {
     "en": {
+        "finance.workspace.recognizeTerminals": "Apply terminal mappings to existing credits",
+        "finance.workspace.recognizeTerminalsHelp": "New imports recognize terminals automatically. This checks all existing credits for this company, preserving reviewed records and conflicting assignments. Unknown or multiple matches stay for review.",
+        "finance.workspace.recognizedCount": "Credits updated",
+
         "finance.workspace.bankComment": "Comment (optional)",
         "finance.workspace.classificationUpdated": "Classification updated",
         "finance.workspace.kindHelp_unknown": "Choose why the money moved. Leave unassigned if unsure; it stays available for review.",
@@ -194,6 +198,10 @@ export const financeWorkspaceTranslations = {
         "finance.workspace.badOperationDate": "Enter the operation date as YYYY-MM-DD."
     },
     "es": {
+        "finance.workspace.recognizeTerminals": "Aplicar terminales a créditos existentes",
+        "finance.workspace.recognizeTerminalsHelp": "Las nuevas importaciones reconocen terminales automáticamente. Esto revisa todos los créditos existentes de esta empresa, preservando registros revisados y asignaciones distintas. Sin coincidencia o con varias, quedan para revisión.",
+        "finance.workspace.recognizedCount": "Créditos actualizados",
+
         "finance.workspace.bankComment": "Comentario (opcional)",
         "finance.workspace.classificationUpdated": "Clasificación actualizada",
         "finance.workspace.kindHelp_unknown": "Selecciona por qué se movió el dinero. Si no lo sabes, déjalo sin asignar para revisión.",
