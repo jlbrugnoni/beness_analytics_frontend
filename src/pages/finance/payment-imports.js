@@ -50,6 +50,11 @@ export default function PaymentImports() {
         try { const form = new FormData(); form.append("company", company); form.append("file", file); const { data } = await axios.post(api("payment-imports/"), form, auth()); setBatch(data); setPage(1); setFile(null); setFileKey((old) => old + 1); setHistoryPage(1); setRefresh((old) => old + 1); }
         catch { setError(l("error")); } finally { setBusy(false); }
     };
+    const reread = async () => {
+        setBusy(true); setError("");
+        try { const { data } = await axios.post(api(`payment-imports/${batch.id}/reread/`), {}, auth()); setBatch(data); setPage(1); setHistoryPage(1); setRefresh((old) => old + 1); }
+        catch { setError(l("error")); } finally { setBusy(false); }
+    };
     const action = async (path, values) => {
         setBusy(true); setError("");
         try { await axios.post(api(path), values, auth()); setDialog(null); setNote(""); setRefresh((old) => old + 1); }
@@ -79,8 +84,16 @@ export default function PaymentImports() {
             {error && <Alert severity="error">{error}</Alert>}
             <TextField select label={l("company")} value={company} disabled={busy} onChange={(event) => { setCompany(event.target.value); setBatch(null); setDialog(null); setHistoryPage(1); setReceiptPage(1); setFile(null); setFileKey((old) => old + 1); }}>{companies.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}</TextField>
             {canImport && <Paper variant="outlined" component="form" onSubmit={upload} sx={{ p: 2 }}><Stack spacing={2}><Typography>{l("reportHelp")}</Typography><Box component="input" key={fileKey} type="file" accept=".xlsx,.csv" aria-label={l("file")} disabled={busy} onChange={(event) => setFile(event.target.files?.[0] || null)} /><Button type="submit" disabled={busy || !company || !file || file.size > 5 * 1024 * 1024 || !companies.find((c) => c.id === Number(company))?.active}>{l("upload")}</Button></Stack></Paper>}
+            {batch && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={1}>
+                <Typography>#{batch.id} · {batch.file_name}</Typography>
+                {batch.file_issues.length ? <>
+                    <Alert severity="error" role="alert">{l("previewFailed")}</Alert>
+                    {batch.file_issues.map((code) => <Typography key={code}>{t(`finance.migration.fileIssue.${code}`, l("invalidFile"))}</Typography>)}
+                    {canImport && batch.origin === "report" && batch.posting_status === "not_imported" && <Button disabled={busy} onClick={reread}>{l("reread")}</Button>}
+                </> : <Alert severity="success" role="status">{l("previewReady")} · {l("sourceRows")}: {batch.summary.rows} · {l("sourceAmount")}: {batch.summary.amount_total} DOP</Alert>}
+            </Stack></Paper>}
             <Typography component="h2" variant="h5">{l("history")}</Typography><Button disabled={busy} onClick={() => setRefresh((old) => old + 1)}>{l("refresh")}</Button>
-            {history.results.map((entry) => <Paper variant="outlined" key={entry.id} sx={{ p: 2 }}><Stack direction="row" spacing={2} useFlexGap flexWrap="wrap"><Typography>#{entry.id} · {entry.file_name} · {l(entry.origin)}{entry.selected_month ? ` · ${entry.selected_month.slice(0, 7)}` : ""}</Typography><Button disabled={busy} onClick={() => { setBatch(entry); setPage(1); setError(""); }}>{l("open")}</Button></Stack></Paper>)}
+            {history.results.map((entry) => <Paper variant="outlined" key={entry.id} sx={{ p: 2 }}><Stack direction="row" spacing={2} useFlexGap flexWrap="wrap"><Typography>#{entry.id} · {entry.file_name} · {l(entry.origin)}{entry.file_issues.length ? ` · ${l("invalidFile")}` : ""}{entry.selected_month ? ` · ${entry.selected_month.slice(0, 7)}` : ""}</Typography><Button disabled={busy} onClick={() => { setBatch(entry); setPage(1); setError(""); }}>{l("open")}</Button></Stack></Paper>)}
             {controls(history, historyPage, setHistoryPage)}
             {batch && <Paper variant="outlined" sx={{ p: 2, minWidth: 0 }}><Stack spacing={2}>
                 <Typography component="h2" variant="h5">{l("plan")} #{batch.id} · {batch.file_name}</Typography>
