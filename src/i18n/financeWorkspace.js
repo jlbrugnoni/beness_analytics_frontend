@@ -1,5 +1,15 @@
 export const financeWorkspaceTranslations = {
     "en": {
+        "finance.workspace.historical_manual_description": "Workbook description",
+        "finance.workspace.historical_category": "Workbook category",
+        "finance.workspace.historical_subcategory": "Workbook subcategory",
+        "finance.workspace.historical_location": "Workbook studio",
+        "finance.workspace.historical_payment_method": "Workbook payment method",
+        "finance.workspace.historical_terminal": "Workbook terminal",
+        "finance.workspace.historical_expense_period": "Workbook expense period",
+        "finance.workspace.historical_operation_date": "Workbook operation date",
+        "finance.workspace.historical_legacy_reviewed": "Workbook recognition flag",
+
         "finance.workspace.kind_debit_refund": "Refund",
         "finance.workspace.requiredField": "Required to mark as reviewed",
         "finance.workspace.reviewCompleteFirst": "Complete the marked fields to enable recognition. You can save unfinished work.",
@@ -202,6 +212,16 @@ export const financeWorkspaceTranslations = {
         "finance.workspace.badOperationDate": "Enter the operation date as YYYY-MM-DD."
     },
     "es": {
+        "finance.workspace.historical_manual_description": "Descripción del archivo",
+        "finance.workspace.historical_category": "Categoría del archivo",
+        "finance.workspace.historical_subcategory": "Subcategoría del archivo",
+        "finance.workspace.historical_location": "Estudio del archivo",
+        "finance.workspace.historical_payment_method": "Método de pago del archivo",
+        "finance.workspace.historical_terminal": "Terminal del archivo",
+        "finance.workspace.historical_expense_period": "Periodo de gasto del archivo",
+        "finance.workspace.historical_operation_date": "Fecha de operación del archivo",
+        "finance.workspace.historical_legacy_reviewed": "Marca de revisión del archivo",
+
         "finance.workspace.kind_debit_refund": "Devolución",
         "finance.workspace.requiredField": "Obligatorio para marcar como revisado",
         "finance.workspace.reviewCompleteFirst": "Completa los campos marcados para habilitar el reconocimiento. Puedes guardar el trabajo pendiente.",

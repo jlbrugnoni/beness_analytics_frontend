@@ -13,7 +13,7 @@ export default function WorkbookPayments({ batch }) {
     const [preparing, setPreparing] = useState(false);
     const label = (key) => t(`finance.payments.${key}`);
     const [opened, setOpened] = useState(false);
-    const [scope, setScope] = useState("selected");
+    const [scope, setScope] = useState("all");
     const [review, setReview] = useState("all");
     const [search, setSearch] = useState("");
     const [invoice, setInvoice] = useState("");

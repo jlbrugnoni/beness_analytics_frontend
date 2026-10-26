@@ -86,7 +86,7 @@ export default function BankPostingPanel({ batch, onProcessingUpdated }) {
     </Stack>;
     return <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
         <Typography variant="h5" component="h2">{label("title")}</Typography>
-        <Alert severity="info">{label("intro")}</Alert>
+        {batch.migration_batch ? <Typography variant="body2">{label("historicalIntro")}</Typography> : <Alert severity="info">{label("intro")}</Alert>}
         {error && !dialog && <Alert severity="error" sx={{ whiteSpace: "pre-line" }}>{error}</Alert>}
         <Button disabled={busy || loading} onClick={() => { setError(null); load(); }}>{t("access.reload")}</Button>
         {loading ? <CircularProgress /> : data && <>
@@ -99,7 +99,7 @@ export default function BankPostingPanel({ batch, onProcessingUpdated }) {
                 {["line", "date", "amount", "description"].map((key) => <TableCell key={key}>{t(`finance.import.${key}`)}</TableCell>)}
                 <TableCell>{label("decision")}</TableCell><TableCell>{label("movement")}</TableCell><TableCell>{label("review")}</TableCell>
             </TableRow></TableHead><TableBody>{data.rows.results.map((row) => <TableRow key={row.row_id}>
-                <TableCell>{row.source_line}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{row.source.bank_date || "—"}</TableCell>
+                <TableCell>{row.migration_sheet ? `${row.migration_sheet}!${row.source_line}` : row.source_line}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{row.source.bank_date || "—"}</TableCell>
                 <TableCell>{formatMoney(row.source.amount)}</TableCell><TableCell sx={{ minWidth: 150, overflowWrap: "anywhere" }}>{row.source.description || "—"}</TableCell>
                 <TableCell>{label(`outcome.${row.outcome}`)}</TableCell><TableCell>{row.movement_id || row.target || "—"}</TableCell>
                 <TableCell>{data.can_review && row.resolution === "pending" && <Button disabled={busy} onClick={() => open("review", row)}>{label("review")}</Button>}</TableCell>
@@ -139,8 +139,10 @@ export default function BankPostingPanel({ batch, onProcessingUpdated }) {
             </>}
             {dialog === "review" && <>
                 <Typography>{label("reported")}: {sourceLine(review?.source)}</Typography>
+                {review?.outcome === "assignment_conflict" && <Typography>{label("assignmentConflictHelp")}</Typography>}
+                {review?.migration_source && <Typography variant="body2">{[review.migration_source.manual_description, review.migration_source.category, review.migration_source.subcategory, review.migration_source.location, review.migration_source.payment_method, review.migration_source.expense_period, review.migration_source.operation_date].filter(Boolean).join(" · ")}</Typography>}
                 <TextField select label={label("action")} value={action} disabled={busy} onChange={(event) => setAction(event.target.value)}>
-                    {["create", "link", "correct", "ignore"].map((key) => <MenuItem key={key} value={key}>{label(`action.${key}`)}</MenuItem>)}
+                    {(review?.outcome === "assignment_conflict" ? ["link", "ignore"] : ["create", "link", "correct", "ignore"]).map((key) => <MenuItem key={key} value={key}>{label(`action.${key}`)}</MenuItem>)}
                 </TextField>
                 {["link", "correct"].includes(action) && <>
                     <TextField select label={label("target")} value={target?.id || ""} disabled={busy} onChange={(event) => setTarget(review.candidates.find((candidate) => candidate.id === Number(event.target.value)) || target)}>

@@ -1,5 +1,9 @@
 export const financePostingTranslations = {
     "en": {
+        "finance.posting.historicalIntro": "Confirm the selected historical bank entries. Workbook classifications are preserved where mapped; missing information remains editable in Records. Cash, uncertain matches and conflicting assignments are not silently posted or overwritten.",
+        "finance.posting.outcome.origin_conflict": "Already imported to another account",
+        "finance.posting.outcome.assignment_conflict": "Workbook assignments differ",
+        "finance.posting.assignmentConflictHelp": "The workbook proposes different business assignments. Link keeps the existing decisions. To change them, edit the record in Records and reload this review.",
         "finance.posting.title": "Transaction import and review",
         "finance.posting.intro": "Import unambiguous new bank transactions and link recognized occurrences. Ambiguous rows and proposed corrections stay for explicit review. This does not classify expenses, reconcile sales or calculate profit.",
         "finance.posting.status": "Processing status",
@@ -70,6 +74,10 @@ export const financePostingTranslations = {
         "finance.posting.error": "Could not load or update the transaction import. Reload and try again."
     },
     "es": {
+        "finance.posting.historicalIntro": "Confirma los movimientos bancarios históricos seleccionados. Se conservan las clasificaciones identificadas; lo pendiente se completa en Registros. Efectivo, coincidencias dudosas y asignaciones en conflicto no se registran ni sobrescriben silenciosamente.",
+        "finance.posting.outcome.origin_conflict": "Ya importado en otra cuenta",
+        "finance.posting.outcome.assignment_conflict": "Asignaciones distintas en el archivo",
+        "finance.posting.assignmentConflictHelp": "El archivo propone asignaciones distintas. Vincular conserva las decisiones existentes. Para cambiarlas, edita el registro en Registros y actualiza esta revisión.",
         "finance.posting.title": "Importación y revisión de movimientos",
         "finance.posting.intro": "Importa movimientos bancarios nuevos sin ambigüedad y vincula las coincidencias reconocidas. Las filas ambiguas y las correcciones propuestas requieren revisión explícita. No clasifica gastos, concilia ventas ni calcula beneficios.",
         "finance.posting.status": "Estado del procesamiento",
