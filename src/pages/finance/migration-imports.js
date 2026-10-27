@@ -5,6 +5,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, Tab, Tabs } from "@mui/material";
 import MainPage from "@/pages/mainPage";
+import MigrationCashImport from "@/components/finance/MigrationCashImport";
 import MigrationBankImport from "@/components/finance/MigrationBankImport";
 import MigrationAlegraImport from "@/components/finance/MigrationAlegraImport";
 import useAccess from "@/hooks/useAccess";
@@ -85,8 +86,8 @@ export default function MigrationImports() {
                 {controls(history, historyPage, setHistoryPage, busy || loading)}
                 {batch && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
                     <Typography component="h2" variant="h5">{label("preview")} #{batch.id} · {batch.file_name}</Typography>
-                    <Tabs value={section} onChange={(_, value) => setSection(value)}><Tab value="bank" label={label("bankSection")} /><Tab value="alegra" label={label("alegraSection")} /></Tabs>
-                    {section === "alegra" ? <MigrationAlegraImport key={batch.id} batch={batch} label={label} canImport={canImport} /> : <>
+                    <Tabs variant="scrollable" scrollButtons="auto" value={section} onChange={(_, value) => setSection(value)}><Tab value="bank" label={label("bankSection")} /><Tab value="alegra" label={label("alegraSection")} /><Tab value="cash" label={t("finance.workspace.cashMigration")} /></Tabs>
+                    {section === "cash" ? <MigrationCashImport key={batch.id} batch={batch} canImport={canImport} /> : section === "alegra" ? <MigrationAlegraImport key={batch.id} batch={batch} label={label} canImport={canImport} /> : <>
                     <Typography variant="body2">{label("originHelp")}</Typography>
                     <Typography variant="body2">{label("reviewMeaning")}</Typography>
                     {canImport && <MigrationBankImport key={batch.id} batch={batch} selected={selected} setSelected={setSelected} companies={companies} onBusy={setBusy} copied={(data) => { setCompanyId(data.company); open(data); setHistoryPage(1); setRefresh((old) => old + 1); }} label={label} />}

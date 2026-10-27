@@ -17,12 +17,12 @@ export function useWorkspace() {
     const access = useAccess(); const { t } = useI18n();
     const canRead = Boolean(access.finance?.can_enter && access.capabilities?.can_view_sensitive_finance);
     const [options, setOptions] = useState({ companies: [], accounts: [], studios: [], categories: [] });
-    const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(""); const [loading, setLoading] = useState(false); const [optionsRevision, setOptionsRevision] = useState(0);
     useEffect(() => { let active = true; setOptions({ companies: [], accounts: [], studios: [], categories: [] });
         if (canRead) { setLoading(true); axios.get(api("workspace/options/"), auth()).then(({ data }) => { if (active) setOptions(data); }).catch(() => { if (active) setError(t("finance.workspace.error")); }).finally(() => { if (active) setLoading(false); }); }
         return () => { active = false; };
-    }, [canRead, t]);
-    return { access, canRead, options, loading, error, setError, t, w: (key) => t(`finance.workspace.${key}`, key) };
+    }, [canRead, t, optionsRevision]);
+    return { access, canRead, options, loading, error, setError, reloadOptions: () => setOptionsRevision((old) => old + 1), t, w: (key) => t(`finance.workspace.${key}`, key) };
 }
 export function WorkspaceFrame({ title, children, current, company }) {
     const { t } = useI18n(); const access = useAccess(); const w = (key) => t(`finance.workspace.${key}`);
