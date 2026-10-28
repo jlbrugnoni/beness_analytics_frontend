@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import axios from "axios";
-import { Alert, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import useI18n from "@/hooks/useI18n";
+import { Alert, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import MonthSelector from "@/components/finance/MonthSelector";
 import BankDialog from "@/components/finance/workspace/BankDialog";
 import InvoiceDialog from "@/components/finance/workspace/InvoiceDialog";
 import ClosureCheckDialog from "@/components/finance/ClosureCheckDialog";
@@ -40,7 +38,7 @@ function Evidence({ selected, close, company, month, studio, options, canEdit, c
 }
 
 export default function Closures() {
-    const { access, canRead, options, loading, error, setError, w, t } = useWorkspace(); const router = useRouter(); const { language } = useI18n();
+    const { access, canRead, options, loading, error, setError, w, t } = useWorkspace(); const router = useRouter();
     const [company, setCompany] = useState(""); const [month, setMonth] = useState(localMonth); const [studio, setStudio] = useState(""); const [refresh, setRefresh] = useState(0);
     const [checking, setChecking] = useState(null);
     const [data, setData] = useState(null); const [busy, setBusy] = useState(false); const [method, setMethod] = useState(null); const [evidence, setEvidence] = useState(null);
@@ -58,24 +56,12 @@ export default function Closures() {
         const { data: result } = await axios.get(api(`closures/?${params}`), auth());
         setData(result); setMethod((old) => old ? result.methods.find((row) => row.channel === old.channel) : null); setChecking(null);
     };
-    const [selectedYear, selectedMonth] = month.split("-").map(Number);
-    const years = Array.from({ length: 16 }, (_, i) => selectedYear - 10 + i).filter((year) => year >= 1 && year <= 9999);
-    const monthNames = Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(language, { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2020, i, 1))));
-    const shiftMonth = (delta) => {
-        const index = selectedYear * 12 + selectedMonth - 1 + delta;
-        setMonth(`${String(Math.floor(index / 12)).padStart(4, "0")}-${String(index % 12 + 1).padStart(2, "0")}`);
-    };
     const channel = (key) => t(`finance.receipts.channel.${key}`);
     return <WorkspaceFrame title={w("closures")} current="closures" company={company}>
         {!allowed ? <Alert severity="warning">{w("denied")}</Alert> : <>
             <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap">
                 <TextField select label={w("company")} value={company} sx={{ minWidth: 260 }} onChange={(e) => { setCompany(String(e.target.value)); setStudio(""); }}><MenuItem value="">{w("choose")}</MenuItem>{options.companies.map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.name} · {c.currency}</MenuItem>)}</TextField>
-                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-                    <IconButton aria-label={w("closure_previousMonth")} title={w("closure_previousMonth")} disabled={month === "0001-01"} onClick={() => shiftMonth(-1)}><ChevronLeftIcon /></IconButton>
-                    <TextField select label={w("closure_month")} value={selectedMonth} sx={{ minWidth: 140 }} onChange={(e) => setMonth(`${String(selectedYear).padStart(4, "0")}-${String(e.target.value).padStart(2, "0")}`)}>{monthNames.map((name, i) => <MenuItem key={i} value={i + 1}>{name}</MenuItem>)}</TextField>
-                    <TextField select label={w("closure_year")} value={selectedYear} sx={{ minWidth: 100 }} onChange={(e) => setMonth(`${String(e.target.value).padStart(4, "0")}-${String(selectedMonth).padStart(2, "0")}`)}>{years.map((year) => <MenuItem key={year} value={year}>{year}</MenuItem>)}</TextField>
-                    <IconButton aria-label={w("closure_nextMonth")} title={w("closure_nextMonth")} disabled={month === "9999-12"} onClick={() => shiftMonth(1)}><ChevronRightIcon /></IconButton>
-                </Stack>
+                <MonthSelector value={month} onChange={setMonth} allowEmpty={false} />
                 <TextField select SelectProps={{ displayEmpty: true }} InputLabelProps={{ shrink: true }} label={w("studio")} value={studio} sx={{ minWidth: 230 }} onChange={(e) => setStudio(e.target.value)}><MenuItem value="">{w("all")}</MenuItem>{options.studios.filter((s) => s.site_id === selected?.site).map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}</TextField>
                 <Button disabled={busy || !company} onClick={() => setRefresh((v) => v + 1)}>{w("closure_refresh")}</Button>
             </Stack>

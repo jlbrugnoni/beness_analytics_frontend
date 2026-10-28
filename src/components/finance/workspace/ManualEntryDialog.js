@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { api, auth } from "./common";
+import MonthSelector from "../MonthSelector";
 import { formatMoney } from "@/utils/formatMoney";
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -33,7 +34,7 @@ export default function ManualEntryDialog({ company, direction, record, options,
         {debit ? <>
             <TextField select label={w("category")} value={values.category} disabled={busy} onChange={(e) => setValues({ ...values, category: e.target.value, subcategory: "", reviewed: false })}><MenuItem value="">{w("unknown")}</MenuItem>{categories.filter((c) => !c.parent).map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}</TextField>
             <TextField select label={w("subcategory")} value={values.subcategory} disabled={busy} onChange={(e) => change("subcategory", e.target.value)}><MenuItem value="">{w("unknown")}</MenuItem>{categories.filter((c) => c.parent === values.category).map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}</TextField>
-            <TextField type="month" label={w("expense_period")} InputLabelProps={{ shrink: true }} value={values.expense_period} disabled={busy} onChange={(e) => change("expense_period", e.target.value)} />
+            <MonthSelector label={w("expense_period")} value={values.expense_period} referenceMonth={values.date.slice(0, 7)} disabled={busy} onChange={(value) => change("expense_period", value)} />
         </> : <><TextField select label={w("channel")} value={channel} disabled={busy || account?.kind === "cash"} onChange={(e) => change("channel", e.target.value)}><MenuItem value="">{w("unknown")}</MenuItem>{["cash", "transfer", "card_terminal", "payment_link", "recurring"].map((c) => <MenuItem key={c} value={c}>{t(`finance.receipts.channel.${c}`)}</MenuItem>)}</TextField><TextField type="date" label={w("operation_date")} InputLabelProps={{ shrink: true }} value={values.operation_date} disabled={busy} onChange={(e) => change("operation_date", e.target.value)} /></>}
         <FormControlLabel label={w("recognized")} control={<Checkbox checked={values.reviewed && !incomplete} disabled={busy || Boolean(incomplete)} onChange={(e) => setValues({ ...values, reviewed: e.target.checked })} />} />
     </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={close}>{w("close")}</Button><Button variant="contained" disabled={busy || !values.account || !values.date || !/^\d+(\.\d{1,2})?$/.test(values.amount) || Number(values.amount) <= 0} onClick={save}>{w("save")}</Button></DialogActions></Dialog>;
