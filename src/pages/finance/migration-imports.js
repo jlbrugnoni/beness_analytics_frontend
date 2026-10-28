@@ -2,8 +2,9 @@ import { formatMoney, formatFinanceValue, formatFinanceCell } from "@/utils/form
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import Link from "next/link";
-import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, Tab, Tabs } from "@mui/material";
+import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, Tab, Tabs } from "@mui/material";
 import MainPage from "@/pages/mainPage";
 import MigrationCashImport from "@/components/finance/MigrationCashImport";
 import MigrationBankImport from "@/components/finance/MigrationBankImport";
@@ -16,11 +17,13 @@ const auth = () => ({ headers: { Authorization: `Token ${sessionStorage.getItem(
 const empty = { results: [], count: 0 };
 
 export default function MigrationImports() {
+    const { query } = useRouter(); const requestedCompany = query.company;
     const { t } = useI18n(); const label = useCallback((key) => t(`finance.migration.${key}`), [t]); const access = useAccess();
     const canRead = Boolean(access.finance?.can_enter && access.capabilities?.can_view_finance_bank_accounts && access.capabilities?.can_view_sensitive_finance);
     const canImport = canRead && access.capabilities?.can_import_finance;
     const [section, setSection] = useState("bank");
     const [companies, setCompanies] = useState([]); const [companyId, setCompanyId] = useState("");
+    const [supervised, setSupervised] = useState(true);
     const [file, setFile] = useState(null); const [fileKey, setFileKey] = useState(0);
     const [history, setHistory] = useState(empty); const [historyPage, setHistoryPage] = useState(1); const [refresh, setRefresh] = useState(0);
     const [batch, setBatch] = useState(null); const [rows, setRows] = useState(empty); const [page, setPage] = useState(1);
@@ -31,9 +34,9 @@ export default function MigrationImports() {
     const uploadVersion = useRef(0);
     useEffect(() => {
         let active = true; setCompanies([]); setCompanyId(""); setBatch(null); setRaw(null); setDetail(null);
-        if (canRead) axios.get(api("companies/"), auth()).then(({ data }) => { if (active) { setCompanies(data); setCompanyId(data.find((item) => item.active)?.id || data[0]?.id || ""); } }).catch(() => { if (active) setError(t("finance.migration.error")); });
+        if (canRead) axios.get(api("companies/"), auth()).then(({ data }) => { if (active) { setCompanies(data); setCompanyId(data.find((item) => item.active && item.id === Number(requestedCompany))?.id || data.find((item) => item.active)?.id || data[0]?.id || ""); } }).catch(() => { if (active) setError(t("finance.migration.error")); });
         return () => { active = false; uploadVersion.current += 1; };
-    }, [canRead, t]);
+    }, [canRead, t, requestedCompany]);
     useEffect(() => {
         let active = true; setHistory(empty);
         if (!companyId || !canRead) return undefined;
@@ -58,7 +61,7 @@ export default function MigrationImports() {
     const upload = async (event) => {
         event.preventDefault(); const version = ++uploadVersion.current; setBusy(true); setError("");
         try {
-            const form = new FormData(); form.append("company", companyId);  form.append("file", file);
+            const form = new FormData(); form.append("company", companyId);  form.append("file", file); form.append("supervised", String(supervised));
             const { data } = await axios.post(api(""), form, auth());
             if (version === uploadVersion.current) { open(data); setFile(null); setFileKey((old) => old + 1); setHistoryPage(1); setRefresh((old) => old + 1); }
         } catch (failure) { if (version === uploadVersion.current) setError(`${label("error")} ${failure.response?.status === 400 ? JSON.stringify(failure.response.data) : ""}`); }
@@ -80,9 +83,9 @@ export default function MigrationImports() {
             {error && <Alert severity="error" sx={{ overflowWrap: "anywhere" }}>{error}</Alert>}
             {!companies.length ? <Alert severity="info">{label("noCompanies")}</Alert> : <>
                 <TextField select label={label("company")} value={companyId} disabled={busy} onChange={(event) => { setCompanyId(event.target.value); setHistoryPage(1); setBatch(null); setDetail(null); setFile(null); setFileKey((old) => old + 1); setError(""); }}>{companies.map((item) => <MenuItem key={item.id} value={item.id}>{item.name} (DOP)</MenuItem>)}</TextField>
-                {canImport && <Paper variant="outlined" component="form" onSubmit={upload} sx={{ p: 2 }}><Stack spacing={2}><Typography variant="body2">{label("help")}</Typography><Box component="input" key={fileKey} type="file" accept=".xlsx" aria-label={label("file")} disabled={busy} onChange={(event) => setFile(event.target.files?.[0] || null)} /><Button type="submit" variant="contained" disabled={busy || !file || file.size > 5 * 1024 * 1024 || !company?.active}>{label("upload")}</Button></Stack></Paper>}
+                {canImport && <Paper variant="outlined" component="form" onSubmit={upload} sx={{ p: 2 }}><Stack spacing={2}><Typography variant="body2">{label("help")}</Typography><FormControlLabel control={<Checkbox checked={supervised} disabled={busy} onChange={(e) => setSupervised(e.target.checked)} />} label={label("supervised")} /><Typography variant="caption">{label("supervisedHelp")}</Typography><Box component="input" key={fileKey} type="file" accept=".xlsx" aria-label={label("file")} disabled={busy} onChange={(event) => setFile(event.target.files?.[0] || null)} /><Button type="submit" variant="contained" disabled={busy || !file || file.size > 5 * 1024 * 1024 || !company?.active}>{label("upload")}</Button></Stack></Paper>}
                 <Typography component="h2" variant="h5">{label("history")}</Typography><Button disabled={busy || loading} onClick={() => setRefresh((old) => old + 1)}>{label("refresh")}</Button>
-                {loading ? <CircularProgress /> : !history.count ? <Typography>{label("empty")}</Typography> : history.results.map((entry) => <Paper variant="outlined" key={entry.id} sx={{ p: 2 }}><Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center"><Typography>#{entry.id} · {entry.file_name} · {entry.selected_month.slice(0, 7)}</Typography><Chip label={label(entry.status === "failed" ? "failed" : "sourceParsed")} /><Button disabled={busy} onClick={() => open(entry)}>{label("open")}</Button></Stack></Paper>)}
+                {loading ? <CircularProgress /> : !history.count ? <Typography>{label("empty")}</Typography> : history.results.map((entry) => <Paper variant="outlined" key={entry.id} sx={{ p: 2 }}><Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center"><Typography>#{entry.id} · {entry.file_name} · {entry.selected_month.slice(0, 7)}</Typography><Chip label={label(entry.status === "failed" ? "failed" : "sourceParsed")} />{entry.supervised && <Chip size="small" label={label("supervisedBadge")} />}<Button disabled={busy} onClick={() => open(entry)}>{label("open")}</Button></Stack></Paper>)}
                 {controls(history, historyPage, setHistoryPage, busy || loading)}
                 {batch && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={2}>
                     <Typography component="h2" variant="h5">{label("preview")} #{batch.id} · {batch.file_name}</Typography>
