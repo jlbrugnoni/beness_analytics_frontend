@@ -2,6 +2,9 @@ export const financeWorkspaceTranslations = {
     "en": {
         "finance.workspace.closures": "Closures",
         "finance.workspace.closure_month": "Month",
+        "finance.workspace.closure_year": "Year",
+        "finance.workspace.closure_previousMonth": "Previous month",
+        "finance.workspace.closure_nextMonth": "Next month",
         "finance.workspace.closure_refresh": "Refresh",
         "finance.workspace.closure_gross": "Alegra payments",
         "finance.workspace.closure_fees": "Estimated fees",
@@ -296,6 +299,9 @@ export const financeWorkspaceTranslations = {
     "es": {
         "finance.workspace.closures": "Cierres",
         "finance.workspace.closure_month": "Mes",
+        "finance.workspace.closure_year": "Año",
+        "finance.workspace.closure_previousMonth": "Mes anterior",
+        "finance.workspace.closure_nextMonth": "Mes siguiente",
         "finance.workspace.closure_refresh": "Actualizar",
         "finance.workspace.closure_gross": "Pagos Alegra",
         "finance.workspace.closure_fees": "Comisiones estimadas",
