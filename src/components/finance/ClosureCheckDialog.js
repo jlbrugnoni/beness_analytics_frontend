@@ -10,7 +10,7 @@ export default function ClosureCheckDialog({ selected, company, canCheck, close,
     const day = selected.day; const status = day.check?.status || "open";
     const [note, setNote] = useState(day.check?.note || ""); const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [history, setHistory] = useState([]);
     useEffect(() => { let live = true; const params = new URLSearchParams({ company, month: day.date.slice(0, 7), day: day.date, channel: selected.channel });
-        axios.get(api(`closures/history/?${params}`), auth()).then(({ data }) => { if (live) setHistory(data.results); }).catch(() => { if (live) setError(t("finance.workspace.error")); });
+        axios.get(api(`closures/history/?${params}`), auth()).then(({ data }) => { if (live) setHistory([...data.results].sort((a, b) => a.id - b.id)); }).catch(() => { if (live) setError(t("finance.workspace.error")); });
         return () => { live = false; };
     }, [company, day.date, selected.channel, t]);
     const save = async (operation) => { setBusy(true); setError("");
