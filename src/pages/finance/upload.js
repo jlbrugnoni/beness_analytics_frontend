@@ -1,3 +1,4 @@
+import InvoiceSourceReview, { InvoiceImportFilters } from "@/components/finance/InvoiceSourceReview";
 import { formatMoney } from "@/utils/formatMoney";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -15,13 +16,14 @@ export default function FinanceUpload() {
     const [batch, setBatch] = useState(null); const [plan, setPlan] = useState(null); const [page, setPage] = useState(1); const [pending, setPending] = useState(false);
     const [history, setHistory] = useState(empty); const [historyPage, setHistoryPage] = useState(1); const [refresh, setRefresh] = useState(0);
     const [source, setSource] = useState(null); const [confirm, setConfirm] = useState(false); const [done, setDone] = useState(false);
+    const [invoiceFilters, setInvoiceFilters] = useState({ outcome: "all", search: "" });
     const [operation, setOperation] = useState("commit");
     const [review, setReview] = useState(false);
     const canBank = Boolean(access.capabilities?.can_view_finance_bank_accounts); const canImport = Boolean(access.capabilities?.can_import_finance);
     const selected = options.companies.find((c) => c.id === Number(company));
     const accounts = options.accounts.filter((a) => a.company_id === Number(company) && a.kind === "bank");
     const ready = canRead && company && (type !== "bank" || account) && (type === "invoices" || canBank);
-    const select = (value) => { setBatch(value ? { ...value } : null); setPlan(null); setPage(1); setDone(false); setSource(null); setReview(false); setOperation("commit"); setError(""); };
+    const select = (value) => { setBatch(value ? { ...value } : null); setPlan(null); setPage(1); setDone(false); setSource(null); setReview(false); setOperation("commit"); setInvoiceFilters({ outcome: "all", search: "" }); setError(""); };
     const reset = () => { select(null); setFile(null); setFileKey((old) => old + 1); setHistory(empty); setHistoryPage(1); };
     useEffect(() => { if (router.query.company && options.companies.some((c) => c.id === Number(router.query.company))) setCompany(String(router.query.company)); }, [router.query.company, options.companies]);
     useEffect(() => { if (!canRead) { setBatch(null); setSource(null); setConfirm(false); setReview(false); setPlan(null); setCompany(""); } }, [canRead]);
@@ -34,9 +36,9 @@ export default function FinanceUpload() {
     useEffect(() => { let active = true; setPlan(null);
         if (!batch) return undefined;
         setPending(true);
-        axios.get(api(`${routes[type]}/${batch.id}/processing/?page=${page}`), auth()).then(({ data }) => { if (active) setPlan(data); }).catch(() => { if (active) setError(t("finance.workspace.error")); }).finally(() => { if (active) setPending(false); });
+        axios.get(api(`${routes[type]}/${batch.id}/processing/?page=${page}${type === "invoices" ? `&outcome=${invoiceFilters.outcome}&search=${encodeURIComponent(invoiceFilters.search)}` : ""}`), auth()).then(({ data }) => { if (active) setPlan(data); }).catch(() => { if (active) setError(t("finance.workspace.error")); }).finally(() => { if (active) setPending(false); });
         return () => { active = false; };
-    }, [batch, type, page, refresh, setError, t]);
+    }, [batch, type, page, refresh, invoiceFilters, setError, t]);
     const upload = async (event) => { event.preventDefault(); setBusy(true); setError("");
         try { const form = new FormData(); form.append("file", file); if (type === "bank") { form.append("account", account); form.append("provider", selected.country === "ES" ? "caixa" : "popular"); } else form.append("company", company);
             const { data } = await axios.post(api(`${routes[type]}/`), form, auth()); select(data); setFile(null); setFileKey((old) => old + 1); setRefresh((old) => old + 1); setHistoryPage(1);
@@ -49,7 +51,7 @@ export default function FinanceUpload() {
     const original = async () => { setBusy(true); setError(""); try { const { data } = await axios.get(api(`${routes[type]}/${batch.id}/original/`), { ...auth(), responseType: "blob" }); const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = batch.file_name; a.click(); URL.revokeObjectURL(url); } catch { setError(w("error")); } finally { setBusy(false); } };
     const reread = async () => { setBusy(true); setError(""); try { const { data } = await axios.post(api(`payment-imports/${batch.id}/reread/`), {}, auth()); select(data); setRefresh((old) => old + 1); } catch { setError(w("error")); } finally { setBusy(false); } };
     const sourceRow = async (row) => { setError("");
-        if (type !== "payments") { setSource({ source: row.source, items: row.items, file_name: batch.file_name, issues: (row.issues || []).map((code) => t(`finance.${type === "bank" ? "import.issue" : "sales"}.${code}`, code)) }); return; }
+        if (type !== "payments") { setSource({ source: row.source, items: row.items, file_name: batch.file_name, source_rows: row.source_rows, issues: (row.review_issues || row.issues || []).map((code) => t(`finance.${type === "bank" ? "import.issue" : "sales"}.${code}`, code)) }); return; }
         try { const { data } = await axios.get(api(`payment-imports/${batch.id}/source-row/?row=${row.row_id}`), auth()); setSource({ source: data, cells: data.cells, file_name: batch.file_name, issues: (data.issues || []).map((issue) => t(`finance.payments.issue.${issue.code}`, issue.code)) }); } catch { setError(w("error")); }
     };
     const summary = batch?.summary || {}; const range = batch?.date_range || [summary.first_bank_date || summary.first_date, summary.last_bank_date || summary.last_date];
@@ -80,7 +82,8 @@ export default function FinanceUpload() {
                     {type === "invoices" && plan.posting && plan.pending_count > 0 && <Stack spacing={1}><Typography>{w("pending")}: {plan.pending_count}</Typography>{plan.can_review && plan.ready_count > 0 && <Button variant="contained" sx={{ alignSelf: "flex-start" }} disabled={busy} onClick={() => { setOperation("apply-pending"); setConfirm(true); }}>{w("linkRecognizedInvoices")} ({plan.ready_count})</Button>}</Stack>}
                     <Stack direction="row" gap={1} useFlexGap flexWrap="wrap">{Object.entries(plan.counts).filter(([key, value]) => key !== "invalid" || value > (plan.excluded_rows || 0)).map(([key, value]) => <Chip key={key} label={`${w(key)}: ${key === "invalid" ? value - (plan.excluded_rows || 0) : value}`} />)}{plan.excluded_rows > 0 && <Chip label={`${w("excluded")}: ${plan.excluded_rows}`} />}</Stack>
                     {plan.can_commit && <Button variant="contained" sx={{ alignSelf: "flex-start" }} disabled={busy} onClick={() => { setOperation("commit"); setConfirm(true); }}>{w("confirm")}</Button>}
-                    <TableContainer><Table size="small"><TableHead><TableRow>{["number", "date", type === "bank" ? "description" : "customer", "amount", "outcome", "source"].map((key) => <TableCell key={key}>{w(key)}</TableCell>)}</TableRow></TableHead><TableBody>{rows.results.map((row) => { const facts = row.source || row; const outcome = row.resolution || row.outcome; const excluded = row.kind === "egreso"; return <TableRow key={row.row_id || row.invoice_id}><TableCell>{row.code || row.number || facts.reference || facts.serial || "—"}{type === "payments" && <Typography variant="caption" display="block">{facts.invoice_code || "—"}</Typography>}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{facts.date || facts.bank_date}</TableCell><TableCell>{facts.customer || facts.description || "—"}</TableCell><TableCell>{formatMoney(facts.amount ?? facts.invoice_total)}</TableCell><TableCell>{w(excluded ? "excluded" : outcome)}</TableCell><TableCell><Button disabled={busy} onClick={() => sourceRow(row)}>{w("source")}</Button></TableCell></TableRow>; })}</TableBody></Table></TableContainer>
+                    {type === "invoices" && <><Typography variant="body2">{t("finance.sales.rejectedHelp")} ({plan.invalid_count || 0})</Typography><InvoiceImportFilters value={invoiceFilters} onChange={(value) => { setInvoiceFilters(value); setPage(1); }} t={t} /></>}
+                    <TableContainer><Table size="small"><TableHead><TableRow>{["number", "date", type === "bank" ? "description" : "customer", "amount", "outcome", "source"].map((key) => <TableCell key={key}>{w(key)}</TableCell>)}</TableRow></TableHead><TableBody>{rows.results.map((row) => { const facts = row.source || row; const amount = facts.amount ?? facts.invoice_total; const outcome = row.resolution || row.outcome; const excluded = row.kind === "egreso"; return <TableRow key={row.row_id || row.invoice_id}><TableCell>{row.code || row.number || facts.reference || facts.serial || "—"}{type === "payments" && <Typography variant="caption" display="block">{facts.invoice_code || "—"}</Typography>}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{facts.date || facts.bank_date}</TableCell><TableCell>{facts.customer || facts.description || "—"}</TableCell><TableCell>{amount === "" || amount == null ? "—" : formatMoney(amount)}</TableCell><TableCell>{w(excluded ? "excluded" : outcome)}{type === "invoices" && <InvoiceSourceReview row={row} t={t} />}</TableCell><TableCell><Button disabled={busy} onClick={() => sourceRow(row)}>{w("source")}</Button></TableCell></TableRow>; })}</TableBody></Table></TableContainer>
                     <Pages data={rows} page={page} setPage={setPage} busy={busy || pending} w={w} />
                 </>}
             </Stack></Paper>}

@@ -1,3 +1,4 @@
+import InvoiceSourceReview, { InvoiceImportFilters } from "./InvoiceSourceReview";
 import { formatMoney } from "@/utils/formatMoney";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -12,6 +13,7 @@ const empty = { results: [], count: 0 };
 export default function SalesPostingPanel({ batch, onUpdated }) {
     const { t } = useI18n(); const label = (key) => t(`finance.salesPosting.${key}`);
     const access = useAccess(); const canEdit = Boolean(access.capabilities?.can_edit_finance);
+    const [invoiceFilters, setInvoiceFilters] = useState({ outcome: "all", search: "" });
     const [plan, setPlan] = useState(null); const [page, setPage] = useState(1); const [refresh, setRefresh] = useState(0);
     const [sales, setSales] = useState(empty); const [salePage, setSalePage] = useState(1); const [state, setState] = useState("active");
     const [options, setOptions] = useState({ studios: [], channels: [] });
@@ -23,10 +25,10 @@ export default function SalesPostingPanel({ batch, onUpdated }) {
     const base = `sales-imports/${batch.id}/`;
     useEffect(() => {
         let active = true; setLoading(true);
-        axios.get(api(`${base}processing/?page=${page}`), auth()).then(({ data }) => { if (active) setPlan(data); })
+        axios.get(api(`${base}processing/?page=${page}&outcome=${invoiceFilters.outcome}&search=${encodeURIComponent(invoiceFilters.search)}`), auth()).then(({ data }) => { if (active) setPlan(data); })
             .catch(() => { if (active) setError(t("finance.salesPosting.error")); }).finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
-    }, [base, page, refresh, t]);
+    }, [base, page, refresh, invoiceFilters, t]);
     useEffect(() => {
         let active = true; setSales(empty);
         axios.get(api(`sales/?company=${batch.company}&state=${state}&page=${salePage}`), auth()).then(({ data }) => { if (active) setSales(data); })
@@ -81,7 +83,8 @@ export default function SalesPostingPanel({ batch, onUpdated }) {
             <Typography>{label("status")}: {label(plan.posting?.status || "not_imported")}</Typography>
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">{Object.entries(plan.counts).map(([key, count]) => <Chip key={key} label={`${label(key)}: ${count}`} />)}</Stack>
             <Stack direction="row" spacing={2}>{plan.can_commit && <Button variant="contained" disabled={busy || loading} onClick={() => setDialog({ type: "commit" })}>{label("commit")}</Button>}{plan.can_undo && <Button disabled={busy || loading} onClick={openUndo}>{label("undo")}</Button>}</Stack>
-            <TableContainer><Table size="small"><TableHead><TableRow>{["code", "reported", "current", "outcome", "review"].map((key) => <TableCell key={key}>{label(key)}</TableCell>)}</TableRow></TableHead><TableBody>{plan.rows.results.map((row) => <TableRow key={row.invoice_id}><TableCell>{row.code}</TableCell><TableCell>{row.source.status}</TableCell><TableCell>{row.sale?.source.status || "—"}</TableCell><TableCell>{label(row.resolution || row.outcome)}</TableCell><TableCell>{plan.can_review && row.resolution === "pending" && <Button disabled={busy || loading} onClick={() => { setDialog({ type: "review", row, token: plan.token }); setNote(""); }}>{label("review")}</Button>}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
+            <Typography variant="body2">{t("finance.sales.rejectedHelp")} ({plan.invalid_count || 0})</Typography><InvoiceImportFilters value={invoiceFilters} onChange={(value) => { setInvoiceFilters(value); setPage(1); }} t={t} />
+            <TableContainer><Table size="small"><TableHead><TableRow>{["code", "reported", "current", "outcome", "review"].map((key) => <TableCell key={key}>{label(key)}</TableCell>)}</TableRow></TableHead><TableBody>{plan.rows.results.map((row) => <TableRow key={row.invoice_id}><TableCell>{row.code}</TableCell><TableCell>{row.source.status}</TableCell><TableCell>{row.sale?.source.status || "—"}</TableCell><TableCell>{label(row.resolution || row.outcome)}<InvoiceSourceReview row={row} t={t} /></TableCell><TableCell>{plan.can_review && row.resolution === "pending" && <Button disabled={busy || loading} onClick={() => { setDialog({ type: "review", row, token: plan.token }); setNote(""); }}>{label("review")}</Button>}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
             {controls(plan.rows, page, setPage)}
         </>}
         <Typography variant="h5">{label("ledger")}</Typography><Typography variant="body2">{label("ledgerHelp")}</Typography>
