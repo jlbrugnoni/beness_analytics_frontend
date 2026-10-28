@@ -1,5 +1,7 @@
 export const financeReceiptTranslations = {
     "en": {
+        "missing_invoice_total": "Invoice found in report, but its total is missing. Upload a complete invoice report.",
+        "invalid_invoice": "Invoice found in report, but rejected due to invalid source data. Review the invoice import.",
         "amount_mismatch": "Invoice total and combined payments differ — review",
         "currency_conflict": "Invoice and payment currencies differ — review",
         "matchingTitle": "Invoice and payment comparison",
@@ -113,6 +115,8 @@ export const financeReceiptTranslations = {
         "reportHelp": "Upload the original Alegra payment XLSX directly, up to 5 MiB. The payment worksheet is identified by its columns; no renaming, CSV conversion or manual studio/method columns are required. CSV remains supported. Review the preview before importing payments."
     },
     "es": {
+        "missing_invoice_total": "Factura encontrada en el informe, pero sin total. Suba un informe completo de facturas.",
+        "invalid_invoice": "Factura encontrada en el informe, pero rechazada por datos de origen no válidos. Revise la importación.",
         "amount_mismatch": "Total de factura y pagos acumulados distintos — revisar",
         "currency_conflict": "Monedas de factura y pago distintas — revisar",
         "matchingTitle": "Comparación de factura y pagos",
