@@ -25,7 +25,7 @@ export default function ClosureCheckDialog({ selected, company, canCheck, close,
         {status === "needs_recheck" && <Alert severity="warning">{w("checkStale")}</Alert>}
         {error && <Alert severity="error">{error}</Alert>}
         <TextField multiline minRows={2} label={w("reason")} required={reasonRequired} value={note} disabled={busy || !canCheck} inputProps={{ maxLength: 2000 }} onChange={(e) => setNote(e.target.value)} helperText={w(reasonRequired ? "checkReason" : "checkOptionalReason")} />
-        {history.length > 0 && <details><summary>{w("checkHistory")}</summary>{history.map((event) => <Typography key={event.id} variant="body2" sx={{ mt: 1 }}>{w(`check_event_${event.action}`)} · {event.actor_name || "—"} · {new Date(event.created_at).toLocaleString()} · {event.note || "—"}</Typography>)}</details>}
+        {history.length > 0 && <details><summary>{w("checkHistory")}</summary>{history.map((event) => <Typography key={event.id} variant="body2" sx={{ mt: 1 }}>{w(`check_event_${event.action}`)} · {event.actor_name || "—"} · {new Date(event.created_at).toLocaleString()}{event.action === "check" && ` · ${event.note || "—"}`}</Typography>)}</details>}
     </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={close}>{w("close")}</Button>
         {canCheck && status !== "open" && <Button disabled={busy} onClick={() => save("reopen")}>{w("checkReopen")}</Button>}
         {canCheck && <Button variant="contained" disabled={busy || status === "checked" || day.expected === null || (reasonRequired && !note.trim())} onClick={() => save("check")}>{w("checkConfirm")}</Button>}
