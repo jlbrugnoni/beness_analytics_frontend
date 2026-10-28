@@ -1,5 +1,7 @@
 export const financeWorkspaceTranslations = {
     "en": {
+        "finance.workspace.linkRecognizedInvoices": "Link recognized invoices",
+        "finance.workspace.linkRecognizedInvoicesHelp": "Link the pending invoices whose full facts agree, including confirmed historical character-encoding differences. Original text, amounts and your classifications stay unchanged. Matching payments can acquire their exact invoice link; genuine conflicts remain pending.",
         "finance.workspace.reviewPending": "Review pending",
         "finance.workspace.reviewHelp": "Only unresolved rows appear here. Matching uses bank date, amount, description and balance. A shared terminal or generic reference does not identify a duplicate.",
         "finance.workspace.applyReady": "Apply ready rows",
@@ -343,6 +345,8 @@ export const financeWorkspaceTranslations = {
         "finance.workspace.badOperationDate": "Enter the operation date as YYYY-MM-DD."
     },
     "es": {
+        "finance.workspace.linkRecognizedInvoices": "Vincular facturas reconocidas",
+        "finance.workspace.linkRecognizedInvoicesHelp": "Vincula las facturas pendientes cuyos datos completos coinciden, incluidas diferencias históricas de codificación verificadas. Se conservan texto original, importes y clasificaciones. Los pagos coincidentes pueden vincularse a su factura exacta; los conflictos reales siguen pendientes.",
         "finance.workspace.reviewPending": "Revisar pendientes",
         "finance.workspace.reviewHelp": "Solo aparecen filas sin resolver. Se comparan fecha bancaria, importe, descripción y saldo. Compartir terminal o una referencia genérica no identifica un duplicado.",
         "finance.workspace.applyReady": "Aplicar filas identificadas",
