@@ -6,6 +6,7 @@ import { Alert, Button, Chip, CircularProgress, Dialog, DialogActions, DialogCon
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import useI18n from "@/hooks/useI18n";
+import ClosureCheckDialog from "@/components/finance/ClosureCheckDialog";
 import { api, auth, Pages, useWorkspace, WorkspaceFrame } from "@/components/finance/workspace/common";
 import { formatMoney } from "@/utils/formatMoney";
 
@@ -32,16 +33,22 @@ function Evidence({ selected, close, company, month, studio, w, t }) {
 export default function Closures() {
     const { access, canRead, options, loading, error, setError, w, t } = useWorkspace(); const router = useRouter(); const { language } = useI18n();
     const [company, setCompany] = useState(""); const [month, setMonth] = useState(localMonth); const [studio, setStudio] = useState(""); const [refresh, setRefresh] = useState(0);
+    const [checking, setChecking] = useState(null);
     const [data, setData] = useState(null); const [busy, setBusy] = useState(false); const [method, setMethod] = useState(null); const [evidence, setEvidence] = useState(null);
     const selected = options.companies.find((c) => c.id === Number(company)); const allowed = canRead && Boolean(access.capabilities?.can_view_finance_bank_accounts);
     useEffect(() => { if (router.query.company && options.companies.some((c) => c.id === Number(router.query.company))) setCompany(String(router.query.company)); }, [router.query.company, options.companies]);
     useEffect(() => { if (validMonth(router.query.month)) setMonth(router.query.month); }, [router.query.month]);
-    useEffect(() => { let live = true; setData(null); setMethod(null); setEvidence(null);
+    useEffect(() => { let live = true; setData(null); setMethod(null); setEvidence(null); setChecking(null);
         if (!allowed || !company || !validMonth(month)) return undefined;
         setBusy(true); setError(""); const params = new URLSearchParams({ company, month, ...(studio ? { studio } : {}) });
         axios.get(api(`closures/?${params}`), auth()).then(({ data: result }) => { if (live) setData(result); }).catch(() => { if (live) setError(t("finance.workspace.error")); }).finally(() => { if (live) setBusy(false); });
         return () => { live = false; };
     }, [company, month, studio, refresh, allowed, setError, t]);
+    const refreshChecks = async () => {
+        const params = new URLSearchParams({ company, month, ...(studio ? { studio } : {}) });
+        const { data: result } = await axios.get(api(`closures/?${params}`), auth());
+        setData(result); setMethod((old) => old ? result.methods.find((row) => row.channel === old.channel) : null); setChecking(null);
+    };
     const [selectedYear, selectedMonth] = month.split("-").map(Number);
     const years = Array.from({ length: 16 }, (_, i) => selectedYear - 10 + i).filter((year) => year >= 1 && year <= 9999);
     const monthNames = Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(language, { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2020, i, 1))));
@@ -68,7 +75,7 @@ export default function Closures() {
             {data && !data.supported && <Alert severity="info">{w("closure_spain")}</Alert>}
             {data?.supported && <>
                 <Typography variant="body2">{w("closure_help")} · {data.currency}</Typography>
-                <TableContainer component={Paper} variant="outlined"><Table><TableHead><TableRow>{["channel", "closure_expected", "closure_actual", "closure_difference", "closure_details"].map((key) => <TableCell key={key}>{w(key)}</TableCell>)}</TableRow></TableHead><TableBody>{data.methods.map((row) => <TableRow hover key={row.channel}><TableCell><Button onClick={() => setMethod(row)}>{channel(row.channel)}</Button></TableCell>{[row.expected, row.actual].map((value, i) => <TableCell sx={{ whiteSpace: "nowrap" }} key={i}>{money(value)}</TableCell>)}<TableCell sx={{ color: differenceColor(row.difference), whiteSpace: "nowrap" }}>{money(row.difference)}</TableCell><TableCell><Button onClick={() => setMethod(row)}>{w("closure_daily")}</Button>{row.review > 0 && <Typography variant="caption" display="block">{row.review} · {w("review")}</Typography>}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
+                <TableContainer component={Paper} variant="outlined"><Table><TableHead><TableRow>{["channel", "closure_expected", "closure_actual", "closure_difference", "closure_details"].map((key) => <TableCell key={key}>{w(key)}</TableCell>)}</TableRow></TableHead><TableBody>{data.methods.map((row) => <TableRow hover key={row.channel}><TableCell><Button onClick={() => setMethod(row)}>{channel(row.channel)}</Button></TableCell>{[row.expected, row.actual].map((value, i) => <TableCell sx={{ whiteSpace: "nowrap" }} key={i}>{money(value)}</TableCell>)}<TableCell sx={{ color: differenceColor(row.difference), whiteSpace: "nowrap" }}>{money(row.difference)}</TableCell><TableCell><Button onClick={() => setMethod(row)}>{w("closure_daily")}</Button>{row.checked_days > 0 && <Typography variant="caption" display="block">{row.checked_days} · {w("check_checked")}</Typography>}{row.recheck_days > 0 && <Typography variant="caption" display="block" color="warning.main">{row.recheck_days} · {w("check_needs_recheck")}</Typography>}{row.review > 0 && <Typography variant="caption" display="block">{row.review} · {w("review")}</Typography>}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
                 <Typography variant="caption">{w("closure_provisional")}</Typography>
                 {Object.keys(data.issues).length > 0 && <Stack spacing={1}><Typography variant="subtitle2">{w("closure_reviewTitle")}</Typography><Stack direction="row" gap={1} useFlexGap flexWrap="wrap">{Object.entries(data.issues).map(([key, count]) => <Chip key={key} variant="outlined" label={`${w(`closure_issue_${key}`)}: ${count}`} />)}</Stack><Button sx={{ alignSelf: "flex-start" }} onClick={() => setEvidence({ side: "review" })}>{w("closure_reviewRecords")}</Button></Stack>}
                 {Object.keys(data.excluded).length > 0 && <Stack direction="row" gap={1} useFlexGap flexWrap="wrap" alignItems="center"><Typography variant="body2">{w("closure_exclusions")}</Typography>{Object.entries(data.excluded).map(([key, count]) => <Chip size="small" key={key} label={`${w(`closure_excluded_${key}`)}: ${count}`} />)}<Button onClick={() => setEvidence({ side: "excluded" })}>{w("open")}</Button></Stack>}
@@ -76,8 +83,9 @@ export default function Closures() {
         </>}
         <Dialog open={Boolean(method) && allowed} onClose={() => setMethod(null)} fullWidth maxWidth="lg"><DialogTitle>{method && channel(method.channel)} · {month} · {data?.currency}</DialogTitle><DialogContent>
             <Typography variant="body2" sx={{ mb: 2 }}>{w("closure_dailyHelp")}</Typography>
-            <TableContainer sx={{ maxHeight: "60vh" }}><Table stickyHeader size="small"><TableHead><TableRow>{["date", "closure_gross", "closure_fees", "closure_expected", "closure_actual", "closure_difference"].map((key) => <TableCell key={key}>{w(key)}</TableCell>)}</TableRow></TableHead><TableBody>{method?.days.map((day) => <TableRow hover key={day.date}><TableCell><Button size="small" sx={{ whiteSpace: "nowrap" }} onClick={() => setEvidence({ channel: method.channel, day: day.date })}>{day.date}</Button></TableCell>{[day.gross, day.fees, day.expected, day.actual].map((value, i) => <TableCell sx={{ whiteSpace: "nowrap" }} key={i}>{money(value)}</TableCell>)}<TableCell sx={{ color: differenceColor(day.difference) }}>{money(day.difference)}</TableCell></TableRow>)}{method && <TableRow sx={{ "& td": { fontWeight: "bold" } }}><TableCell>{w("closure_monthTotal")}</TableCell>{[method.gross, method.fees, method.expected, method.actual, method.difference].map((value, i) => <TableCell key={i}>{money(value)}</TableCell>)}</TableRow>}</TableBody></Table></TableContainer>
+            <TableContainer sx={{ maxHeight: "60vh" }}><Table stickyHeader size="small"><TableHead><TableRow>{["date", "closure_gross", "closure_fees", "closure_expected", "closure_actual", "closure_difference", ...(!studio ? ["closure_check"] : [])].map((key) => <TableCell key={key}>{w(key)}</TableCell>)}</TableRow></TableHead><TableBody>{method?.days.map((day) => <TableRow hover key={day.date}><TableCell><Button size="small" sx={{ whiteSpace: "nowrap" }} onClick={() => setEvidence({ channel: method.channel, day: day.date })}>{day.date}</Button></TableCell>{[day.gross, day.fees, day.expected, day.actual].map((value, i) => <TableCell sx={{ whiteSpace: "nowrap" }} key={i}>{money(value)}</TableCell>)}<TableCell sx={{ color: differenceColor(day.difference) }}>{money(day.difference)}</TableCell>{!studio && <TableCell><Button size="small" onClick={() => setChecking({ channel: method.channel, day })}>{w(`check_${day.check?.status || "open"}`)}</Button></TableCell>}</TableRow>)}{method && <TableRow sx={{ "& td": { fontWeight: "bold" } }}><TableCell>{w("closure_monthTotal")}</TableCell>{[method.gross, method.fees, method.expected, method.actual, method.difference].map((value, i) => <TableCell key={i}>{money(value)}</TableCell>)}{!studio && <TableCell />}</TableRow>}</TableBody></Table></TableContainer>
         </DialogContent><DialogActions><Button onClick={() => setMethod(null)}>{w("close")}</Button></DialogActions></Dialog>
+        {allowed && checking && <ClosureCheckDialog key={`${checking.day.date}-${checking.channel}-${checking.day.check?.revision}`} selected={checking} company={company} canCheck={Boolean(data?.can_check)} close={() => setChecking(null)} done={refreshChecks} />}
         {allowed && evidence && <Evidence key={JSON.stringify(evidence)} selected={evidence} close={() => setEvidence(null)} company={company} month={month} studio={studio} w={w} t={t} />}
     </WorkspaceFrame>;
 }
