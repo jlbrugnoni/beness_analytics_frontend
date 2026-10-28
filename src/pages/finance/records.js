@@ -15,6 +15,7 @@ export default function FinanceRecords() {
     const [creating, setCreating] = useState(false);
     const [filters, setFilters] = useState({ search: "", start: "", end: "", status: "all", studio: "", account: "", category: "", subcategory: "", channel: "", origin: "all", sort: "-date" }); const [applied, setApplied] = useState(filters);
     const [data, setData] = useState(empty); const [pending, setPending] = useState(false); const [refresh, setRefresh] = useState(0);
+    const [matching, setMatching] = useState(false);
     const [recognizing, setRecognizing] = useState(false); const [recognitionResult, setRecognitionResult] = useState(null);
     const [record, setRecord] = useState(null); const [source, setSource] = useState(null);
     const canBank = Boolean(access.capabilities?.can_view_finance_bank_accounts); const selected = options.companies.find((c) => c.id === Number(company)); const bank = ["debit", "credit"].includes(kind);
@@ -32,6 +33,11 @@ export default function FinanceRecords() {
     }, [company, kind, page, applied, refresh, canRead, selected?.country, bank, setError, t]);
     // Keep the edit dialog open while refreshing the underlying table after a save.
     const changed = () => setRefresh((old) => old + 1);
+    const refreshMatching = async () => {
+        setMatching(true); setError("");
+        try { await axios.post(api("receipts/refresh-links/"), { company: Number(company) }, auth()); changed(); }
+        catch { setError(w("error")); } finally { setMatching(false); }
+    };
     const chooseKind = (value) => { setKind(value); setRecognitionResult(null); setPage(1); setRecord(null); setCreating(false); const next = { ...filters, account: "", studio: "", channel: "", category: "", subcategory: "", status: "all" }; setFilters(next); setApplied(next); setError(""); };
     const recognizeTerminals = async () => {
         setRecognizing(true); setRecognitionResult(null); setError("");
@@ -48,6 +54,7 @@ export default function FinanceRecords() {
                 <Tabs value={kind === "unlinked" ? "invoices" : kind} onChange={(_, value) => chooseKind(value)} variant="scrollable" scrollButtons="auto" aria-label={w("records")}><Tab label={w("debit")} value="debit" disabled={!canBank} /><Tab label={w("credit")} value="credit" disabled={!canBank} /><Tab label={w("invoices")} value="invoices" /></Tabs>
                 {selected?.country === "ES" && !bank ? <Alert severity="info">{w("spain")}</Alert> : <>
                     {!bank && canBank && <Button sx={{ alignSelf: "flex-start" }} onClick={() => chooseKind(kind === "unlinked" ? "invoices" : "unlinked")}>{w(kind === "unlinked" ? "invoices" : "unlinked")}</Button>}
+                    {!bank && canBank && access.capabilities?.can_reconcile_finance && <Button disabled={matching || pending} onClick={refreshMatching}>{t("finance.receipts.matchingRefresh")}</Button>}
                     {bank && canBank && <Stack direction="row" gap={1}>
                         {access.capabilities?.can_edit_finance && <Button variant="contained" onClick={() => setCreating(true)}>{w(kind === "debit" ? "createExpense" : "createIncome")}</Button>}
                         {access.capabilities?.can_manage_finance_settings && !options.accounts.some((a) => a.company_id === Number(company) && a.kind === "cash") && <GeneralCashButton company={company} done={reloadOptions} w={w} />}
@@ -75,7 +82,7 @@ export default function FinanceRecords() {
                 </>}
             </>}
         </>}
-        <InvoiceDialog record={bank ? null : record} kind={kind} close={() => setRecord(null)} company={company} studios={studios} canEdit={Boolean(access.capabilities?.can_edit_finance)} canPayments={canBank} changed={changed} w={w} t={t} />
+        <InvoiceDialog record={bank ? null : record} kind={kind} close={() => setRecord(null)} company={company} studios={studios} canEdit={Boolean(access.capabilities?.can_edit_finance)} canPayments={canBank} canReview={Boolean(access.capabilities?.can_reconcile_finance)} changed={changed} w={w} t={t} />
         <BankDialog closeOnSave={kind === "credit"} record={bank ? record : null} close={() => setRecord(null)} canEdit={Boolean(access.capabilities?.can_edit_finance)} optionsForManual={options} company={company} changed={changed} w={w} t={t} />
         {creating && bank && <ManualEntryDialog key={`${company}-${kind}`} company={company} direction={kind} options={options} close={() => setCreating(false)} done={changed} w={w} t={t} />}
         <SourceDialog data={source} close={() => setSource(null)} w={w} />

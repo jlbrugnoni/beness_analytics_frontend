@@ -1,10 +1,11 @@
+import PaymentMatchingReview from "./PaymentMatchingReview";
 import { formatMoney } from "@/utils/formatMoney";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, TextField, Typography } from "@mui/material";
 import { api, auth, empty, Pages, SourceDialog, SourceFields } from "./common";
 
-export default function InvoiceDialog({ record, kind, close, company, studios, canEdit, canPayments, changed, w, t }) {
+export default function InvoiceDialog({ record, kind, close, company, studios, canEdit, canPayments, canReview = false, changed, w, t }) {
     const [invoice, setInvoice] = useState(null); const [payments, setPayments] = useState(empty);
     const [page, setPage] = useState(1); const [refresh, setRefresh] = useState(0); const [loading, setLoading] = useState(false);
     const [options, setOptions] = useState({ channels: [], studios: [] }); const [edits, setEdits] = useState({});
@@ -56,6 +57,7 @@ export default function InvoiceDialog({ record, kind, close, company, studios, c
             <Typography component="h2" variant="h6">{w(kind === "invoices" ? "linkedPayments" : "paymentDetails")} ({payments.count})</Typography>
             {!canPayments ? <Alert severity="info">{w("paymentDetailsAccess")}</Alert> : <>
                 {!payments.count && <Typography>{w("noPayments")}</Typography>}
+                {[...new Map(payments.results.filter((payment) => payment.matching_review).map((payment) => [payment.matching_review.invoice_id, payment])).values()].map((payment) => <PaymentMatchingReview key={payment.matching_review.invoice_id} payment={payment} canReview={canReview} changed={() => { setRefresh((value) => value + 1); changed(); }} w={w} t={t} />)}
                 {payments.results.map((payment) => { const edit = edits[payment.id] || {}; return <Paper variant="outlined" key={payment.id} sx={{ p: 2 }}><Stack spacing={2}>
                     <Stack direction="row" gap={3} useFlexGap flexWrap="wrap"><Typography>{w("number")}: {payment.number}</Typography><Typography>{w("date")}: {payment.source.date}</Typography><Typography>{w("amount")}: {formatMoney(payment.source.amount)} {payment.source.currency}</Typography><Typography>{w("original_method")}: {payment.source.original_method}</Typography></Stack>
                     {payment.assignments.channel_review && <Alert severity="warning">{t("finance.receipts.methodReview")}</Alert>}

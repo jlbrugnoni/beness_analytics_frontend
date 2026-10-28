@@ -16,7 +16,7 @@ const money = (v) => v === null || v === undefined ? "—" : formatMoney(v);
 const recordIssues = new Set(["payment_link", "payment_method", "invalid_facts", "source_currency", "studio_missing", "method_review", "studio_review", "invoice_review", "movement_type", "operation_date", "unreviewed", "cash_account", "invoice_without_payments"]);
 const differenceColor = (value) => value === null ? "text.secondary" : Number(value) < 0 ? "error.main" : Number(value) > 0 ? "warning.dark" : "text.primary";
 
-function Evidence({ selected, close, company, month, studio, options, canEdit, changed, w, t }) {
+function Evidence({ selected, close, company, month, studio, options, canEdit, canReview, changed, w, t }) {
     const [record, setRecord] = useState(null); const [refresh, setRefresh] = useState(0);
     const saved = () => { setRefresh((value) => value + 1); changed().catch(() => setError(w("error"))); };
     const open = (row) => setRecord({ ...row, kind: row.side === "actual" ? "bank" : row.side === "invoice" || row.sale_id ? "invoices" : "unlinked", id: row.side === "expected" && row.sale_id ? row.sale_id : row.id, code: row.invoice || row.number, ...(row.side === "expected" && row.sale_id ? { file_name: row.sale_file_name, batch: row.sale_batch } : {}) });
@@ -33,7 +33,7 @@ function Evidence({ selected, close, company, month, studio, options, canEdit, c
         <Pages data={data} page={page} setPage={setPage} busy={busy} w={w} />
     </DialogContent><DialogActions><Button component={Link} href={`/finance/records?company=${company}`}>{w("records")}</Button><Button onClick={close}>{w("close")}</Button></DialogActions></Dialog>
         <BankDialog record={record?.kind === "bank" ? record : null} close={() => setRecord(null)} company={company} optionsForManual={options} canEdit={canEdit} changed={saved} w={w} t={t} />
-        <InvoiceDialog record={record && record.kind !== "bank" ? record : null} kind={record?.kind} close={() => setRecord(null)} company={company} studios={options.studios.filter((row) => row.site_id === options.companies.find((c) => c.id === Number(company))?.site)} canEdit={canEdit} canPayments w={w} t={t} changed={saved} />
+        <InvoiceDialog record={record && record.kind !== "bank" ? record : null} kind={record?.kind} close={() => setRecord(null)} company={company} studios={options.studios.filter((row) => row.site_id === options.companies.find((c) => c.id === Number(company))?.site)} canEdit={canEdit} canPayments canReview={canReview} w={w} t={t} changed={saved} />
     </>;
 }
 
@@ -81,6 +81,6 @@ export default function Closures() {
             <TableContainer sx={{ maxHeight: "60vh" }}><Table stickyHeader size="small"><TableHead><TableRow>{["date", "closure_gross", "closure_fees", "closure_expected", "closure_actual", "closure_difference", ...(!studio ? ["closure_check"] : [])].map((key) => <TableCell key={key}>{w(key)}</TableCell>)}</TableRow></TableHead><TableBody>{method?.days.map((day) => <TableRow hover key={day.date}><TableCell><Button size="small" sx={{ whiteSpace: "nowrap" }} onClick={() => setEvidence({ channel: method.channel, day: day.date })}>{day.date}</Button></TableCell>{[day.gross, day.fees, day.expected, day.actual].map((value, i) => <TableCell sx={{ whiteSpace: "nowrap" }} key={i}>{money(value)}</TableCell>)}<TableCell sx={{ color: differenceColor(day.difference) }}>{money(day.difference)}</TableCell>{!studio && <TableCell><Button size="small" onClick={() => setChecking({ channel: method.channel, day })}>{w(`check_${day.check?.status || "open"}`)}</Button></TableCell>}</TableRow>)}{method && <TableRow sx={{ "& td": { fontWeight: "bold" } }}><TableCell>{w("closure_monthTotal")}</TableCell>{[method.gross, method.fees, method.expected, method.actual, method.difference].map((value, i) => <TableCell key={i}>{money(value)}</TableCell>)}{!studio && <TableCell />}</TableRow>}</TableBody></Table></TableContainer>
         </DialogContent><DialogActions><Button onClick={() => setMethod(null)}>{w("close")}</Button></DialogActions></Dialog>
         {allowed && checking && <ClosureCheckDialog key={`${checking.day.date}-${checking.channel}-${checking.day.check?.revision}`} selected={checking} company={company} canCheck={Boolean(data?.can_check)} close={() => setChecking(null)} done={refreshChecks} />}
-        {allowed && evidence && <Evidence key={JSON.stringify(evidence)} selected={evidence} close={() => setEvidence(null)} company={company} month={month} studio={studio} options={options} canEdit={Boolean(access.capabilities?.can_edit_finance)} changed={refreshChecks} w={w} t={t} />}
+        {allowed && evidence && <Evidence key={JSON.stringify(evidence)} selected={evidence} close={() => setEvidence(null)} company={company} month={month} studio={studio} options={options} canEdit={Boolean(access.capabilities?.can_edit_finance)} canReview={Boolean(access.capabilities?.can_reconcile_finance)} changed={refreshChecks} w={w} t={t} />}
     </WorkspaceFrame>;
 }
