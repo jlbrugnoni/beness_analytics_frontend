@@ -22,7 +22,9 @@ export default function BankDialog({ record, close, canEdit, changed, optionsFor
         return () => { active = false; };
     }, [record, historyPage, refresh, t]);
     const change = (key, value) => { setSaved(false); setEdit((old) => ({ ...old, [key]: value })); };
-    const allowed = canEdit && data?.can_edit && data?.active && !data?.reconciled;
+    // Closing clears record before the dialog transition and detail-reset effect finish.
+    const current = Boolean(record && data?.id === record.id);
+    const allowed = current && canEdit && data?.can_edit && data?.active && !data?.reconciled;
     const debit = data?.source.direction === "debit";
     const kind = edit.movement_kind || "";
     const expense = debit && kind === "expense";
@@ -60,7 +62,7 @@ export default function BankDialog({ record, close, canEdit, changed, optionsFor
     };
     return <><Dialog open={Boolean(record)} onClose={() => { if (!busy) close(); }} fullWidth maxWidth="lg"><DialogTitle>{w(debit ? "editDebit" : "editCredit")}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         {error && <Alert severity="error" sx={{ whiteSpace: "pre-wrap" }}>{error}</Alert>}{saved && <Alert severity="success">{w("saved")}</Alert>}
-        {loading ? <CircularProgress /> : data && <>
+        {loading ? <CircularProgress /> : current && <>
             <Stack direction="row" alignItems="center" gap={1}><Typography sx={{ flex: 1 }}>{data.source.bank_date} · {formatMoney(data.source.amount)} {data.source.currency} · {data.source.description}</Typography><Tooltip title={w("original")}><IconButton aria-label={w("original")} onClick={() => setSource(true)} size="small"><InfoOutlinedIcon fontSize="small" /></IconButton></Tooltip></Stack><Typography variant="body2">{data.file_name || w("manual")} · {record.account_name}</Typography>
             {data.reconciled && <Alert severity="warning">{w("reconciledLocked")}</Alert>}
             <TextField label={w("business_description")} value={edit.description || ""} onChange={(event) => change("description", event.target.value)} disabled={!allowed || busy} multiline minRows={2} inputProps={{ maxLength: 2000 }} />
@@ -81,8 +83,8 @@ export default function BankDialog({ record, close, canEdit, changed, optionsFor
             <Divider /><Box component="details"><Box component="summary" sx={{ cursor: "pointer" }}>{w("audit")}</Box><Stack spacing={1} sx={{ mt: 1 }}>{events.results.map((entry) => <Paper variant="outlined" sx={{ p: 2 }} key={entry.id}><Typography>{new Date(entry.created_at).toLocaleString()} · {entry.note || (entry.action === "classify" ? w("classificationUpdated") : ["manual_create", "manual_edit", "manual_void", "cash_migration"].includes(entry.action) ? w(`event_${entry.action}`) : entry.action)}</Typography>{entry.action === "classify" && <><Typography variant="body2">{w("before")}: {label(entry.before.classification)}</Typography><Typography variant="body2">{w("after")}: {label(entry.after.classification)}</Typography></>}</Paper>)}<Pages data={events} page={historyPage} setPage={setHistoryPage} busy={busy} w={w} /></Stack></Box>
         </>}
     </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={close}>{w("close")}</Button>{allowed && <Button variant="contained" disabled={busy || !dirty} onClick={save}>{w("save")}</Button>}</DialogActions></Dialog>
-        <SourceDialog data={source && data ? { source: { ...data.source, ...(data.historical_source ? Object.fromEntries(["manual_description", "category", "subcategory", "location", "payment_method", "terminal", "expense_period", "operation_date", "legacy_reviewed"].map((key) => [`historical_${key}`, data.historical_source[key]])) : {}) }, file_name: data.file_name || w("manual"), href: data.batch ? `/finance/imports?batch=${data.batch}` : undefined } : null} close={() => setSource(false)} w={w} />
-        {editingFacts && data && <ManualEntryDialog company={company} direction={data.source.direction} record={data} options={optionsForManual} close={() => setEditingFacts(false)} done={() => { changed(); close(); }} w={w} t={t} />}
+        <SourceDialog data={source && current ? { source: { ...data.source, ...(data.historical_source ? Object.fromEntries(["manual_description", "category", "subcategory", "location", "payment_method", "terminal", "expense_period", "operation_date", "legacy_reviewed"].map((key) => [`historical_${key}`, data.historical_source[key]])) : {}) }, file_name: data.file_name || w("manual"), href: data.batch ? `/finance/imports?batch=${data.batch}` : undefined } : null} close={() => setSource(false)} w={w} />
+        {editingFacts && current && <ManualEntryDialog company={company} direction={data.source.direction} record={data} options={optionsForManual} close={() => setEditingFacts(false)} done={() => { changed(); close(); }} w={w} t={t} />}
         <Dialog open={voiding} onClose={() => setVoiding(false)}><DialogTitle>{w("voidEntry")}</DialogTitle><DialogContent><Typography>{w("voidHelp")}</Typography><TextField fullWidth label={w("reason")} value={voidNote} onChange={(e) => setVoidNote(e.target.value)} /></DialogContent><DialogActions><Button disabled={busy} onClick={() => setVoiding(false)}>{w("close")}</Button><Button color="error" disabled={busy || !voidNote.trim()} onClick={async () => { setBusy(true); try { await axios.post(api(`movements/${record.id}/void/`), { expected_revision: data.revision, note: voidNote }, auth()); changed(); close(); } catch { setError(w("error")); setVoiding(false); } finally { setBusy(false); } }}>{w("voidEntry")}</Button></DialogActions></Dialog>
     </>;
 }
