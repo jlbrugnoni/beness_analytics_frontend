@@ -6,7 +6,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { api, auth, empty, Pages, SourceDialog } from "./common";
 import ManualEntryDialog from "./ManualEntryDialog";
 
-export default function BankDialog({ record, close, canEdit, changed, optionsForManual, company, w, t }) {
+export default function BankDialog({ record, close, canEdit, changed, optionsForManual, company, closeOnSave = false, w, t }) {
     const [editingFacts, setEditingFacts] = useState(false); const [voiding, setVoiding] = useState(false); const [voidNote, setVoidNote] = useState("");
     const [data, setData] = useState(null); const [options, setOptions] = useState({ categories: [], studios: [], channels: [], terminals: [], kinds: [] });
     const [edit, setEdit] = useState({}); const [note, setNote] = useState(""); const [busy, setBusy] = useState(false); const [loading, setLoading] = useState(false);
@@ -45,7 +45,7 @@ export default function BankDialog({ record, close, canEdit, changed, optionsFor
         setBusy(true); setError(""); setSaved(false);
         const values = Object.fromEntries(Object.entries(edit).filter(([key, value]) => value !== (data.classification || {})[key]));
         if (values.expense_period) values.expense_period = values.expense_period.slice(0, 7) + "-01";
-        try { const { data: result } = await axios.post(api(`movements/${record.id}/assign/`), { expected_revision: data.revision, note, ...values }, auth()); setData({ ...data, ...result }); setEdit(result.classification); setNote(""); setSaved(true); setRefresh((old) => old + 1); changed(); }
+        try { const { data: result } = await axios.post(api(`movements/${record.id}/assign/`), { expected_revision: data.revision, note, ...values }, auth()); setData({ ...data, ...result }); setEdit(result.classification); setNote(""); setSaved(true); setRefresh((old) => old + 1); changed(); if (closeOnSave) close(); }
         catch (failure) { const body = failure.response?.data; const messages = body && typeof body === "object" ? Object.entries(body).map(([key, value]) => `${key === "detail" || key === "non_field_errors" ? "" : `${w(key)}: `}${Array.isArray(value) ? value.join(" ") : value}`).join("\n") : ""; setError(failure.response?.status === 409 ? w("stale") : messages || w("error")); }
         finally { setBusy(false); }
     };

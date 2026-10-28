@@ -76,7 +76,7 @@ export default function FinanceRecords() {
             </>}
         </>}
         <InvoiceDialog record={bank ? null : record} kind={kind} close={() => setRecord(null)} company={company} studios={studios} canEdit={Boolean(access.capabilities?.can_edit_finance)} canPayments={canBank} changed={changed} w={w} t={t} />
-        <BankDialog record={bank ? record : null} close={() => setRecord(null)} canEdit={Boolean(access.capabilities?.can_edit_finance)} optionsForManual={options} company={company} changed={changed} w={w} t={t} />
+        <BankDialog closeOnSave={kind === "credit"} record={bank ? record : null} close={() => setRecord(null)} canEdit={Boolean(access.capabilities?.can_edit_finance)} optionsForManual={options} company={company} changed={changed} w={w} t={t} />
         {creating && bank && <ManualEntryDialog key={`${company}-${kind}`} company={company} direction={kind} options={options} close={() => setCreating(false)} done={changed} w={w} t={t} />}
         <SourceDialog data={source} close={() => setSource(null)} w={w} />
     </WorkspaceFrame>;
