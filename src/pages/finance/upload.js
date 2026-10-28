@@ -5,6 +5,7 @@ import Link from "next/link";
 import axios from "axios";
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import { api, auth, empty, legacy, routes, Pages, SourceDialog, useWorkspace, WorkspaceFrame } from "@/components/finance/workspace/common";
+import BankImportReviewDialog from "@/components/finance/BankImportReviewDialog";
 
 export default function FinanceUpload() {
     const router = useRouter();
@@ -14,14 +15,15 @@ export default function FinanceUpload() {
     const [batch, setBatch] = useState(null); const [plan, setPlan] = useState(null); const [page, setPage] = useState(1); const [pending, setPending] = useState(false);
     const [history, setHistory] = useState(empty); const [historyPage, setHistoryPage] = useState(1); const [refresh, setRefresh] = useState(0);
     const [source, setSource] = useState(null); const [confirm, setConfirm] = useState(false); const [done, setDone] = useState(false);
+    const [review, setReview] = useState(false);
     const canBank = Boolean(access.capabilities?.can_view_finance_bank_accounts); const canImport = Boolean(access.capabilities?.can_import_finance);
     const selected = options.companies.find((c) => c.id === Number(company));
     const accounts = options.accounts.filter((a) => a.company_id === Number(company) && a.kind === "bank");
     const ready = canRead && company && (type !== "bank" || account) && (type === "invoices" || canBank);
-    const select = (value) => { setBatch(value ? { ...value } : null); setPlan(null); setPage(1); setDone(false); setSource(null); setError(""); };
+    const select = (value) => { setBatch(value ? { ...value } : null); setPlan(null); setPage(1); setDone(false); setSource(null); setReview(false); setError(""); };
     const reset = () => { select(null); setFile(null); setFileKey((old) => old + 1); setHistory(empty); setHistoryPage(1); };
     useEffect(() => { if (router.query.company && options.companies.some((c) => c.id === Number(router.query.company))) setCompany(String(router.query.company)); }, [router.query.company, options.companies]);
-    useEffect(() => { if (!canRead) { setBatch(null); setSource(null); setConfirm(false); setPlan(null); setCompany(""); } }, [canRead]);
+    useEffect(() => { if (!canRead) { setBatch(null); setSource(null); setConfirm(false); setReview(false); setPlan(null); setCompany(""); } }, [canRead]);
     useEffect(() => { let active = true; setHistory(empty);
         if (!ready) return undefined;
         const params = new URLSearchParams({ [type === "bank" ? "account" : "company"]: type === "bank" ? account : company, page: historyPage });
@@ -73,6 +75,7 @@ export default function FinanceUpload() {
                 <Typography>{type === "bank" ? `${w("credit")}: ${formatMoney(summary.credit_total ?? "0.00")} · ${w("debit")}: ${formatMoney(summary.debit_total ?? "0.00")}` : `${w(type === "payments" ? "incomingTotal" : "amount")}: ${formatMoney(summary.amount_total ?? summary.paid_total)}`} {selected?.currency}</Typography>
                 <Stack direction="row" gap={1} useFlexGap flexWrap="wrap">{canImport && <Button disabled={busy} onClick={original}>{w("download")}</Button>}<Button component={Link} href={`/finance/records?company=${company}`}>{w("viewRecords")}</Button><Button component={Link} href={`/finance/${legacy[type]}?batch=${batch.id}`}>{w("advanced")}</Button>{canImport && type === "payments" && batch.file_issues.length > 0 && batch.posting_status === "not_imported" && <Button disabled={busy} onClick={reread}>{w("retry")}</Button>}</Stack>
                 {pending ? <CircularProgress /> : plan && <>
+                    {type === "bank" && plan.posting && plan.pending_count > 0 && <Stack direction="row" gap={2} alignItems="center"><Typography>{w("pending")}: {plan.pending_count}</Typography><Button variant="contained" disabled={busy} onClick={() => setReview(true)}>{w("reviewPending")}</Button></Stack>}
                     <Stack direction="row" gap={1} useFlexGap flexWrap="wrap">{Object.entries(plan.counts).filter(([key, value]) => key !== "invalid" || value > (plan.excluded_rows || 0)).map(([key, value]) => <Chip key={key} label={`${w(key)}: ${key === "invalid" ? value - (plan.excluded_rows || 0) : value}`} />)}{plan.excluded_rows > 0 && <Chip label={`${w("excluded")}: ${plan.excluded_rows}`} />}</Stack>
                     {plan.can_commit && <Button variant="contained" sx={{ alignSelf: "flex-start" }} disabled={busy} onClick={() => setConfirm(true)}>{w("confirm")}</Button>}
                     <TableContainer><Table size="small"><TableHead><TableRow>{["number", "date", type === "bank" ? "description" : "customer", "amount", "outcome", "source"].map((key) => <TableCell key={key}>{w(key)}</TableCell>)}</TableRow></TableHead><TableBody>{rows.results.map((row) => { const facts = row.source || row; const outcome = row.resolution || row.outcome; const excluded = row.kind === "egreso"; return <TableRow key={row.row_id || row.invoice_id}><TableCell>{row.code || row.number || facts.reference || facts.serial || "—"}{type === "payments" && <Typography variant="caption" display="block">{facts.invoice_code || "—"}</Typography>}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{facts.date || facts.bank_date}</TableCell><TableCell>{facts.customer || facts.description || "—"}</TableCell><TableCell>{formatMoney(facts.amount ?? facts.invoice_total)}</TableCell><TableCell>{w(excluded ? "excluded" : outcome)}</TableCell><TableCell><Button disabled={busy} onClick={() => sourceRow(row)}>{w("source")}</Button></TableCell></TableRow>; })}</TableBody></Table></TableContainer>
@@ -82,6 +85,7 @@ export default function FinanceUpload() {
             {ready && <Box component="details"><Box component="summary" sx={{ cursor: "pointer" }}>{w("history")} ({history.count})</Box><TableContainer><Table size="small"><TableHead><TableRow>{["file_name", "date", "status", "open"].map((key) => <TableCell key={key}>{w(key)}</TableCell>)}</TableRow></TableHead><TableBody>{history.results.map((entry) => <TableRow key={entry.id}><TableCell>{entry.file_name}</TableCell><TableCell>{new Date(entry.created_at).toLocaleString()}</TableCell><TableCell>{w(entry.file_issues.length ? "failedLabel" : entry.processing_status || entry.posting_status || "not_imported")}</TableCell><TableCell><Button disabled={busy} onClick={() => select(entry)}>{w("open")}</Button></TableCell></TableRow>)}</TableBody></Table></TableContainer>{!history.count && <Typography>{w("historyEmpty")}</Typography>}<Pages data={history} page={historyPage} setPage={setHistoryPage} busy={busy} w={w} /></Box>}
         </>}
         <SourceDialog data={source} close={() => setSource(null)} w={w} />
+        {review && batch && canRead && <BankImportReviewDialog batch={batch} close={() => setReview(false)} changed={() => setRefresh((value) => value + 1)} w={w} />}
         <Dialog open={confirm} onClose={() => { if (!busy) setConfirm(false); }}><DialogTitle>{w("confirm")}</DialogTitle><DialogContent><Typography>{batch?.file_name}</Typography><Typography>{w("confirmHelp")}</Typography></DialogContent><DialogActions><Button disabled={busy} onClick={() => setConfirm(false)}>{w("close")}</Button><Button disabled={busy} onClick={commit}>{w("confirm")}</Button></DialogActions></Dialog>
     </WorkspaceFrame>;
 }
