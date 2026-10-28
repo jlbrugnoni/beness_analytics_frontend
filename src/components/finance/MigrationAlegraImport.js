@@ -28,7 +28,8 @@ export default function MigrationAlegraImport({ batch, label, canImport }) {
             <Typography>Alegra · {label("invoiceCount")}: {data.invoices.summary.invoice_count ?? 0} · {label("sourceTotal")}: {formatMoney(data.invoices.summary.paid_total)} DOP · {label("review")}: {data.invoices.summary.review_invoices ?? 0}</Typography>
             <Typography>Alegra_adm · {label("paymentCount")}: {data.payments.summary.rows ?? 0} · {label("sourceTotal")}: {formatMoney(data.payments.summary.amount_total)} DOP · {label("review")}: {data.payments.summary.review_rows ?? 0}</Typography>
             {[...data.invoices.file_issues, ...data.payments.file_issues].map((issue, i) => <Alert key={i} severity="warning">{issue}</Alert>)}
-            {canImport && !data.sales_batch && <Button variant="contained" disabled={busy || Boolean(data.invoices.file_issues.length && data.payments.file_issues.length)} onClick={prepare}>{label("prepareAlegra")}</Button>}
+            {data.sales_batch && ["undone", "partial_undo"].includes(data.sales_batch.processing_status) && <Typography>{label("reprepareAlegraHelp")}</Typography>}
+            {canImport && (!data.sales_batch || ["undone", "partial_undo"].includes(data.sales_batch.processing_status)) && <Button variant="contained" disabled={busy || Boolean(data.invoices.file_issues.length && data.payments.file_issues.length)} onClick={prepare}>{label(data.sales_batch ? "reprepareAlegra" : "prepareAlegra")}</Button>}
             {data.sales_batch && <>
                 <Typography variant="h6">{label("invoiceStep")}</Typography>
                 {data.sales_batch.file_issues.length ? <Alert severity="warning">{data.sales_batch.file_issues.join(" · ")}</Alert> : <SalesPostingPanel batch={data.sales_batch} onUpdated={(_, status) => setData((old) => ({ ...old, sales_batch: { ...old.sales_batch, processing_status: status } }))} />}

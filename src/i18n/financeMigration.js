@@ -2,7 +2,7 @@ export const financeMigrationTranslations = {
     en: {
         bankSection: "Bank movements", alegraSection: "Alegra invoices and payments", alegraImport: "Import both Alegra sheets",
         alegraHelp: "Bank import does not import invoices or customer payments. Prepare both sheets here, import Alegra invoices first, then Alegra_adm payments. All dates are included. Preparing creates previews only; each import requires confirmation.",
-        invoiceCount: "Invoices", paymentCount: "Payments", sourceTotal: "Source total", prepareAlegra: "Prepare Alegra invoices and payments",
+        invoiceCount: "Invoices", paymentCount: "Payments", sourceTotal: "Source total", prepareAlegra: "Prepare Alegra invoices and payments", reprepareAlegra: "Prepare invoice recovery preview", reprepareAlegraHelp: "This invoice import was undone. A fresh preview will reuse active invoices and import only missing ones after confirmation. Bank movements, existing payments and classifications stay in place.",
         invoiceStep: "1. Review and import invoices (Alegra)", paymentStep: "2. Review and import payments (Alegra_adm)",
         paymentStepHelp: "Import payments after invoices so they link by invoice number. Split payments remain separate. Payments do not create another sale or another bank movement. Missing numbers remain for review.",
         reviewPayments: "Review / import Alegra_adm payments",
@@ -41,7 +41,7 @@ export const financeMigrationTranslations = {
     es: {
         bankSection: "Movimientos bancarios", alegraSection: "Facturas y pagos de Alegra", alegraImport: "Importar ambas hojas de Alegra",
         alegraHelp: "La importación bancaria no importa facturas ni pagos de clientes. Prepare ambas hojas aquí, importe primero las facturas de Alegra y después los pagos de Alegra_adm. Se incluyen todas las fechas. Preparar solo crea vistas previas; cada importación requiere confirmación.",
-        invoiceCount: "Facturas", paymentCount: "Pagos", sourceTotal: "Total de origen", prepareAlegra: "Preparar facturas y pagos de Alegra",
+        invoiceCount: "Facturas", paymentCount: "Pagos", sourceTotal: "Total de origen", prepareAlegra: "Preparar facturas y pagos de Alegra", reprepareAlegra: "Preparar vista previa de recuperación de facturas", reprepareAlegraHelp: "Esta importación se deshizo. Una nueva vista previa reutiliza facturas activas e importa solo las faltantes al confirmar. Se conservan movimientos, pagos existentes y clasificaciones.",
         invoiceStep: "1. Revisar e importar facturas (Alegra)", paymentStep: "2. Revisar e importar pagos (Alegra_adm)",
         paymentStepHelp: "Importe pagos después de las facturas para vincularlos por número. Los pagos fraccionados permanecen separados. Los pagos no crean otra venta ni otro movimiento bancario. Los números faltantes quedan pendientes.",
         reviewPayments: "Revisar / importar pagos de Alegra_adm",
