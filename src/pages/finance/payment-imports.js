@@ -1,3 +1,4 @@
+import PaymentIdentityReview from "@/components/finance/PaymentIdentityReview";
 import { formatMoney, formatFinanceValue, formatFinanceCell } from "@/utils/formatMoney";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -22,9 +23,10 @@ export default function PaymentImports() {
     const [batch, setBatch] = useState(null); const [plan, setPlan] = useState(null); const [page, setPage] = useState(1);
     const [receipts, setReceipts] = useState(empty); const [receiptPage, setReceiptPage] = useState(1);
     const [refresh, setRefresh] = useState(0); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+    const [identity, setIdentity] = useState(null); const [identityOnly, setIdentityOnly] = useState(false);
     const [dialog, setDialog] = useState(null); const [note, setNote] = useState(""); const [channel, setChannel] = useState(""); const [channels, setChannels] = useState([]);
     useEffect(() => {
-        let active = true; setCompanies([]); setCompany(""); setBatch(null); setPlan(null); setDialog(null);
+        let active = true; setCompanies([]); setCompany(""); setBatch(null); setPlan(null); setDialog(null); setIdentity(null);
         if (canRead) axios.get(api("payment-imports/companies/"), auth()).then(({ data }) => { if (active) { setCompanies(data); setCompany((current) => current || data.find((c) => c.active)?.id || data[0]?.id || ""); } }).catch(() => { if (active) setError(t("finance.receipts.error")); });
         return () => { active = false; };
     }, [canRead, t]);
@@ -43,9 +45,9 @@ export default function PaymentImports() {
     }, [canRead, company, historyPage, receiptPage, refresh, t]);
     useEffect(() => {
         let active = true; setPlan(null);
-        if (canRead && batch) axios.get(api(`payment-imports/${batch.id}/processing/?page=${page}`), auth()).then(({ data }) => { if (active) setPlan(data); }).catch(() => { if (active) setError(t("finance.receipts.error")); });
+        if (canRead && batch) axios.get(api(`payment-imports/${batch.id}/processing/?page=${page}&review=${identityOnly ? "identity" : "all"}`), auth()).then(({ data }) => { if (active) setPlan(data); }).catch(() => { if (active) setError(t("finance.receipts.error")); });
         return () => { active = false; };
-    }, [canRead, batch, page, refresh, t]);
+    }, [canRead, batch, page, refresh, identityOnly, t]);
     const upload = async (event) => {
         event.preventDefault(); setBusy(true); setError("");
         try { const form = new FormData(); form.append("company", company); form.append("file", file); const { data } = await axios.post(api("payment-imports/"), form, auth()); setBatch(data); setPage(1); setFile(null); setFileKey((old) => old + 1); setHistoryPage(1); setRefresh((old) => old + 1); }
@@ -83,7 +85,7 @@ export default function PaymentImports() {
         <Alert severity="info">{l("intro")}</Alert>
         {!canRead ? <Alert severity="warning">{l("denied")}</Alert> : <>
             {error && <Alert severity="error">{error}</Alert>}
-            <TextField select label={l("company")} value={company} disabled={busy} onChange={(event) => { setCompany(event.target.value); setBatch(null); setDialog(null); setHistoryPage(1); setReceiptPage(1); setFile(null); setFileKey((old) => old + 1); }}>{companies.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}</TextField>
+            <TextField select label={l("company")} value={company} disabled={busy} onChange={(event) => { setCompany(event.target.value); setBatch(null); setDialog(null); setIdentity(null); setHistoryPage(1); setReceiptPage(1); setFile(null); setFileKey((old) => old + 1); }}>{companies.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}</TextField>
             {canImport && <Paper variant="outlined" component="form" onSubmit={upload} sx={{ p: 2 }}><Stack spacing={2}><Typography>{l("reportHelp")}</Typography><Box component="input" key={fileKey} type="file" accept=".xlsx,.csv" aria-label={l("file")} disabled={busy} onChange={(event) => setFile(event.target.files?.[0] || null)} /><Button type="submit" disabled={busy || !company || !file || file.size > 5 * 1024 * 1024 || !companies.find((c) => c.id === Number(company))?.active}>{l("upload")}</Button></Stack></Paper>}
             {batch && <Paper variant="outlined" sx={{ p: 2 }}><Stack spacing={1}>
                 <Typography>#{batch.id} · {batch.file_name}</Typography>
@@ -106,7 +108,8 @@ export default function PaymentImports() {
                     <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap">{Object.entries(plan.counts).map(([key, count]) => <Typography key={key}>{l(key)}: {count}</Typography>)}</Stack>
                     {plan.can_commit && <Button variant="contained" disabled={busy} onClick={() => setDialog({ type: "commit", token: plan.token })}>{l("commit")}</Button>}
                     {plan.can_undo && <Button color="warning" disabled={busy} onClick={undoPreview}>{l("undoPreview")}</Button>}
-                    <TableContainer><Table size="small"><TableHead><TableRow>{["row", "number", "date", "invoice", "amount", "method", "outcome", "link", "review"].map((k) => <TableCell key={k}>{l(k)}</TableCell>)}</TableRow></TableHead><TableBody>{plan.rows.results.map((row) => <TableRow key={row.row_id}><TableCell>{row.source_row}</TableCell><TableCell>{row.number || "—"}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{row.date || "—"}</TableCell><TableCell>{row.invoice_code || "—"}</TableCell><TableCell>{formatMoney(row.amount)}</TableCell><TableCell>{row.method || row.original_method || "—"}</TableCell><TableCell>{l(row.resolution || row.outcome)}</TableCell><TableCell>{row.receipt ? l(row.receipt.link_issue || "invoice_linked") : "—"}</TableCell><TableCell>{row.issues.map((i, index) => <Typography key={index} variant="body2">{t(`finance.payments.issue.${i.code}`, i.code)}</Typography>)}<Button disabled={busy} onClick={() => reviewRow(row, "source")}>{l("source")}</Button>{plan.can_review && row.resolution === "pending" && <Button disabled={busy} onClick={() => reviewRow(row, "retain")}>{l("retain")}</Button>}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
+                    <Button onClick={() => { setIdentityOnly((old) => !old); setPage(1); }}>{l(identityOnly ? "showAllIdentity" : "showIdentity")} ({plan.identity_count || 0})</Button>
+                    <TableContainer><Table size="small"><TableHead><TableRow>{["row", "number", "date", "invoice", "amount", "method", "outcome", "link", "review"].map((k) => <TableCell key={k}>{l(k)}</TableCell>)}</TableRow></TableHead><TableBody>{plan.rows.results.map((row) => <TableRow key={row.row_id}><TableCell>{row.source_row}</TableCell><TableCell>{row.number || "—"}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{row.date || "—"}</TableCell><TableCell>{row.invoice_code || "—"}</TableCell><TableCell>{formatMoney(row.amount)}</TableCell><TableCell>{row.method || row.original_method || "—"}</TableCell><TableCell>{l(row.resolution || row.outcome)}</TableCell><TableCell>{row.receipt ? l(row.receipt.link_issue || "invoice_linked") : "—"}</TableCell><TableCell>{row.issues.filter((i) => i.code !== "missing_payment_number" || !["manual_created", "identity_linked"].includes(row.resolution)).map((i, index) => <Typography key={index} variant="body2">{t(`finance.payments.issue.${i.code}`, i.code)}</Typography>)}<Button disabled={busy} onClick={() => reviewRow(row, "source")}>{l("source")}</Button>{plan.can_review && row.can_resolve_identity && <Button disabled={busy} onClick={() => setIdentity({ batch: batch.id, token: plan.token, row })}>{l("identityReview")}</Button>}{plan.can_review && row.resolution === "pending" && <Button disabled={busy} onClick={() => reviewRow(row, "retain")}>{l("retain")}</Button>}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
                     {controls(plan.rows, page, setPage)}
                 </>}
             </Stack></Paper>}
@@ -114,7 +117,7 @@ export default function PaymentImports() {
             <TableContainer><Table size="small"><TableHead><TableRow>{["number", "date", "invoice", "amount", "method", "studio", "link", "edit"].map((k) => <TableCell key={k}>{l(k)}</TableCell>)}</TableRow></TableHead><TableBody>{receipts.results.map((r) => <TableRow key={r.id}><TableCell>{r.number}</TableCell><TableCell>{r.source.date}</TableCell><TableCell>{r.invoice_code}</TableCell><TableCell>{formatMoney(r.source.amount)}</TableCell><TableCell>{l(`channel.${r.channel || "unknown"}`)}{r.assignments.channel_review && <Typography variant="caption" display="block">{l("methodReview")}</Typography>}</TableCell><TableCell>{r.effective_studio_name || r.source.location || "—"}{r.assignments.studio_origin === "manual_pending" && <Typography variant="caption" display="block">{l("studioReview")}</Typography>}</TableCell><TableCell>{l(r.link_issue || "invoice_linked")}</TableCell><TableCell>{canEdit && !r.reconciled && <Button disabled={busy} onClick={() => edit(r)}>{l("edit")}</Button>}</TableCell></TableRow>)}</TableBody></Table></TableContainer>
             {controls(receipts, receiptPage, setReceiptPage)}
         </>}
-    </Stack><Dialog open={Boolean(dialog) && canRead} onClose={() => !busy && setDialog(null)} fullWidth maxWidth={dialog?.source ? "lg" : "sm"}><DialogTitle>{l(dialog?.type || "review")}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+    </Stack>{identity && canRead && <PaymentIdentityReview key={identity.row.row_id} value={identity} close={() => setIdentity(null)} changed={() => setRefresh((old) => old + 1)} t={t} />}<Dialog open={Boolean(dialog) && canRead} onClose={() => !busy && setDialog(null)} fullWidth maxWidth={dialog?.source ? "lg" : "sm"}><DialogTitle>{l(dialog?.type || "review")}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         {dialog?.type === "commit" && <Alert severity="warning">{l("commitHelp")}</Alert>}
         {dialog?.type === "retain" && <><Typography>{l("retainHelp")}</Typography><Typography>{l("incoming")}: {formatMoney(dialog.row.amount)} · {dialog.row.date} · {dialog.row.invoice_code} · {dialog.row.method || dialog.row.original_method || "—"} · {dialog.row.location || "—"}</Typography><Typography>{l("current")}: {formatMoney(dialog.row.receipt?.source.amount)} · {dialog.row.receipt?.source.date} · {dialog.row.receipt?.source.invoice_code} · {l(`channel.${dialog.row.receipt?.channel || "unknown"}`)} · {dialog.row.receipt?.source.location || "—"}</Typography></>}
         {dialog?.source && <>
