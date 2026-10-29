@@ -120,7 +120,7 @@ export default function SalesImports() {
                     <Typography>{label("valid")}: {batch.summary.valid_invoices} · {label("review")}: {batch.summary.review_invoices} · {label("cancelled")}: {batch.summary.cancelled_invoices ?? "—"}</Typography>
                     <Typography variant="h6">{label("total")}: {formatMoney(batch.summary.paid_total)}</Typography>
                     <Typography variant="body2">{label("coverage")}</Typography>
-                    {canImport && <Button disabled={busy} onClick={download}>{label("download")}</Button>}
+                    {(batch.migration_batch ? access.capabilities?.can_import_finance_migration : canImport) && <Button disabled={busy} onClick={download}>{label("download")}</Button>}
                     <TextField select label={label("filter")} value={kind} onChange={(event) => { setKind(event.target.value); setPage(1); }}>
                         <MenuItem value="all">{label("all")}</MenuItem><MenuItem value="review">{label("review")}</MenuItem>
                     </TextField>

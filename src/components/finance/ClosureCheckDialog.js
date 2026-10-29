@@ -5,7 +5,7 @@ import useI18n from "@/hooks/useI18n";
 import { api, auth } from "./workspace/common";
 import { formatMoney } from "@/utils/formatMoney";
 
-export default function ClosureCheckDialog({ selected, company, canCheck, close, done }) {
+export default function ClosureCheckDialog({ selected, company, canCheck, canReopen = false, close, done }) {
     const { t } = useI18n(); const w = (key) => t(`finance.workspace.${key}`);
     const day = selected.day; const status = day.check?.status || "open";
     const [note, setNote] = useState(day.check?.note || ""); const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [history, setHistory] = useState([]);
@@ -27,7 +27,7 @@ export default function ClosureCheckDialog({ selected, company, canCheck, close,
         <TextField multiline minRows={2} label={w("reason")} required={reasonRequired} value={note} disabled={busy || !canCheck} inputProps={{ maxLength: 2000 }} onChange={(e) => setNote(e.target.value)} helperText={w(reasonRequired ? "checkReason" : "checkOptionalReason")} />
         {history.length > 0 && <details><summary>{w("checkHistory")}</summary>{history.map((event) => <Typography key={event.id} variant="body2" sx={{ mt: 1 }}>{w(`check_event_${event.action}`)} · {event.actor_name || "—"} · {new Date(event.created_at).toLocaleString()}{event.action === "check" && ` · ${event.note || "—"}`}</Typography>)}</details>}
     </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={close}>{w("close")}</Button>
-        {canCheck && status !== "open" && <Button disabled={busy} onClick={() => save("reopen")}>{w("checkReopen")}</Button>}
-        {canCheck && <Button variant="contained" disabled={busy || status === "checked" || day.expected === null || (reasonRequired && !note.trim())} onClick={() => save("check")}>{w("checkConfirm")}</Button>}
+        {canReopen && status !== "open" && <Button disabled={busy} onClick={() => save("reopen")}>{w("checkReopen")}</Button>}
+        {canCheck && <Button variant="contained" disabled={busy || status !== "open" || day.expected === null || (reasonRequired && !note.trim())} onClick={() => save("check")}>{w("checkConfirm")}</Button>}
     </DialogActions></Dialog>;
 }

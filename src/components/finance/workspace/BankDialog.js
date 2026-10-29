@@ -7,7 +7,7 @@ import { api, auth, empty, Pages, SourceDialog } from "./common";
 import ManualEntryDialog from "./ManualEntryDialog";
 import MonthSelector from "../MonthSelector";
 
-export default function BankDialog({ record, close, canEdit, changed, optionsForManual, company, closeOnSave = false, w, t }) {
+export default function BankDialog({ record, close, canEdit, canReopen = false, changed, optionsForManual, company, closeOnSave = false, w, t }) {
     const [editingFacts, setEditingFacts] = useState(false); const [voiding, setVoiding] = useState(false); const [voidNote, setVoidNote] = useState("");
     const [data, setData] = useState(null); const [options, setOptions] = useState({ categories: [], studios: [], channels: [], terminals: [], kinds: [] });
     const [edit, setEdit] = useState({}); const [note, setNote] = useState(""); const [busy, setBusy] = useState(false); const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export default function BankDialog({ record, close, canEdit, changed, optionsFor
     const change = (key, value) => { setSaved(false); setEdit((old) => ({ ...old, [key]: value })); };
     // Closing clears record before the dialog transition and detail-reset effect finish.
     const current = Boolean(record && data?.id === record.id);
-    const allowed = current && canEdit && data?.can_edit && data?.active && !data?.reconciled;
+    const allowed = current && canEdit && data?.can_edit && data?.active && !data?.reconciled && !data?.classification?.reviewed;
     const debit = data?.source.direction === "debit";
     const kind = edit.movement_kind || "";
     const expense = debit && kind === "expense";
@@ -78,12 +78,12 @@ export default function BankDialog({ record, close, canEdit, changed, optionsFor
             </Box>
             {!debit && data.account_kind !== "cash" && <Typography variant="body2">{w("terminalHelp")}</Typography>}
             <FormControlLabel control={<Checkbox checked={Boolean(edit.reviewed) && !incomplete} disabled={!allowed || busy || incomplete} onChange={(event) => change("reviewed", event.target.checked)} />} label={w("recognized")} />
-            <Typography variant="body2">{w(incomplete ? "reviewCompleteFirst" : "reviewedHelp")}</Typography>
+            <Typography variant="body2">{data?.classification?.reviewed ? w("reviewLock") : w(incomplete ? "reviewCompleteFirst" : "reviewedHelp")}</Typography>
             {allowed && <TextField label={w("bankComment")} value={note} disabled={busy} onChange={(event) => setNote(event.target.value)} inputProps={{ maxLength: 2000 }} multiline />}
             {allowed && data.can_edit_facts && <Stack direction="row" gap={1}><Button onClick={() => setEditingFacts(true)}>{w("editManual")}</Button><Button color="error" onClick={() => setVoiding(true)}>{w("voidEntry")}</Button></Stack>}
             <Divider /><Box component="details"><Box component="summary" sx={{ cursor: "pointer" }}>{w("audit")}</Box><Stack spacing={1} sx={{ mt: 1 }}>{events.results.map((entry) => <Paper variant="outlined" sx={{ p: 2 }} key={entry.id}><Typography>{new Date(entry.created_at).toLocaleString()} · {entry.note || (entry.action === "classify" ? w("classificationUpdated") : ["manual_create", "manual_edit", "manual_void", "cash_migration"].includes(entry.action) ? w(`event_${entry.action}`) : entry.action)}</Typography>{entry.action === "classify" && <><Typography variant="body2">{w("before")}: {label(entry.before.classification)}</Typography><Typography variant="body2">{w("after")}: {label(entry.after.classification)}</Typography></>}</Paper>)}<Pages data={events} page={historyPage} setPage={setHistoryPage} busy={busy} w={w} /></Stack></Box>
         </>}
-    </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={close}>{w("close")}</Button>{allowed && <Button variant="contained" disabled={busy || !dirty} onClick={save}>{w("save")}</Button>}</DialogActions></Dialog>
+    </Stack></DialogContent><DialogActions>{current && data?.classification?.reviewed && canReopen && <Button disabled={busy} onClick={async () => { setBusy(true); try { await axios.post(api(`movements/${record.id}/reopen/`), { expected_revision: data.revision }, auth()); const { data: result } = await axios.get(api(`movements/${record.id}/`), auth()); setData(result); setEdit(result.classification); setRefresh((value) => value + 1); changed(); } catch { setError(w("error")); } finally { setBusy(false); } }}>{w("reopenEntry")}</Button>}<Button disabled={busy} onClick={close}>{w("close")}</Button>{allowed && <Button variant="contained" disabled={busy || !dirty} onClick={save}>{w("save")}</Button>}</DialogActions></Dialog>
         <SourceDialog data={source && current ? { source: { ...data.source, ...(data.historical_source ? Object.fromEntries(["manual_description", "category", "subcategory", "location", "payment_method", "terminal", "expense_period", "operation_date", "legacy_reviewed"].map((key) => [`historical_${key}`, data.historical_source[key]])) : {}) }, file_name: data.file_name || w("manual"), href: data.batch ? `/finance/imports?batch=${data.batch}` : undefined } : null} close={() => setSource(false)} w={w} />
         {editingFacts && current && <ManualEntryDialog company={company} direction={data.source.direction} record={data} options={optionsForManual} close={() => setEditingFacts(false)} done={() => { changed(); close(); }} w={w} t={t} />}
         <Dialog open={voiding} onClose={() => setVoiding(false)}><DialogTitle>{w("voidEntry")}</DialogTitle><DialogContent><Typography>{w("voidHelp")}</Typography><TextField fullWidth label={w("reason")} value={voidNote} onChange={(e) => setVoidNote(e.target.value)} /></DialogContent><DialogActions><Button disabled={busy} onClick={() => setVoiding(false)}>{w("close")}</Button><Button color="error" disabled={busy || !voidNote.trim()} onClick={async () => { setBusy(true); try { await axios.post(api(`movements/${record.id}/void/`), { expected_revision: data.revision, note: voidNote }, auth()); changed(); close(); } catch { setError(w("error")); setVoiding(false); } finally { setBusy(false); } }}>{w("voidEntry")}</Button></DialogActions></Dialog>

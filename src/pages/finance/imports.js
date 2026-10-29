@@ -176,7 +176,7 @@ export default function BankImports() {
                         <Typography>{label("observedDates")}: {summary.first_bank_date || t("finance.config.unknown")} — {summary.last_bank_date || t("finance.config.unknown")}</Typography>
                         <Typography>{label("valid")}: {summary.valid_rows} · {label("invalid")}: {summary.invalid_rows} · {label("repeated")}: {summary.repeated_occurrences}</Typography>
                         <Typography variant="body2">{label("coverageHelp")}</Typography>
-                        {canImport && <Button disabled={busy} onClick={download}>{label("download")}</Button>}
+                        {(selected.migration_batch ? access.capabilities?.can_import_finance_migration : canImport) && <Button disabled={busy} onClick={download}>{label("download")}</Button>}
                         <BankPostingPanel key={selected.id} batch={selected} onProcessingUpdated={(id, status) => {
                             setHistory((old) => ({ ...old, results: old.results.map((item) => item.id === id ? { ...item, processing_status: status } : item) }));
                             setSelected((old) => old?.id === id ? { ...old, processing_status: status } : old);

@@ -20,7 +20,7 @@ export default function MigrationImports() {
     const { query } = useRouter(); const requestedCompany = query.company;
     const { t } = useI18n(); const label = useCallback((key) => t(`finance.migration.${key}`), [t]); const access = useAccess();
     const canRead = Boolean(access.finance?.can_enter && access.capabilities?.can_view_finance_bank_accounts && access.capabilities?.can_view_sensitive_finance);
-    const canImport = canRead && access.capabilities?.can_import_finance;
+    const canImport = canRead && access.capabilities?.can_import_finance_migration;
     const [section, setSection] = useState("bank");
     const [companies, setCompanies] = useState([]); const [companyId, setCompanyId] = useState("");
     const [supervised, setSupervised] = useState(true);

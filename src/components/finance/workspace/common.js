@@ -31,8 +31,10 @@ export function WorkspaceFrame({ title, children, current, company }) {
         <Typography component="h1" variant="h4">{title}</Typography>{children}
     </Stack></MainPage>;
 }
-export function Pages({ data, page, setPage, busy, w }) {
-    return <Stack direction="row" spacing={2} alignItems="center"><Button disabled={busy || !data.previous} onClick={() => setPage(page - 1)}>{w("previous")}</Button><Typography>{w("page")} {page} · {data.count}</Typography><Button disabled={busy || !data.next} onClick={() => setPage(page + 1)}>{w("next")}</Button></Stack>;
+// The API's default page size is 15; callers may supply server pagination metadata.
+export function Pages({ data, page, setPage, busy, w, pageSize = 15 }) {
+    const pages = Math.max(1, Math.ceil((data.count || 0) / (data.page_size || pageSize)));
+    return <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap><Button disabled={busy || !data.previous} onClick={() => setPage(page - 1)}>{w("previous")}</Button><Typography>{w("page")} {page} {w("pageOf")} {pages} · {new Intl.NumberFormat("en-US").format(data.count || 0)} {w("paginationItems")}</Typography><Button disabled={busy || !data.next} onClick={() => setPage(page + 1)}>{w("next")}</Button></Stack>;
 }
 export function SourceFields({ source, w }) {
     return <TableContainer><Table size="small"><TableHead><TableRow><TableCell>{w("field")}</TableCell><TableCell>{w("value")}</TableCell></TableRow></TableHead><TableBody>{Object.entries(source || {}).filter(([, value]) => value !== null && typeof value !== "object").map(([key, value]) => <TableRow key={key}><TableCell>{w(key)}</TableCell><TableCell sx={{ overflowWrap: "anywhere" }}>{typeof value === "boolean" ? w(value ? "yes" : "no") : String(formatFinanceValue(key, value))}</TableCell></TableRow>)}</TableBody></Table></TableContainer>;
