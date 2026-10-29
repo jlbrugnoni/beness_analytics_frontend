@@ -1,0 +1,103 @@
+import { financeWorkspaceTranslations } from "./financeWorkspace";
+import { financeReceiptTranslations } from "./financeReceipts";
+import { financePaymentTranslations } from "./financePayments";
+import { financeMigrationTranslations } from "./financeMigration";
+import { financeSalesPostingTranslations } from "./financeSalesPosting";
+import { financeSalesTranslations } from "./financeSales";
+import { financeConfigurationTranslations } from "./financeConfiguration";
+
+import { financeCategoryTranslations } from "./financeCategories";
+
+import { financePolicyTranslations } from "./financePolicies";
+import { financeMappingTranslations } from "./financeMappings";
+
+import { financeImportTranslations } from "./financeImports";
+
+import { financePostingTranslations } from "./financePosting";
+
+export const financeTranslations = {
+    en: {
+        ...financeWorkspaceTranslations.en,
+        ...Object.fromEntries(Object.entries(financeReceiptTranslations.en).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.receipts.${key}.${code}`, text]) : [[`finance.receipts.${key}`, value]])),
+        ...Object.fromEntries(Object.entries(financePaymentTranslations.en).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.payments.${key}.${code}`, text]) : [[`finance.payments.${key}`, value]])),
+        ...Object.fromEntries(Object.entries(financeMigrationTranslations.en).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.migration.${key}.${code}`, text]) : [[`finance.migration.${key}`, value]])),
+        ...financeConfigurationTranslations.en,
+        ...financeCategoryTranslations.en,
+        ...financeMappingTranslations.en,
+        ...financePolicyTranslations.en,
+        ...financeImportTranslations.en,
+        ...Object.fromEntries(Object.entries(financeSalesPostingTranslations.en).map(([key, value]) => [`finance.salesPosting.${key}`, value])),
+        ...Object.fromEntries(Object.entries(financeSalesTranslations.en).map(([key, value]) => [`finance.sales.${key}`, value])),
+        ...financePostingTranslations.en,
+        "nav.finance": "Finance", "finance.title": "Finance",
+        "finance.foundation": "Financial workspace",
+        "finance.stage": "Configure your financial workspace, preview and import bank transactions. Classification, sales reconciliation and monthly results follow in later steps.",
+        "finance.empty": "No financial companies are available in your scope. Contact an administrator to configure company access.",
+        "finance.denied": "Finance is disabled or your financial access has changed.",
+        "finance.currency": "Currency", "finance.country": "Country", "finance.company": "Company",
+        "finance.error": "Could not load finance. Please try again.",
+        "access.groups": "Group permissions", "access.group": "Group",
+        "access.groupHelp": "Changes apply to every member of this group. User grants add permissions; unchecking a user grant does not remove inherited access. Finance also requires View money, View finance, and allowed sites/studios.",
+        "access.adminHelp": "The existing Admin role always grants operational administrator capabilities. Finance capabilities still require explicit grants.",
+        "access.saved": "Group permissions saved.", "access.save": "Save permissions",
+        "access.reload": "Reload", "access.choose": "Select a group", "access.error": "Could not load group permissions.",
+        "access.saveError": "Could not save permissions.",
+        "access.conflict": "Permissions changed while this form was open. Reload and review before saving.",
+        "access.effective": "Current effective permissions", "access.source": "Granted by",
+        "access.directHelp": "These switches are additional user grants. Group permissions remain active even when a user switch is off.",
+        "access.none": "No effective grants.",
+        "access.can_view_money": "View money", "access.can_upload_data": "Upload operational data",
+        "access.can_edit_data": "Edit operational data", "access.can_reset_data": "Reset operational data",
+        "access.can_manage_users": "Manage users and group permissions", "access.can_view_admin_logs": "View admin logs",
+        "finance.receipts.invoice_review_locked": "Reopen the reviewed invoice before attaching this payment.", "finance.workspace.reviewLock": "Reviewed · read-only", "finance.workspace.reopenEntry": "Reopen for editing", "finance.workspace.completeReview": "Mark invoice and payments reviewed", "finance.workspace.reviewMissing": "Complete the required invoice and payment fields before reviewing.",
+        "access.can_view_finance": "View finance", "access.can_import_finance": "Upload routine financial reports", "access.can_import_finance_migration": "Upload supervised financial migrations", "access.can_reopen_finance": "Reopen reviewed entries and closed days",
+        "access.can_edit_finance": "Edit and review entries; close days", "access.can_reconcile_finance": "Reconcile collections",
+        "access.can_manage_finance_settings": "Manage financial configuration",
+        "access.can_close_finance_periods": "Close financial periods (not available yet)",
+        "access.can_export_finance": "Export financial data",
+        "access.can_view_finance_bank_accounts": "View full bank accounts within scope",
+        "access.can_view_sensitive_finance": "View sensitive financial detail",
+    },
+    es: {
+        ...financeWorkspaceTranslations.es,
+        ...Object.fromEntries(Object.entries(financeReceiptTranslations.es).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.receipts.${key}.${code}`, text]) : [[`finance.receipts.${key}`, value]])),
+        ...Object.fromEntries(Object.entries(financePaymentTranslations.es).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.payments.${key}.${code}`, text]) : [[`finance.payments.${key}`, value]])),
+        ...Object.fromEntries(Object.entries(financeMigrationTranslations.es).flatMap(([key, value]) => typeof value === "object" ? Object.entries(value).map(([code, text]) => [`finance.migration.${key}.${code}`, text]) : [[`finance.migration.${key}`, value]])),
+        ...financeConfigurationTranslations.es,
+        ...financeCategoryTranslations.es,
+        ...financeMappingTranslations.es,
+        ...financePolicyTranslations.es,
+        ...financeImportTranslations.es,
+        ...Object.fromEntries(Object.entries(financeSalesPostingTranslations.es).map(([key, value]) => [`finance.salesPosting.${key}`, value])),
+        ...Object.fromEntries(Object.entries(financeSalesTranslations.es).map(([key, value]) => [`finance.sales.${key}`, value])),
+        ...financePostingTranslations.es,
+        "nav.finance": "Finanzas", "finance.title": "Finanzas",
+        "finance.foundation": "Espacio financiero",
+        "finance.stage": "Configura tu espacio financiero, revisa e importa movimientos bancarios. La clasificación, conciliación de ventas y los resultados mensuales llegarán después.",
+        "finance.empty": "No hay empresas financieras disponibles en tu ámbito. Contacta con un administrador para configurar el acceso a empresas.",
+        "finance.denied": "Finanzas está desactivado o tu acceso financiero ha cambiado.",
+        "finance.currency": "Moneda", "finance.country": "País", "finance.company": "Empresa",
+        "finance.error": "No se pudo cargar Finanzas. Inténtalo de nuevo.",
+        "access.groups": "Permisos de grupos", "access.group": "Grupo",
+        "access.groupHelp": "Los cambios afectan a todos los miembros del grupo. Los permisos individuales son adicionales; desmarcarlos no elimina permisos heredados. Finanzas requiere Ver importes, Ver finanzas y sitios/estudios permitidos.",
+        "access.adminHelp": "El rol Admin mantiene sus permisos operativos de administración. Los permisos financieros requieren una concesión explícita.",
+        "access.saved": "Permisos del grupo guardados.", "access.save": "Guardar permisos",
+        "access.reload": "Recargar", "access.choose": "Selecciona un grupo", "access.error": "No se pudieron cargar los permisos de grupos.",
+        "access.saveError": "No se pudieron guardar los permisos.",
+        "access.conflict": "Los permisos cambiaron mientras este formulario estaba abierto. Recarga y revisa antes de guardar.",
+        "access.effective": "Permisos efectivos actuales", "access.source": "Concedido por",
+        "access.directHelp": "Estos interruptores conceden permisos individuales adicionales. Los permisos de grupos siguen activos aunque el interruptor individual esté desactivado.",
+        "access.none": "Sin permisos efectivos.",
+        "access.can_view_money": "Ver importes", "access.can_upload_data": "Importar datos operativos",
+        "access.can_edit_data": "Editar datos operativos", "access.can_reset_data": "Restablecer datos operativos",
+        "access.can_manage_users": "Gestionar usuarios y permisos de grupos", "access.can_view_admin_logs": "Ver registros administrativos",
+        "finance.receipts.invoice_review_locked": "Reabra la factura revisada antes de vincular este pago.", "finance.workspace.reviewLock": "Revisado · solo lectura", "finance.workspace.reopenEntry": "Reabrir para editar", "finance.workspace.completeReview": "Marcar factura y pagos como revisados", "finance.workspace.reviewMissing": "Complete los campos obligatorios de la factura y sus pagos antes de revisar.",
+        "access.can_view_finance": "Ver finanzas", "access.can_import_finance": "Subir reportes financieros habituales", "access.can_import_finance_migration": "Subir migraciones financieras supervisadas", "access.can_reopen_finance": "Reabrir registros revisados y días cerrados",
+        "access.can_edit_finance": "Editar y revisar registros; cerrar días", "access.can_reconcile_finance": "Conciliar cobros",
+        "access.can_manage_finance_settings": "Gestionar configuración financiera",
+        "access.can_close_finance_periods": "Cerrar periodos financieros (aún no disponible)",
+        "access.can_export_finance": "Exportar datos financieros",
+        "access.can_view_finance_bank_accounts": "Ver cuentas bancarias completas dentro del ámbito",
+        "access.can_view_sensitive_finance": "Ver detalle financiero sensible",
+    },
+};

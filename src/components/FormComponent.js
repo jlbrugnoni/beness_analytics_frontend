@@ -25,6 +25,7 @@ const FormComponent = ({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     const [tempFile, setTempFile] = useState(null); // ✅ Temporary file
     const [tempPreview, setTempPreview] = useState(""); // ✅ Local preview URL
@@ -79,6 +80,8 @@ const FormComponent = ({
 
     // ✅ Handle save (upload media only on submission)
     const handleSubmit = async () => {
+        if (submitting) return;
+        setSubmitting(true);
         try {
             let uploadedUrl = formData.image;
 
@@ -103,7 +106,8 @@ const FormComponent = ({
             const updatedFormData = { ...formData, [fileType]: uploadedUrl };
             setFormData(updatedFormData);
 
-            await onSubmit(updatedFormData, setError, setSuccess);
+            const result = await onSubmit(updatedFormData, setError, setSuccess);
+            if (result === false) return;
 
             setTimeout(() => {
                 setSuccess(false);
@@ -111,6 +115,8 @@ const FormComponent = ({
             }, 3000);
         } catch (error) {
             setError("Error al actualizar la información.");
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -243,7 +249,7 @@ const FormComponent = ({
                         </div>
 
                         <div className={styles.buttonsContainer}>
-                            <Button variant="contained" onClick={handleSubmit} className={styles.createButton}>
+                            <Button variant="contained" disabled={submitting} onClick={handleSubmit} className={styles.createButton}>
                                 Guardar
                             </Button>
                             <Button variant="outlined" onClick={onCancel} className={styles.cancelButton}>

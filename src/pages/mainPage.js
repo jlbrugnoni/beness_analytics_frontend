@@ -19,6 +19,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import ReplayIcon from "@mui/icons-material/Replay";
 import SettingsIcon from "@mui/icons-material/Settings";
 import StorageIcon from "@mui/icons-material/Storage";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 
 import IconButton from "@mui/material/IconButton";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -40,6 +41,7 @@ import routePermissions from "@/constants/routePermissions";
 const navItems = [
     { href: "/home", labelKey: "nav.home", key: "home", icon: HomeIcon },
     { href: "/dashboard", labelKey: "nav.dashboard", key: "dashboard", icon: DashboardIcon },
+    { href: "/finance", labelKey: "nav.finance", key: "finance", icon: AccountBalanceIcon, finance: true },
     { href: "/clients", labelKey: "nav.clients", key: "clients", icon: PeopleIcon },
     { href: "/retention", labelKey: "nav.retention", key: "retention", icon: ReplayIcon },
     { href: "/schedule", labelKey: "nav.schedule", key: "schedule", icon: EventNoteIcon },
@@ -72,6 +74,8 @@ export default function MainPage({ children }) {
         if (!requirement) return true;
         if (typeof requirement === "string") return permissions?.includes(requirement);
         if (requirement.permission) return permissions?.includes(requirement.permission);
+        if (requirement.finance) return Boolean(access.finance?.can_enter &&
+            (!requirement.capability || access.capabilities?.[requirement.capability]));
         if (requirement.capability) return Boolean(access.capabilities?.[requirement.capability]);
         return true;
     };
@@ -139,6 +143,7 @@ export default function MainPage({ children }) {
 
         const requirement = matchedPath ? routePermissions[matchedPath] : null;
         if (!hasRouteRequirement(requirement)) {
+            setPermissionsChecked(false);
             router.push("/home");
         } else {
             setPermissionsChecked(true);

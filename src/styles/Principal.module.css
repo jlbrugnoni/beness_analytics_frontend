@@ -129,6 +129,7 @@
 
 /* ── Main content area ──────────────────────────────────────── */
 .main {
+    min-width: 0;
     flex-grow: 1;
     padding: 1.25rem 1.5rem;
     height: calc(100vh - 60px);

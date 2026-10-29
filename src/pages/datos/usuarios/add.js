@@ -6,19 +6,14 @@ import FormComponent from "@/components/FormComponent";
 import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
 import { languages } from "@/i18n/translations";
-
-
-const capabilityFields = [
-    { label: "Can View Money", name: "can_view_money", type: "boolean" },
-    { label: "Can Upload Data", name: "can_upload_data", type: "boolean" },
-    { label: "Can Edit Data", name: "can_edit_data", type: "boolean" },
-    { label: "Can Reset Data", name: "can_reset_data", type: "boolean" },
-    { label: "Can Manage Users", name: "can_manage_users", type: "boolean" },
-    { label: "Can View Admin Logs", name: "can_view_admin_logs", type: "boolean" },
-];
+import useI18n from "@/hooks/useI18n";
+import AccessSummary from "@/components/AccessSummary";
+import { fetchApiRows } from "@/utils/fetchApiRows";
+import { capabilityFormFields, emptyFinanceCapabilities, financeCapabilityValues } from "@/constants/accessCapabilities";
 
 
 const emptyAccessData = {
+    ...emptyFinanceCapabilities,
     language: "en",
     groups: [],
     allowed_sites: [],
@@ -33,6 +28,7 @@ const emptyAccessData = {
 
 
 const UserCreatePage = () => {
+    const { t } = useI18n();
     const router = useRouter();
     const token = useFetchToken();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -49,19 +45,19 @@ const UserCreatePage = () => {
             try {
                 const [groupsResponse, sitesResponse, studiosResponse] = await Promise.all([
                     axios.get(`${backendUrl}/api/data/groups/`, authHeaders),
-                    axios.get(`${backendUrl}/api/data/sites/`, authHeaders),
-                    axios.get(`${backendUrl}/api/data/studios/`, authHeaders),
+                    fetchApiRows(`${backendUrl}/api/data/sites/`, authHeaders, backendUrl),
+                    fetchApiRows(`${backendUrl}/api/data/studios/`, authHeaders, backendUrl),
                 ]);
                 setAvailableGroups(groupsResponse.data);
-                setSites(sitesResponse.data.results || sitesResponse.data);
-                setStudios(studiosResponse.data.results || studiosResponse.data);
+                setSites(sitesResponse);
+                setStudios(studiosResponse);
             } catch (err) {
                 console.error("Error fetching access lookups", err);
             }
         };
 
         if (token) fetchAccessLookups();
-    }, [token]);
+    }, [token, authHeaders, backendUrl]);
 
     const validateForm = (formData, setError) => {
         if (formData.password !== formData.password2) {
@@ -71,9 +67,8 @@ const UserCreatePage = () => {
         return true;
     };
 
-    const saveAccessProfile = async (userId, formData) => {
-        await axios.post(`${backendUrl}/api/data/user-access-profiles/`, {
-            user: userId,
+    const buildAccessProfile = (formData) => ({
+            ...financeCapabilityValues(formData),
             language: formData.language || "en",
             allowed_sites: formData.allowed_sites || [],
             allowed_studios: formData.allowed_studios || [],
@@ -83,14 +78,13 @@ const UserCreatePage = () => {
             can_reset_data: Boolean(formData.can_reset_data),
             can_manage_users: Boolean(formData.can_manage_users),
             can_view_admin_logs: Boolean(formData.can_view_admin_logs),
-        }, authHeaders);
-    };
+        });
 
     const handleSubmit = async (formData, setError, setSuccess) => {
-        if (!validateForm(formData, setError)) return;
+        if (!validateForm(formData, setError)) return false;
 
         try {
-            const response = await axios.post(`${backendUrl}/api/data/users/`, {
+            await axios.post(`${backendUrl}/api/data/users/`, {
                 first_name: formData.first_name,
                 last_name: formData.last_name,
                 username: formData.username,
@@ -98,13 +92,14 @@ const UserCreatePage = () => {
                 image: formData.image,
                 groups: formData.groups || [],
                 password: formData.password,
+                access_profile: buildAccessProfile(formData),
             }, authHeaders);
-            await saveAccessProfile(response.data.id, formData);
 
             setSuccess(true);
             setTimeout(() => router.push("/datos/usuarios"), 2000);
         } catch (error) {
-            setError(error.response?.data?.error || "Error al crear usuario.");
+            setError(error.response?.data?.detail || error.response?.data?.error || JSON.stringify(error.response?.data || "Error al crear usuario."));
+            return false;
         }
     };
 
@@ -132,7 +127,7 @@ const UserCreatePage = () => {
                     { label: "Groups", name: "groups", type: "multiselect", options: groupOptions },
                     { label: "Allowed Sites", name: "allowed_sites", type: "multiselect", options: siteOptions },
                     { label: "Allowed Studios", name: "allowed_studios", type: "multiselect", options: studioOptions },
-                    ...capabilityFields,
+                    ...capabilityFormFields(t),
                     { label: "Contraseña", name: "password", type: "password" },
                     { label: "Repetir Contraseña", name: "password2", type: "password" },
                 ]}
@@ -148,6 +143,7 @@ const UserCreatePage = () => {
                 onSubmit={handleSubmit}
                 onCancel={() => router.push("/datos/usuarios")}
             />
+            <AccessSummary />
         </MainPage>
     );
 };

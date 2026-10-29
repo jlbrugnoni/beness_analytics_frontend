@@ -1,3 +1,5 @@
+import { financeTranslations } from "./finance";
+
 export const DEFAULT_LANGUAGE = "en";
 export const LANGUAGE_STORAGE_KEY = "language";
 export const LANGUAGE_CHANGED_EVENT = "beness-language-changed";
@@ -9,6 +11,7 @@ export const languages = [
 
 export const translations = {
     en: {
+        ...financeTranslations.en,
         "purchaseReview.history": "Previous decisions",
         "purchaseReview.previewNote": "These counts are estimates. Purchase matching is checked during import; uncertain rows will be saved for review while clear rows are imported.",
         "purchaseReview.title": "Purchase match review",
@@ -733,6 +736,7 @@ export const translations = {
         "weekdaysShort.sunday": "Sun",
     },
     es: {
+        ...financeTranslations.es,
         "purchaseReview.history": "Decisiones anteriores",
         "purchaseReview.previewNote": "Estos recuentos son estimaciones. Las coincidencias se verifican al importar; las filas inciertas se guardarán para revisión y las demás se importarán.",
         "purchaseReview.title": "Revisión de compras",
