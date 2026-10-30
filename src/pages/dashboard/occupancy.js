@@ -1,6 +1,6 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -32,6 +32,12 @@ import Typography from "@mui/material/Typography";
 
 import {
     addDays,
+    monthRange,
+    monthParts,
+    monthOptions,
+    yearOptions,
+    buildMonthValue,
+    MonthlyOccupancyComparisonChart,
     CapacityUsageCard,
     firstQueryValue,
     formatDisplayDate,
@@ -68,6 +74,7 @@ const buildDefaultState = () => {
         filters: {
             site: "",
             studio: "",
+            month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
             week_date: defaultWeek.date_from,
             date_from: defaultWeek.date_from,
             date_to: defaultWeek.date_to,
@@ -78,10 +85,11 @@ const buildDefaultState = () => {
 
 const stateFromQuery = (query, fallback) => {
     const period = firstQueryValue(query.period);
-    const validPeriods = ["current_week", "previous_week", "specific_week", "range"];
+    const validPeriods = ["current_week", "previous_week", "specific_week", "range", "current_month", "previous_month", "specific_month"];
     return {
         periodMode: validPeriods.includes(period) ? period : fallback.periodMode,
         filters: {
+            month: firstQueryValue(query.month) || fallback.filters.month,
             site: firstQueryValue(query.site) || fallback.filters.site,
             studio: firstQueryValue(query.studio) || fallback.filters.studio,
             week_date: firstQueryValue(query.week_date) || fallback.filters.week_date,
@@ -93,12 +101,13 @@ const stateFromQuery = (query, fallback) => {
 
 
 const hasQuery = (query) =>
-    ["site", "studio", "period", "week_date", "date_from", "date_to"].some((key) => firstQueryValue(query?.[key]));
+    ["month", "site", "studio", "period", "week_date", "date_from", "date_to"].some((key) => firstQueryValue(query?.[key]));
 
 
 const queryFromState = (periodMode, filters) => {
     const query = {
         period: periodMode,
+        month: filters.month,
         week_date: filters.week_date,
         date_from: filters.date_from,
         date_to: filters.date_to,
@@ -121,6 +130,12 @@ const sameQuery = (currentQuery, nextQuery) => {
 
 
 const resolveActiveDateRange = (periodMode, filters) => {
+    if (periodMode.endsWith("month")) {
+        const now = new Date();
+        if (periodMode === "specific_month") return monthRange(filters.month);
+        const date = new Date(now.getFullYear(), now.getMonth() - (periodMode === "previous_month" ? 1 : 0), 1);
+        return monthRange(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
+    }
     if (periodMode === "current_week") return weekRange();
     if (periodMode === "previous_week") return previousWeekRange();
     if (periodMode === "specific_week") return weekRangeFromDate(filters.week_date);
@@ -150,6 +165,7 @@ export default function OccupancyPage() {
     const [periodNavigationVersion, setPeriodNavigationVersion] = useState(0);
 
     // Data state
+    const dashboardRequest = useRef(0);
     const [occupation, setOccupation] = useState(null);
     const [comparisonOccupation, setComparisonOccupation] = useState(null);
 
@@ -173,10 +189,12 @@ export default function OccupancyPage() {
 
     const activeDateRange = useMemo(
         () => resolveActiveDateRange(periodMode, filters),
-        [periodMode, filters.week_date, filters.date_from, filters.date_to],
+        [periodMode, filters],
     );
 
-    const activePeriodTitle = formatPeriodTitle("weekly", activeDateRange, t);
+    const monthly = periodMode.endsWith("month");
+    const selectedMonthParts = monthParts(filters.month);
+    const activePeriodTitle = formatPeriodTitle(monthly ? "monthly" : "weekly", activeDateRange, t);
     const visibleStudios = filters.site
         ? studios.filter((studio) => String(studio.site) === String(filters.site))
         : studios;
@@ -192,7 +210,7 @@ export default function OccupancyPage() {
         .slice(0, 10);
 
     const weeklyTrendRows = (weeklyTrends?.weeks || []).map((row) => ({
-        label: formatShortWeekdayDate(row.week_start, t),
+        label: monthly ? row.week_start.slice(0, 7) : formatShortWeekdayDate(row.week_start, t),
         total_bookings: row.total_bookings || 0,
         completed_visits: row.completed_visits || 0,
         no_show_rate: row.no_show_rate || 0,
@@ -218,6 +236,15 @@ export default function OccupancyPage() {
             unused_capacity: Math.max(0, Number(row.scheduled_capacity || 0) - Number(row.attendance_used || 0)),
             occupation_rate: row.occupation_rate || 0,
         }));
+
+    const monthlyDayRows = useMemo(() => {
+        if (!monthly || !occupation) return occupation?.by_day;
+        const lookup = Object.fromEntries(occupation.by_day.map((row) => [row.date, row]));
+        return Array.from({ length: Number(activeDateRange.date_to.slice(-2)) }, (_, index) => {
+            const date = `${activeDateRange.date_from.slice(0, 7)}-${String(index + 1).padStart(2, "0")}`;
+            return lookup[date] || { date, capacity: 0, attended: 0, occupation_rate: 0 };
+        });
+    }, [monthly, occupation, activeDateRange]);
 
     const weeklyOccupancyComparisonRows = weeklyComparisonRows(
         activeDateRange,
@@ -253,6 +280,9 @@ export default function OccupancyPage() {
 
     const fetchDashboard = async () => {
         if (!token) return;
+        const requestId = ++dashboardRequest.current;
+        setWeeklyTrends(null); setOccupancyHourMatrix(null); setExpandedInsight(null);
+        setOccupation(null); setComparisonOccupation(null);
         setLoading(true);
         setError("");
         try {
@@ -267,16 +297,17 @@ export default function OccupancyPage() {
             });
             const queryString = params.toString();
 
-            const dashboardResponse = await axios.get(`${backendUrl}/api/data/analytics/dashboard/weekly/?${queryString}`, authHeaders);
+            const dashboardResponse = await axios.get(`${backendUrl}/api/data/analytics/dashboard/occupancy/?mode=${monthly ? "monthly" : "weekly"}&${queryString}`, authHeaders);
+            if (requestId !== dashboardRequest.current) return;
             const dashboardData = dashboardResponse.data;
             setOccupation(dashboardData.current.occupation);
             setComparisonOccupation(dashboardData.comparison.occupation);
             setWeeklyTrends(null);
             setOccupancyHourMatrix(null);
         } catch (err) {
-            setError(err.response?.data?.detail || "Error loading occupancy data.");
+            if (requestId === dashboardRequest.current) setError(err.response?.data?.detail || "Error loading occupancy data.");
         } finally {
-            setLoading(false);
+            if (requestId === dashboardRequest.current) setLoading(false);
         }
     };
 
@@ -343,6 +374,14 @@ export default function OccupancyPage() {
     };
 
     const navigatePeriod = (direction) => {
+        if (monthly) {
+            const [year, month] = activeDateRange.date_from.split("-").map(Number);
+            const next = new Date(year, month - 1 + direction, 1);
+            setPeriodMode("specific_month");
+            setFilters({ ...filters, month: `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}` });
+            setPeriodNavigationVersion((v) => v + 1);
+            return;
+        }
         const nextWeekDate = addDays(activeDateRange.date_from, direction * 7);
         const nextWeekRange = weekRangeFromDate(nextWeekDate);
         setPeriodMode("specific_week");
@@ -358,6 +397,7 @@ export default function OccupancyPage() {
     const openWeeklyTrend = async (insightKey) => {
         setExpandedInsight(insightKey);
         if (weeklyTrends) return;
+        const requestId = dashboardRequest.current;
         setWeeklyTrendsLoading(true);
         try {
             const params = new URLSearchParams({
@@ -367,10 +407,10 @@ export default function OccupancyPage() {
             if (filters.site) params.set("site", filters.site);
             if (filters.studio) params.set("studio", filters.studio);
             const response = await axios.get(
-                `${backendUrl}/api/data/analytics/dashboard/weekly/trends/?${params.toString()}`,
+                `${backendUrl}/api/data/analytics/dashboard/${monthly ? "occupancy/?mode=monthly&detail=trends&" : "weekly/trends/?"}${params.toString()}`,
                 authHeaders,
             );
-            setWeeklyTrends(response.data);
+            if (requestId === dashboardRequest.current) setWeeklyTrends(response.data);
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading weekly trend.");
         } finally {
@@ -381,6 +421,7 @@ export default function OccupancyPage() {
     const openOccupancyHourMatrix = async () => {
         setExpandedInsight("occupancy_hour_matrix");
         if (occupancyHourMatrix) return;
+        const requestId = dashboardRequest.current;
         setOccupancyHourMatrixLoading(true);
         try {
             const params = new URLSearchParams({
@@ -391,10 +432,10 @@ export default function OccupancyPage() {
             if (filters.site) params.set("site", filters.site);
             if (filters.studio) params.set("studio", filters.studio);
             const response = await axios.get(
-                `${backendUrl}/api/data/analytics/dashboard/weekly/occupancy-hour-matrix/?${params.toString()}`,
+                `${backendUrl}/api/data/analytics/dashboard/${monthly ? "occupancy/?mode=monthly&detail=matrix&" : "weekly/occupancy-hour-matrix/?"}${params.toString()}`,
                 authHeaders,
             );
-            setOccupancyHourMatrix(response.data);
+            if (requestId === dashboardRequest.current) setOccupancyHourMatrix(response.data);
         } catch (err) {
             setError(err.response?.data?.detail || "Error loading occupancy matrix.");
         } finally {
@@ -421,6 +462,18 @@ export default function OccupancyPage() {
                         </Typography>
                     </Stack>
 
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                        <Typography variant="body2" color="text.secondary">{t("common.view")}:</Typography>
+                        <Tabs value={monthly ? "monthly" : "weekly"} variant="standard" onChange={(_, value) => {
+                            setPeriodMode(value === "monthly" ? "current_month" : "current_week");
+                            setExpandedInsight(null); setWeeklyTrends(null); setOccupancyHourMatrix(null);
+                            setPeriodNavigationVersion((v) => v + 1);
+                        }}>
+                            <Tab label={t("dashboard.hub.badge.monthly")} value="monthly" />
+                            <Tab label={t("dashboard.hub.badge.weekly")} value="weekly" />
+                        </Tabs>
+                    </Stack>
+
                     {error && <Alert severity="error">{error}</Alert>}
 
                     {/* Sticky toolbar */}
@@ -436,7 +489,7 @@ export default function OccupancyPage() {
                         }}
                     >
                         <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" style={{ borderBottom: "1px solid #f0f0f0", padding: "6px 0" }}>
-                            <Tooltip title={t("dashboard.previousWeek")}>
+                            <Tooltip title={t(monthly ? "dashboard.previousMonth" : "dashboard.previousWeek")}>
                                 <span>
                                     <IconButton onClick={() => navigatePeriod(-1)} disabled={loading}>
                                         <ChevronLeftIcon />
@@ -449,7 +502,7 @@ export default function OccupancyPage() {
                                     {formatDisplayDate(activeDateRange.date_from, t)} - {formatDisplayDate(activeDateRange.date_to, t)}
                                 </div>
                             </div>
-                            <Tooltip title={t("dashboard.nextWeek")}>
+                            <Tooltip title={t(monthly ? "dashboard.nextMonth" : "dashboard.nextWeek")}>
                                 <span>
                                     <IconButton onClick={() => navigatePeriod(1)} disabled={loading}>
                                         <ChevronRightIcon />
@@ -496,11 +549,25 @@ export default function OccupancyPage() {
                                     value={periodMode}
                                     onChange={handlePeriodModeChange}
                                 >
-                                    <MenuItem value="current_week">{t("dashboard.period.currentWeek")}</MenuItem>
-                                    <MenuItem value="previous_week">{t("dashboard.period.previousWeek")}</MenuItem>
-                                    <MenuItem value="specific_week">{t("dashboard.period.specificWeek")}</MenuItem>
-                                    <MenuItem value="range">{t("dashboard.period.customRange")}</MenuItem>
+                                    {monthly ? [
+                                        <MenuItem key="current_month" value="current_month">{t("dashboard.period.currentMonth")}</MenuItem>,
+                                        <MenuItem key="previous_month" value="previous_month">{t("dashboard.previousMonth")}</MenuItem>,
+                                        <MenuItem key="specific_month" value="specific_month">{t("dashboard.period.specificMonth")}</MenuItem>,
+                                    ] : [
+                                        <MenuItem key="current_week" value="current_week">{t("dashboard.period.currentWeek")}</MenuItem>,
+                                        <MenuItem key="previous_week" value="previous_week">{t("dashboard.period.previousWeek")}</MenuItem>,
+                                        <MenuItem key="specific_week" value="specific_week">{t("dashboard.period.specificWeek")}</MenuItem>,
+                                        <MenuItem key="range" value="range">{t("dashboard.period.customRange")}</MenuItem>,
+                                    ]}
                                 </TextField>
+                                {periodMode === "specific_month" && <>
+                                    <TextField select label={t("common.month")} value={selectedMonthParts.month} onChange={(event) => setFilters({ ...filters, month: buildMonthValue(selectedMonthParts.year, event.target.value) })}>
+                                        {monthOptions.map((month) => <MenuItem key={month.value} value={month.value}>{t(month.labelKey)}</MenuItem>)}
+                                    </TextField>
+                                    <TextField select label={t("common.year")} value={Number(selectedMonthParts.year)} onChange={(event) => setFilters({ ...filters, month: buildMonthValue(event.target.value, selectedMonthParts.month) })}>
+                                        {yearOptions().map((year) => <MenuItem key={year} value={year}>{year}</MenuItem>)}
+                                    </TextField>
+                                </>}
                                 {periodMode === "specific_week" && (
                                     <TextField
                                         label={t("common.weekOf")}
@@ -541,27 +608,27 @@ export default function OccupancyPage() {
                         occupation={occupation}
                         t={t}
                         action={(
-                            <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_health")}>
+                            <Button variant="outlined" size="small" disabled={loading} onClick={() => openWeeklyTrend("weekly_occupancy_health")}>
                                 {t("common.trend")}
                             </Button>
                         )}
                     />
-                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+                    <div style={{ display: "grid", gap: "16px", gridTemplateColumns: monthly ? "minmax(0, 1fr)" : "repeat(auto-fit, minmax(360px, 1fr))" }}>
                         <OccupancyCapacityByDayChart
-                            rows={occupation?.by_day}
+                            rows={monthlyDayRows}
                             t={t}
                             action={(
                                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                    <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
+                                    {!monthly && <Button variant="outlined" size="small" onClick={() => openWeeklyTrend("weekly_occupancy_weekday")}>
                                         {t("dashboard.actions.weekdayDetail")}
-                                    </Button>
-                                    <Button variant="outlined" size="small" onClick={openOccupancyHourMatrix}>
+                                    </Button>}
+                                    <Button variant="outlined" size="small" disabled={loading} onClick={openOccupancyHourMatrix}>
                                         {t("dashboard.actions.hourMatrix")}
                                     </Button>
                                 </Stack>
                             )}
                         />
-                        <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} t={t} />
+                        {monthly ? <MonthlyOccupancyComparisonChart current={occupation?.by_day} previous={comparisonOccupation?.by_day} range={activeDateRange} t={t} /> : <WeeklyOccupancyComparisonChart rows={weeklyOccupancyComparisonRows} t={t} />}
                     </div>
 
                     <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
@@ -649,7 +716,7 @@ export default function OccupancyPage() {
                         scrollButtons="auto"
                         style={{ marginBottom: "16px" }}
                     >
-                        <Tab label={t("dashboard.period.currentWeek")} value="current_week" />
+                        <Tab label={t(monthly ? "dashboard.period.currentMonth" : "dashboard.period.currentWeek")} value="current_week" />
                         <Tab label={t("dashboard.modal.occupancyByWeekday")} value="history" />
                     </Tabs>
                     {occupancyHourMatrixView === "history" && (
@@ -669,6 +736,7 @@ export default function OccupancyPage() {
                         <LinearProgress />
                     ) : (
                         <OccupancyHourMatrix
+                            totals={monthly}
                             data={occupancyHourMatrix}
                             view={occupancyHourMatrixView}
                             weekday={weeklyDrilldownWeekday}

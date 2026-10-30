@@ -1,3 +1,4 @@
+import { addOccupancyTrends } from "./occupancyTrends.mjs";
 import { useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import {
@@ -1819,110 +1820,65 @@ export const OccupancyCapacityByDayChart = ({ rows, action, t }) => {
 };
 
 
-export const OccupancyHourMatrix = ({ data, view, weekday, t }) => {
+export const OccupancyHourMatrix = ({ data, view, weekday, totals = false, t }) => {
     const source = view === "history" ? data?.weekday_history : data?.current_week;
     const selectedDays = (source?.days || []).filter((day) => view !== "history" || day.weekday === weekday);
     const selectedDates = new Set(selectedDays.map((day) => day.date));
     const cells = (source?.cells || []).filter((cell) => selectedDates.has(cell.date));
     const activeHours = (source?.hours || []).filter((hour) => cells.some((cell) => cell.hour === hour));
-    const cellLookup = cells.reduce((lookup, cell) => {
-        lookup[`${cell.date}-${cell.hour}`] = cell;
-        return lookup;
-    }, {});
-
+    const cellLookup = Object.fromEntries(cells.map((cell) => [`${cell.date}-${cell.hour}`, cell]));
+    const pinnedTotalStyle = { position: "sticky", right: 0, zIndex: 2, minWidth: 110, background: "#e2e8f0", borderLeft: "2px solid #94a3b8" };
+    const totalCell = (items, key, pinned = false) => {
+        const capacity = items.reduce((sum, cell) => sum + Number(cell.scheduled_capacity || 0), 0);
+        const attended = items.reduce((sum, cell) => sum + Number(cell.attended || 0), 0);
+        return <TableCell key={key} align="center" sx={{ background: "#e2e8f0", fontWeight: 800, ...(pinned ? pinnedTotalStyle : {}) }}>
+            <div>{capacity ? formatPercentOneDecimal(100 * attended / capacity) : "—"}</div>
+            <small>{formatNumber(attended)} / {formatNumber(capacity)}</small>
+        </TableCell>;
+    };
     if (!selectedDays.length || !activeHours.length) {
         return <div style={{ padding: "24px 0", color: "#64748b" }}>{t("dashboard.empty.noScheduledClasses")}</div>;
     }
 
-    return (
-        <div style={{ overflowX: "auto" }}>
-            <div
-                style={{
-                    display: "grid",
-                    gridTemplateColumns: `minmax(150px, 1.2fr) repeat(${activeHours.length}, minmax(96px, 1fr))`,
-                    minWidth: Math.max(720, 150 + activeHours.length * 96),
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 8,
-                    overflow: "hidden",
-                }}
-            >
-                <div style={{ padding: "12px", background: "#f8fafc", fontWeight: 800, borderBottom: "1px solid #e2e8f0" }}>
-                    {t("dashboard.matrix.day")}
-                </div>
-                {activeHours.map((hour) => (
-                    <div
-                        key={hour}
-                        style={{
-                            padding: "12px 10px",
-                            background: "#f8fafc",
-                            fontWeight: 800,
-                            textAlign: "center",
-                            borderBottom: "1px solid #e2e8f0",
-                            borderLeft: "1px solid #e2e8f0",
-                        }}
-                    >
-                        {hour}
-                    </div>
-                ))}
-                {selectedDays.map((day) => (
-                    <div key={day.date} style={{ display: "contents" }}>
-                        <div
-                            style={{
-                                padding: "12px",
-                                fontWeight: 800,
-                                borderTop: "1px solid #e2e8f0",
-                                background: "#fff",
-                                display: "flex",
-                                alignItems: "center",
-                            }}
-                        >
-                            {formatShortWeekdayDate(day.date, t)}
-                        </div>
+    return <>
+        <TableContainer sx={{ maxWidth: "100%", maxHeight: "65vh", overflow: "auto", border: "1px solid #e2e8f0", borderRadius: 2 }}>
+            <Table stickyHeader sx={{ minWidth: Math.max(720, 150 + activeHours.length * 96 + (totals ? 130 : 0)) }}>
+                <TableHead><TableRow>
+                    <TableCell sx={{ position: "sticky", left: 0, zIndex: 4, minWidth: 150, background: "#f8fafc", fontWeight: 800 }}>{t("dashboard.matrix.day")}</TableCell>
+                    {activeHours.map((hour) => <TableCell key={hour} align="center" sx={{ minWidth: 96, background: "#f8fafc", fontWeight: 800 }}>{hour}</TableCell>)}
+                    {totals && <TableCell align="center" sx={{ ...pinnedTotalStyle, zIndex: 4, fontWeight: 800 }}>{t("dashboard.matrix.total")}</TableCell>}
+                </TableRow></TableHead>
+                <TableBody>
+                    {selectedDays.map((day) => <TableRow key={day.date}>
+                        <TableCell component="th" scope="row" sx={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", fontWeight: 800, whiteSpace: "nowrap" }}>{formatShortWeekdayDate(day.date, t)}</TableCell>
                         {activeHours.map((hour) => {
                             const cell = cellLookup[`${day.date}-${hour}`];
-                            return (
-                                <div
-                                    key={`${day.date}-${hour}`}
-                                    title={cell ? `${formatPercent(cell.occupation_rate)} ${t("dashboard.matrix.occupancy")} - ${formatNumber(cell.attended)} / ${formatNumber(cell.scheduled_capacity)}` : t("dashboard.matrix.noScheduledClass")}
-                                    style={{
-                                        minHeight: 74,
-                                        padding: "10px 8px",
-                                        textAlign: "center",
-                                        borderTop: "1px solid #e2e8f0",
-                                        borderLeft: "1px solid #e2e8f0",
-                                        background: cell ? occupancyHeatColor(cell.occupation_rate) : occupancyEmptyColor,
-                                        color: cell ? "#172033" : "#94a3b8",
-                                        display: "grid",
-                                        alignContent: "center",
-                                        gap: 4,
-                                    }}
-                                >
-                                    {cell ? (
-                                        <>
-                                            <div style={{ fontSize: 19, fontWeight: 900 }}>{formatPercent(cell.occupation_rate)}</div>
-                                            <div style={{ fontSize: 13, fontWeight: 700 }}>
-                                                {formatNumber(cell.attended)} / {formatNumber(cell.scheduled_capacity)}
-                                            </div>
-                                            <div style={{ fontSize: 11, color: "#475569" }}>
-                                                {formatNumber(cell.scheduled_classes)} {Number(cell.scheduled_classes) === 1 ? t("dashboard.matrix.classSingular") : t("dashboard.matrix.classPlural")}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div style={{ fontSize: 13, fontWeight: 700 }}>-</div>
-                                    )}
-                                </div>
-                            );
+                            return <TableCell key={hour} align="center"
+                                title={cell ? `${formatPercentOneDecimal(cell.occupation_rate)} ${t("dashboard.matrix.occupancy")} - ${formatNumber(cell.attended)} / ${formatNumber(cell.scheduled_capacity)}` : t("dashboard.matrix.noScheduledClass")}
+                                sx={{ height: 74, padding: "10px 8px", background: cell ? occupancyHeatColor(cell.occupation_rate) : occupancyEmptyColor, borderLeft: "1px solid #e2e8f0" }}>
+                                {cell ? <>
+                                    <div style={{ fontSize: 19, fontWeight: 900 }}>{formatPercentOneDecimal(cell.occupation_rate)}</div>
+                                    <div style={{ fontSize: 13, fontWeight: 700 }}>{formatNumber(cell.attended)} / {formatNumber(cell.scheduled_capacity)}</div>
+                                    <div style={{ fontSize: 11, color: "#475569" }}>{formatNumber(cell.scheduled_classes)} {Number(cell.scheduled_classes) === 1 ? t("dashboard.matrix.classSingular") : t("dashboard.matrix.classPlural")}</div>
+                                </> : <span style={{ color: "#94a3b8" }}>—</span>}
+                            </TableCell>;
                         })}
-                    </div>
-                ))}
-            </div>
-            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap style={{ marginTop: 12, color: "#475569", fontSize: 13 }}>
-                <span><strong>{t("dashboard.matrix.cell")}:</strong> {t("dashboard.matrix.occupancyPercentage")}</span>
-                <span><strong>{t("dashboard.matrix.detail")}:</strong> {t("dashboard.matrix.attendedCapacity")}</span>
-                <span><strong>{t("dashboard.matrix.blank")}:</strong> {t("dashboard.matrix.noClass")}</span>
-            </Stack>
-        </div>
-    );
+                        {totals && totalCell(cells.filter((cell) => cell.date === day.date), day.date + "-total", true)}
+                    </TableRow>)}
+                    {totals && <TableRow>
+                        <TableCell component="th" scope="row" sx={{ position: "sticky", left: 0, zIndex: 2, background: "#e2e8f0", fontWeight: 800 }}>{t("dashboard.matrix.total")}</TableCell>
+                        {activeHours.map((hour) => totalCell(cells.filter((cell) => cell.hour === hour), hour))}
+                        {totalCell(cells, "grand-total", true)}
+                    </TableRow>}
+                </TableBody>
+            </Table>
+        </TableContainer>
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap style={{ marginTop: 12, color: "#475569", fontSize: 13 }}>
+            <span><strong>{t("dashboard.matrix.cell")}:</strong> {t("dashboard.matrix.occupancyPercentage")}</span>
+            <span><strong>{t("dashboard.matrix.detail")}:</strong> {t("dashboard.matrix.attendedCapacity")}</span>
+            <span><strong>{t("dashboard.matrix.blank")}:</strong> {t("dashboard.matrix.noClass")}</span>
+        </Stack>
+    </>;
 };
 
 
@@ -2325,4 +2281,48 @@ export const CapacityUsageCard = ({ occupation, action, t }) => {
             </div>
         </Paper>
     );
+};
+
+
+export const MonthlyOccupancyComparisonChart = ({ current = [], previous = [], range, t }) => {
+    const [showCurrent, setShowCurrent] = useState(true);
+    const [showPrevious, setShowPrevious] = useState(true);
+    const [showCurrentTrend, setShowCurrentTrend] = useState(false);
+    const [showPreviousTrend, setShowPreviousTrend] = useState(false);
+    const days = Number(range.date_to.slice(-2));
+    const currentLookup = Object.fromEntries(current.map((row) => [Number(row.date.slice(-2)), row]));
+    const previousLookup = Object.fromEntries(previous.map((row) => [Number(row.date.slice(-2)), row]));
+    const rows = Array.from({ length: Math.max(days, ...previous.map((row) => Number(row.date.slice(-2)))) }, (_, index) => ({
+        label: index + 1,
+        current: currentLookup[index + 1]?.capacity > 0 ? currentLookup[index + 1].occupation_rate : null,
+        previous: previousLookup[index + 1]?.capacity > 0 ? previousLookup[index + 1].occupation_rate : null,
+    })).filter((row) => row.current !== null || row.previous !== null);
+    const chartRows = addOccupancyTrends(rows);
+    const controls = [
+        { key: "current", label: t("dashboard.period.selectedMonth"), color: "#2f6f73", shown: showCurrent, setShown: setShowCurrent },
+        { key: "previous", label: t("dashboard.previousMonth"), color: "#8a5cf6", shown: showPrevious, setShown: setShowPrevious },
+        { key: "current_trend", label: `${t("dashboard.period.selectedMonth")} · ${t("common.trendLine")}`, color: "#2f6f73", shown: showCurrentTrend, setShown: setShowCurrentTrend },
+        { key: "previous_trend", label: `${t("dashboard.previousMonth")} · ${t("common.trendLine")}`, color: "#8a5cf6", shown: showPreviousTrend, setShown: setShowPreviousTrend },
+    ];
+    return <Paper style={{ padding: 16 }}>
+        <h2 style={{ marginTop: 0 }}>{t("dashboard.charts.occupancyVsPreviousMonth")}</h2>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+            {controls.map((control) => <FormControlLabel key={control.key}
+                label={control.label}
+                control={<Switch checked={control.shown} onChange={(_, checked) => control.setShown(checked)}
+                    sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: control.color },
+                        "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: control.color } }} />}
+            />)}
+        </Stack>
+        <div style={{ width: "100%", height: 320 }}><ResponsiveContainer><ComposedChart data={chartRows}>
+            <CartesianGrid stroke="#eef1f4" vertical={false} />
+            <XAxis dataKey="label" type="number" domain={["dataMin", "dataMax"]} allowDecimals={false} tick={chartText} />
+            <YAxis tickFormatter={(value) => `${value}%`} tick={chartText} />
+            <ChartTooltip formatter={(value) => formatPercent(value)} contentStyle={chartTooltipStyle} />
+            <Line hide={!showPrevious} dataKey="previous" name={t("dashboard.previousMonth")} stroke="#8a5cf6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls />
+            <Line hide={!showCurrent} dataKey="current" name={t("dashboard.period.selectedMonth")} stroke="#2f6f73" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls />
+            <Line hide={!showPreviousTrend} dataKey="previous_trend" name={`${t("dashboard.previousMonth")} · ${t("common.trendLine")}`} stroke="#8a5cf6" {...trendStrokeStyle} connectNulls />
+            <Line hide={!showCurrentTrend} dataKey="current_trend" name={`${t("dashboard.period.selectedMonth")} · ${t("common.trendLine")}`} stroke="#2f6f73" {...trendStrokeStyle} connectNulls />
+        </ComposedChart></ResponsiveContainer></div>
+    </Paper>;
 };

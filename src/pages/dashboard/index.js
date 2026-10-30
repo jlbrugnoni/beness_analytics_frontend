@@ -86,17 +86,18 @@ const WEEKLY_SECTIONS = [
         badgeKey: "dashboard.hub.badge.weekly",
         badgeColor: "success",
     },
+];
+
+const SHARED_SECTIONS = [
     {
         href: "/dashboard/occupancy",
         icon: MeetingRoomIcon,
         titleKey: "dashboard.hub.occupancy.title",
         descriptionKey: "dashboard.hub.occupancy.description",
-        badgeKey: "dashboard.hub.badge.weekly",
+        badgeKey: "dashboard.hub.badge.both",
         badgeColor: "success",
     },
-];
 
-const SHARED_SECTIONS = [
     {
         href: "/dashboard/conversion",
         icon: AutoGraphIcon,
