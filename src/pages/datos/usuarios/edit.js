@@ -8,6 +8,8 @@ import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
 import { languages } from "@/i18n/translations";
 import useI18n from "@/hooks/useI18n";
+import { Alert } from "@mui/material";
+import { storeAccess } from "@/hooks/useAccess";
 import AccessSummary from "@/components/AccessSummary";
 import { fetchApiRows } from "@/utils/fetchApiRows";
 import { capabilityFormFields, emptyFinanceCapabilities, financeCapabilityValues } from "@/constants/accessCapabilities";
@@ -39,6 +41,7 @@ const EditUserPage = () => {
     const [studios, setStudios] = useState([]);
     const [profileRevision, setProfileRevision] = useState(null);
     const [effectiveAccess, setEffectiveAccess] = useState(null);
+    const [isSuperuser, setIsSuperuser] = useState(false);
     const canChangePassword = loggedInUser?.is_staff || loggedInUser?.id == id;
 
     const authHeaders = useMemo(() => ({
@@ -71,6 +74,7 @@ const EditUserPage = () => {
             axios.get(`${backendUrl}/api/data/user-access-profiles/?user=${id}`, authHeaders),
         ]);
         const profile = (accessResponse.data.results || accessResponse.data)[0] || {};
+        setIsSuperuser(Boolean(userResponse.data.is_superuser));
         setProfileRevision(profile.revision || null);
         setEffectiveAccess(profile.effective_access || null);
 
@@ -142,6 +146,12 @@ const EditUserPage = () => {
         try {
             await axios.put(`${backendUrl}/api/data/users/${id}/`, userPayload, authHeaders);
 
+            if (loggedInUser?.id == id) {
+                try {
+                    const access = await axios.get(`${backendUrl}/api/data/me/permissions/`, authHeaders);
+                    storeAccess(access.data);
+                } catch { /* The backend still enforces permissions; navigation refreshes access. */ }
+            }
             setSuccess(true);
             setTimeout(() => router.push("/datos/usuarios"), 2000);
         } catch (error) {
@@ -162,6 +172,7 @@ const EditUserPage = () => {
             <Head>
                 <title>Beness Analytics | Editar Usuario</title>
             </Head>
+            {isSuperuser && <Alert severity="info" sx={{ mx: 3, mt: 2 }}>{t("access.superuserHelp")}</Alert>}
             <FormComponent
                 actionName="Editar"
                 entityName="Usuario"
