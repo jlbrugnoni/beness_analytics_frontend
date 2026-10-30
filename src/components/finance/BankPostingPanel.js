@@ -1,3 +1,4 @@
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import { formatMoney } from "@/utils/formatMoney";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
@@ -119,7 +120,7 @@ export default function BankPostingPanel({ batch, onProcessingUpdated }) {
                             setBusy(true); setError(null);
                             try {
                                 let next = api(`bank-movements/${movement.id}/history/`); const events = [];
-                                while (next) { const response = await axios.get(next, auth()); events.push(...response.data.results); next = response.data.next; }
+                                while (next) { const response = await axios.get(next, auth()); events.push(...response.data.results); next = normalizeApiNextUrl(response.data.next, process.env.NEXT_PUBLIC_BACKEND_URL); }
                                 setHistory({ movement, events });
                             } catch (failure) { setError(errorText(failure)); } finally { setBusy(false); }
                         }}>{label("history")}</Button>

@@ -1,3 +1,4 @@
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import { formatMoney } from "@/utils/formatMoney";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
@@ -51,7 +52,7 @@ export default function PolicyConfiguration({ companies, sites, onCompanyUpdated
         if (!companyId) { setLoading(false); return; }
         try {
             let next = `${api(section)}?company=${companyId}`; const all = [];
-            while (next) { const response = await axios.get(next, auth()); all.push(...response.data.results); next = response.data.next; }
+            while (next) { const response = await axios.get(next, auth()); all.push(...response.data.results); next = normalizeApiNextUrl(response.data.next, process.env.NEXT_PUBLIC_BACKEND_URL); }
             if (current === version.current) setRows(all);
         } catch { if (current === version.current) setFailed(true); }
         finally { if (current === version.current) setLoading(false); }

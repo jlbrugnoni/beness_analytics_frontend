@@ -1,4 +1,5 @@
 const routePermissions = {
+    "/finance/category-catalog": { finance: true, capability: "can_import_finance_migration" },
     "/finance/closures": { finance: true, capability: "can_view_finance_bank_accounts" },
     "/finance/imports": { finance: true, capability: "can_view_finance_bank_accounts" },
     "/finance/configuration": { finance: true, capability: "can_manage_finance_settings" },

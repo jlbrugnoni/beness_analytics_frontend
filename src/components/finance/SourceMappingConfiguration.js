@@ -1,3 +1,4 @@
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Autocomplete, Box, Button, Chip, CircularProgress,
@@ -46,7 +47,7 @@ export default function SourceMappingConfiguration({ companies, sites, studios, 
         try {
             let next = endpoint(`source-mappings/?company=${companyId}`); const all = [];
             while (next) {
-                const response = await axios.get(next, headers()); all.push(...response.data.results); next = response.data.next;
+                const response = await axios.get(next, headers()); all.push(...response.data.results); next = normalizeApiNextUrl(response.data.next, process.env.NEXT_PUBLIC_BACKEND_URL);
             }
             if (requestVersion === version.current) setRows(all);
         } catch { if (requestVersion === version.current) setFailed(true); }

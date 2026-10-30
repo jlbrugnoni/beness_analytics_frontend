@@ -1,7 +1,10 @@
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
     FormControlLabel, MenuItem, Paper, Stack, Switch, TextField, Typography } from "@mui/material";
+import Link from "next/link";
+import useAccess from "@/hooks/useAccess";
 import useI18n from "@/hooks/useI18n";
 
 const headers = () => ({ headers: { Authorization: `Token ${sessionStorage.getItem("token")}` } });
@@ -18,6 +21,7 @@ const errorText = (error, t) => {
 
 export default function CategoryConfiguration({ companies, sites, sensitiveAccess, onCompanyUpdated }) {
     const { t } = useI18n();
+    const access = useAccess();
     const [companyId, setCompanyId] = useState(companies[0]?.id || "");
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -38,7 +42,7 @@ export default function CategoryConfiguration({ companies, sites, sensitiveAcces
             let next = endpoint(`categories/?company=${companyId}`); const result = [];
             while (next) {
                 const response = await axios.get(next, headers());
-                result.push(...response.data.results); next = response.data.next;
+                result.push(...response.data.results); next = normalizeApiNextUrl(response.data.next, process.env.NEXT_PUBLIC_BACKEND_URL);
             }
             if (requestVersion === version.current) setRows(result);
         } catch {
@@ -85,6 +89,7 @@ export default function CategoryConfiguration({ companies, sites, sensitiveAcces
     </Stack>;
     return <Stack spacing={2}>
         <Alert severity="info">{t("finance.category.intro")}</Alert>
+        {access.capabilities?.can_import_finance_migration && <Button component={Link} href="/finance/category-catalog" variant="outlined" sx={{ alignSelf: "flex-start" }}>{t("finance.catalog.title")}</Button>}
         <TextField select fullWidth label={t("finance.config.company")} value={companyId} disabled={busy}
             onChange={(event) => { setCompanyId(event.target.value); setFeedback(null); setForm(null); }}>
             {companies.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}

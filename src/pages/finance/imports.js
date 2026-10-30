@@ -1,3 +1,4 @@
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import { formatMoney } from "@/utils/formatMoney";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,7 +17,7 @@ const accountTitle = (item) => `${item.company_name} · ${item.name}${item.name.
 const auth = () => ({ headers: { Authorization: `Token ${sessionStorage.getItem("token")}` } });
 const allPages = async (path) => {
     const rows = []; let next = api(path);
-    while (next) { const response = await axios.get(next, auth()); rows.push(...response.data.results); next = response.data.next; }
+    while (next) { const response = await axios.get(next, auth()); rows.push(...response.data.results); next = normalizeApiNextUrl(response.data.next, process.env.NEXT_PUBLIC_BACKEND_URL); }
     return rows;
 };
 

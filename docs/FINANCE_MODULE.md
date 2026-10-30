@@ -62,3 +62,18 @@ The backend carries a configuration-only preset for **Beness Dominicana** and th
 `docs/finance/BENESS_DOMINICANA_CONFIGURATION.md` for exact contents, conflict guards
 and deployment acceptance. No local financial records, users or grants travel with
 this preset; no frontend data fixture or automatic production seeding is needed.
+
+
+## Category catalog recovery / transfer (D-098)
+
+`/finance/category-catalog` provides CSV export, CSV import and default catalog
+restore under `can_import_finance_migration` with sensitive-detail and company-wide
+scope safeguards. It is linked from Finance and the Categories configuration page.
+Preview every change, then apply the signed plan. Keep unmatched categories by
+default; optionally archive them. Existing IDs, classifications and review flags are
+preserved. Both servers must have this release for local-to-production CSV transfer.
+See backend `docs/finance/CATEGORY_CATALOG_TRANSFER.md` for the CSV contract and
+validation evidence. API pagination links in finance configuration, catalog, policy,
+mapping and import-history loaders now retain the configured backend origin.
+
+Pagination regression check: `node --test tests/financePagination.test.mjs`.

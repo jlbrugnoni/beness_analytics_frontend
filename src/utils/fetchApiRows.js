@@ -1,5 +1,5 @@
 import axios from "axios";
-import { normalizeApiNextUrl } from "./apiPagination";
+import { normalizeApiNextUrl } from "./apiPagination.js";
 
 export async function fetchApiRows(url, config, backendUrl) {
     const rows = [];

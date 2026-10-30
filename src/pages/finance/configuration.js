@@ -1,3 +1,4 @@
+import { normalizeApiNextUrl } from "@/utils/apiPagination";
 import { formatMoney } from "@/utils/formatMoney";
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
@@ -21,7 +22,7 @@ const allPages = async (path) => {
     let next = api(path); const rows = [];
     while (next) {
         const response = await axios.get(next, headers());
-        rows.push(...(response.data.results || response.data)); next = response.data.next;
+        rows.push(...(response.data.results || response.data)); next = normalizeApiNextUrl(response.data.next, process.env.NEXT_PUBLIC_BACKEND_URL);
     }
     return rows;
 };
