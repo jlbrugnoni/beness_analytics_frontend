@@ -47,3 +47,18 @@ Use the same phase branch name in both repositories. Delivery handoffs contain
 What I did and What you should test, with client acceptance recorded separately
 from implementation and automated checks. New financial UI must enforce display
 scopes while relying on authoritative backend authorization.
+
+
+## V1.2 permission administration and Dominican setup
+
+The V1.2 branch adds Settings → Group permissions → Create group and fixes saving
+superuser group membership/direct grants. Superusers retain implicit full access;
+finance still requires server activation. New groups have no permissions or members
+until configured and assigned.
+
+The backend carries a configuration-only preset for **Beness Dominicana** and the
+`install_beness_dominicana --site SITE_ID --actor SUPERUSER_ID` management command
+(dry-run; add `--apply` to install). See backend
+`docs/finance/BENESS_DOMINICANA_CONFIGURATION.md` for exact contents, conflict guards
+and deployment acceptance. No local financial records, users or grants travel with
+this preset; no frontend data fixture or automatic production seeding is needed.
