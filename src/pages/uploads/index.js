@@ -1,3 +1,4 @@
+import RoomIdentityManager from "@/components/RoomIdentityManager";
 import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -585,6 +586,10 @@ export default function Uploads() {
                             )}
                         </div>
                     </Paper>
+
+                    {["trainer_availability", "attendance_with_revenue"].includes(reportType) && access.capabilities?.can_edit_data && <RoomIdentityManager
+                        site={site} token={token} preview={preview} onChanged={file ? handlePreview : undefined}
+                    />}
 
                     {canResetData && (
                         <Paper style={{ padding: "18px", display: "grid", gap: "14px" }}>
