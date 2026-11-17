@@ -8,7 +8,6 @@ import useI18n from "@/hooks/useI18n";
 
 const fields = ["alegra_cost_center", "alegra_price_list", "alegra_payment_method", "mindbody_payment_method", "mindbody_studio", "historical_payment_method", "historical_studio"];
 const channels = ["card_terminal", "recurring", "payment_link", "transfer", "cash", "other"];
-const studioLabels = ["Bella Vista", "Piantini", "Arroyo Hondo"];
 const endpoint = (path) => `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/finance/${path}`;
 const headers = () => ({ headers: { Authorization: `Token ${sessionStorage.getItem("token")}` } });
 const blankPreview = { source: "alegra", cost_center: "", price_list: "", payment_method: "", studio_label: "", manual_channel: "", manual_studio: "" };
@@ -25,6 +24,8 @@ export default function SourceMappingConfiguration({ companies, sites, studios, 
     const { t } = useI18n();
     const [companyId, setCompanyId] = useState(companies[0]?.id || "");
     const company = companies.find((item) => item.id === Number(companyId));
+    const studioLabels = company?.country_code === "ES" ? ["Beness Pilates Estepona"] : ["Bella Vista", "Piantini", "Arroyo Hondo"];
+    const setupTitle = company?.country_code === "ES" ? "finance.mapping.initializeSpain" : "finance.mapping.initialize";
     const companyWide = sites.some((site) => site.id === company?.site);
     const companyStudios = studios.filter((studio) => studio.site_id === company?.site);
     const [rows, setRows] = useState([]);
@@ -116,7 +117,7 @@ export default function SourceMappingConfiguration({ companies, sites, studios, 
         {!loading && !failed && company && <>
             <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
                 <Button variant="contained" disabled={busy || !companyWide || !company.active} onClick={() => open()}>{t("finance.mapping.add")}</Button>
-                {company.country_code === "DO" && <Button variant="outlined" disabled={busy || !companyWide || !company.active} onClick={openSetup}>{t("finance.mapping.initialize")}</Button>}
+                {["DO", "ES"].includes(company.country_code) && <Button variant="outlined" disabled={busy || !companyWide || !company.active} onClick={openSetup}>{t(setupTitle)}</Button>}
             </Stack>
             <Accordion defaultExpanded={false}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography>{t("finance.mapping.test")}</Typography></AccordionSummary>
@@ -163,12 +164,12 @@ export default function SourceMappingConfiguration({ companies, sites, studios, 
         </>}
         <Dialog open={Boolean(form || setup)} onClose={() => { if (!busy) { setForm(null); setSetup(null); } }} fullWidth maxWidth="sm">
             <Box component="form" onSubmit={save}>
-                <DialogTitle>{t(setup ? "finance.mapping.initialize" : form?.id ? "finance.mapping.edit" : "finance.mapping.add")}</DialogTitle>
+                <DialogTitle>{t(setup ? setupTitle : form?.id ? "finance.mapping.edit" : "finance.mapping.add")}</DialogTitle>
                 <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
                     <Typography>{company?.name}</Typography>
                     {formError && <Alert severity="error" sx={{ whiteSpace: "pre-line" }}>{formError}</Alert>}
                     {setup ? <>
-                        <Alert severity="info">{t("finance.mapping.setupHelp")}</Alert>
+                        <Alert severity="info">{t(company?.country_code === "ES" ? "finance.mapping.setupSpainHelp" : "finance.mapping.setupHelp")}</Alert>
                         {studioLabels.map((label) => <TextField key={label} select required label={label} value={setup[label]} disabled={busy || conflict}
                             onChange={(event) => setSetup((old) => ({ ...old, [label]: event.target.value }))}>
                             <MenuItem value="">{t("finance.config.choose")}</MenuItem>

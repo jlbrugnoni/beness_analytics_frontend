@@ -9,6 +9,7 @@ import MovementTable from "@/components/finance/workspace/MovementTable";
 import BankDialog from "@/components/finance/workspace/BankDialog";
 import ManualEntryDialog from "@/components/finance/workspace/ManualEntryDialog";
 import GeneralCashButton from "@/components/finance/GeneralCashButton";
+import MindbodySaleDialog from "@/components/finance/workspace/MindbodySaleDialog";
 import InvoiceDialog from "@/components/finance/workspace/InvoiceDialog";
 
 export default function FinanceRecords() {
@@ -28,7 +29,7 @@ export default function FinanceRecords() {
     useEffect(() => { if (router.query.company && options.companies.some((c) => c.id === Number(router.query.company))) setCompany(String(router.query.company)); }, [router.query.company, options.companies]);
     useEffect(() => {
         let active = true; setData(empty);
-        if (!canRead || !company || (selected?.country === "ES" && !bank)) return undefined;
+        if (!canRead || !company) return undefined;
         setPending(true); const params = new URLSearchParams({ company, kind, page, ...Object.fromEntries(Object.entries(applied).filter(([, value]) => value !== "")) });
         axios.get(api(`workspace/?${params}`), auth()).then(({ data: result }) => { if (active) setData(result); }).catch(() => { if (active) setError(t("finance.workspace.error")); }).finally(() => { if (active) setPending(false); });
         return () => { active = false; };
@@ -53,10 +54,10 @@ export default function FinanceRecords() {
             {error && <Alert severity="error">{error}</Alert>}{loading && <CircularProgress />}
             <TextField select label={w("company")} value={company} sx={{ maxWidth: 520 }} onChange={(event) => { setCompany(String(event.target.value)); chooseKind(canBank ? "debit" : "invoices"); setRecognitionResult(null); setPage(1); setError(""); setRecord(null); setFilters({ ...filters, studio: "", account: "", category: "", subcategory: "", channel: "", status: "all" }); setApplied({ ...applied, studio: "", account: "", category: "", subcategory: "", channel: "", status: "all" }); }}><MenuItem value="">{w("choose")}</MenuItem>{options.companies.map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.name} · {c.currency}</MenuItem>)}</TextField>
             {!company ? <Typography>{w("selectHelp")}</Typography> : <>
-                <Tabs value={kind === "unlinked" ? "invoices" : kind} onChange={(_, value) => chooseKind(value)} variant="scrollable" scrollButtons="auto" aria-label={w("records")}><Tab label={w("debit")} value="debit" disabled={!canBank} /><Tab label={w("credit")} value="credit" disabled={!canBank} /><Tab label={w("invoices")} value="invoices" /></Tabs>
-                {selected?.country === "ES" && !bank ? <Alert severity="info">{w("spain")}</Alert> : <>
-                    {!bank && canBank && <Button sx={{ alignSelf: "flex-start" }} onClick={() => chooseKind(kind === "unlinked" ? "invoices" : "unlinked")}>{w(kind === "unlinked" ? "invoices" : "unlinked")}</Button>}
-                    {!bank && canBank && access.capabilities?.can_edit_finance && <Button disabled={matching || pending} onClick={refreshMatching}>{t("finance.receipts.matchingRefresh")}</Button>}
+                <Tabs value={kind === "unlinked" ? "invoices" : kind} onChange={(_, value) => chooseKind(value)} variant="scrollable" scrollButtons="auto" aria-label={w("records")}><Tab label={w("debit")} value="debit" disabled={!canBank} /><Tab label={w("credit")} value="credit" disabled={!canBank} /><Tab label={selected?.country === "ES" ? t("finance.mindbody.sales") : w("invoices")} value="invoices" /></Tabs>
+                {<>
+                    {!bank && selected?.country !== "ES" && canBank && <Button sx={{ alignSelf: "flex-start" }} onClick={() => chooseKind(kind === "unlinked" ? "invoices" : "unlinked")}>{w(kind === "unlinked" ? "invoices" : "unlinked")}</Button>}
+                    {!bank && selected?.country !== "ES" && canBank && access.capabilities?.can_edit_finance && <Button disabled={matching || pending} onClick={refreshMatching}>{t("finance.receipts.matchingRefresh")}</Button>}
                     {bank && canBank && <Stack direction="row" gap={1} alignItems="center">
                         {access.capabilities?.can_edit_finance && <Button variant="contained" onClick={() => setCreating(true)}>{w(kind === "debit" ? "createExpense" : "createIncome")}</Button>}
                         {access.capabilities?.can_manage_finance_settings && !options.accounts.some((a) => a.company_id === Number(company) && a.kind === "cash") && <GeneralCashButton company={company} done={reloadOptions} w={w} />}
@@ -84,7 +85,8 @@ export default function FinanceRecords() {
                 </>}
             </>}
         </>}
-        <InvoiceDialog record={bank ? null : record} kind={kind} close={() => setRecord(null)} company={company} studios={studios} canReopen={Boolean(access.capabilities?.can_reopen_finance)} canEdit={Boolean(access.capabilities?.can_edit_finance)} canPayments={canBank} canReview={Boolean(access.capabilities?.can_edit_finance)} changed={changed} w={w} t={t} />
+        <InvoiceDialog record={bank || selected?.country === "ES" ? null : record} kind={kind} close={() => setRecord(null)} company={company} studios={studios} canReopen={Boolean(access.capabilities?.can_reopen_finance)} canEdit={Boolean(access.capabilities?.can_edit_finance)} canPayments={canBank} canReview={Boolean(access.capabilities?.can_edit_finance)} changed={changed} w={w} t={t} />
+        <MindbodySaleDialog record={!bank && selected?.country === "ES" ? record : null} company={company} studios={studios} close={() => setRecord(null)} changed={changed} canEdit={Boolean(access.capabilities?.can_edit_finance)} canReopen={Boolean(access.capabilities?.can_reopen_finance)} canPayments={canBank} w={w} t={t} />
         <BankDialog closeOnSave={kind === "credit"} record={bank ? record : null} close={() => setRecord(null)} canReopen={Boolean(access.capabilities?.can_reopen_finance)} canEdit={Boolean(access.capabilities?.can_edit_finance)} optionsForManual={options} company={company} changed={changed} w={w} t={t} />
         {creating && bank && <ManualEntryDialog key={`${company}-${kind}`} company={company} direction={kind} options={options} close={() => setCreating(false)} done={changed} w={w} t={t} />}
         <SourceDialog data={source} close={() => setSource(null)} w={w} />
